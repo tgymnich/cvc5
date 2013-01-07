@@ -74,12 +74,12 @@ am__v_install_sh_noat_1 = $(install_sh)
 AM_V_relink = $(am__v_relink_$(V))
 am__v_relink_ = $(am__v_relink_$(AM_DEFAULT_VERBOSITY))
 am__v_relink_0 = echo "   RELNK"
-am__v_relink_1 = :
+am__v_relink_1 = ;
 
 # all the binaries that might need to be installed
 # (it's not a fatal error for one/some don't exist in a given build
 # configuration)
-CVC4_BINARIES = cvc4 pcvc4
+CVC4_BINARIES = main/cvc4 main/pcvc4 mcsat/main/mcsat
 
 .PHONY: _default_build_ all examples
 _default_build_: all
@@ -107,18 +107,20 @@ ifeq ($(BUILDING_SHARED)$(STATIC_BINARY),10)
 #	the handling with empty $relink_command is a hack for Mac OS
 	$(AM_V_at)thelibdir="$(abs_builddir)$(libdir)"; \
 	progdir="$(abs_builddir)$(bindir)"; for file in $(CVC4_BINARIES); do \
-		if test -r $(CURRENT_BUILD)/src/main/$$file; then \
-			eval `grep '^relink_command=' $(CURRENT_BUILD)/src/main/$$file | sed 's:-Wl,-rpath:-Wl,-rpath -Wl,\\\\$$thelibdir -Wl,-rpath:'`; \
+	  filedir=`dirname $$file`; \
+	  file=`basename $$file`; \
+		if test -r $(CURRENT_BUILD)/src/$$filedir/$$file; then \
+			eval `grep '^relink_command=' $(CURRENT_BUILD)/src/$$filedir/$$file | sed 's:-Wl,-rpath:-Wl,-rpath -Wl,\\\\$$thelibdir -Wl,-rpath:'`; \
 			if test -z "$$relink_command"; then \
 				$(AM_V_mkdir_noat) "$(CURRENT_BUILD)$(bindir)/.libs"; \
 				$(AM_V_install_sh_noat) \
-					$(CURRENT_BUILD)/src/main/.libs/$$file \
+					$(CURRENT_BUILD)/src/$$filedir/.libs/$$file \
 					"$(abs_builddir)$(bindir)/.libs"; \
 				$(AM_V_install_sh_noat) \
-					$(CURRENT_BUILD)/src/main/$$file \
+					$(CURRENT_BUILD)/src/$$filedir/$$file \
 					"$(abs_builddir)$(bindir)"; \
 			else \
-				$(AM_V_relink) "$$file"; eval "(cd $(CURRENT_BUILD)/src/main && $$relink_command)"; \
+				$(AM_V_relink) "$$file"; eval "(cd $(CURRENT_BUILD)/src/$$filedir && $$relink_command)"; \
 			fi; \
 		else \
 			rm -f "$(abs_builddir)$(bindir)/$$file"; \
@@ -127,9 +129,11 @@ ifeq ($(BUILDING_SHARED)$(STATIC_BINARY),10)
 else
 #	if we're building static libs only, just install the driver binary directly
 	$(AM_V_at)for file in $(CVC4_BINARIES); do \
-		if test -r $(CURRENT_BUILD)/src/main/$$file; then \
+	  filedir=`dirname $$file`; \
+	  file=`basename $$file`; \
+		if test -r $(CURRENT_BUILD)/src/$$filedir/$$file; then \
 			$(AM_V_install_sh_noat) \
-				$(CURRENT_BUILD)/src/main/$$file \
+				$(CURRENT_BUILD)/src/$$filedir/$$file \
 				"$(abs_builddir)$(bindir)"; \
 		else \
 			rm -f "$(abs_builddir)$(bindir)/$$file"; \
@@ -154,18 +158,20 @@ ifeq ($(BUILDING_SHARED)$(STATIC_BINARY),10)
 #	if we're building shared libs and the binary is not static, relink
 #	the handling with empty $relink_command is a hack for Mac OS
 	$(AM_V_at)thelibdir="`pwd`$(libdir)"; progdir="`pwd`$(bindir)"; for file in $(CVC4_BINARIES); do \
-		if test -r $(CURRENT_BUILD)/src/main/$$file; then \
-			eval `grep '^relink_command=' $(CURRENT_BUILD)/src/main/$$file | sed 's:-Wl,-rpath:-Wl,-rpath -Wl,\\\\$$thelibdir -Wl,-rpath:'`; \
+	  filedir=`dirname $$file`; \
+	  file=`basename $$file`; \
+		if test -r $(CURRENT_BUILD)/src/$$filedir/$$file; then \
+			eval `grep '^relink_command=' $(CURRENT_BUILD)/src/$$filedir/$$file | sed 's:-Wl,-rpath:-Wl,-rpath -Wl,\\\\$$thelibdir -Wl,-rpath:'`; \
 			if test -z "$$relink_command"; then \
 				$(AM_V_mkdir_noat) ".$(bindir)/.libs"; \
 				$(AM_V_install_sh_noat) \
-					$(CURRENT_BUILD)/src/main/.libs/$$file \
+					$(CURRENT_BUILD)/src/$$filedir/.libs/$$file \
 					"`pwd`$(bindir)/.libs"; \
 				$(AM_V_install_sh_noat) \
-					$(CURRENT_BUILD)/src/main/$$file \
+					$(CURRENT_BUILD)/src/$$filedir/$$file \
 					"`pwd`$(bindir)"; \
 			else \
-				$(AM_V_relink) "$$file"; eval "(cd $(CURRENT_BUILD)/src/main && $$relink_command)"; \
+				$(AM_V_relink) "$$file"; eval "(cd $(CURRENT_BUILD)/src/$$filedir && $$relink_command)"; \
 			fi; \
 		else \
 			rm -f "`pwd`$(bindir)/$$file"; \
@@ -174,9 +180,11 @@ ifeq ($(BUILDING_SHARED)$(STATIC_BINARY),10)
 else
 #	if we're building static libs only, just install the driver binary directly
 	$(AM_V_at)for file in $(CVC4_BINARIES); do \
-		if test -r $(CURRENT_BUILD)/src/main/$$file; then \
+	  filedir=`dirname $$file`; \
+	  file=`basename $$file`; \
+		if test -r $(CURRENT_BUILD)/src/$$filedir/$$file; then \
 			$(AM_V_install_sh_noat) \
-				$(CURRENT_BUILD)/src/main/$$file \
+				$(CURRENT_BUILD)/src/$$filedir/$$file \
 				"`pwd`$(bindir)"; \
 		else \
 			rm -f "`pwd`$(bindir)/$$file"; \
