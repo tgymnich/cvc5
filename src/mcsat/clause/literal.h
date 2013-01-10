@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include <tr1/functional>
+#include <boost/static_assert.hpp>
 
 #include "mcsat/variable/variable.h"
 
@@ -158,6 +159,8 @@ inline std::ostream& operator << (std::ostream& out, const Literals& literals) {
 
 template<bool refCount>
 const LiteralRef<refCount> LiteralRef<refCount>::null;
+
+BOOST_STATIC_ASSERT(sizeof(Literal) == sizeof(Literal_Strong));
 
 }
 }

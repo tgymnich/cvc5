@@ -79,6 +79,8 @@ char* ClauseDatabase::allocate(unsigned size) {
 
 CRef ClauseDatabase::newClause(const Literals& literals, size_t ruleId) {
 
+  Debug("mcsat::clause_db") << "ClauseDatabase::newClause(" << literals << ", " << ruleId << ")" << std::endl;
+
   // Compute the size (this should be safe as variant puts the template data at the end)
   size_t size = sizeof(Clause) + sizeof(int)*literals.size();
 
@@ -90,6 +92,8 @@ CRef ClauseDatabase::newClause(const Literals& literals, size_t ruleId) {
 
   // The new reference (not reference counted for now)
   CRef cRef(memory - d_memory, d_id);
+
+  Debug("mcsat::clause_db") << "ClauseDatabase::newClause() => " << cRef.d_ref << std::endl;
 
   // Notify
   for (unsigned toNotify = 0; toNotify < d_notifySubscribers.size(); ++ toNotify) {

@@ -28,6 +28,7 @@ public:
   }
 
   void add(Literal lit, CRef cRef) {
+    Debug("mcsat::bcp::watch") << "WatchListManager::add(" << lit << ", " << cRef << ")" << std::endl;
     d_watchLists[lit].push_back(cRef);
   }
   
@@ -85,7 +86,8 @@ public:
 
   /** Returns the iterator that can remove elements */
   remove_iterator begin(Literal l) {
-   return remove_iterator(d_watchLists, l.index());
+    Debug("mcsat::bcp::watch") << "WatchListManager::begin(" << l << "): in list: " << d_watchLists[l].size() << std::endl;
+    return remove_iterator(d_watchLists, l.index());
   }
 };
 

@@ -126,6 +126,7 @@ public:
   /** Return the node associated with the variable */
   TNode getNode(Variable var) const {
     if (var.isNull()) return TNode::null();
+    Assert(var.typeIndex() < d_variableNodes.size());
     return d_variableNodes[var.typeIndex()][var.index()];
   }
 

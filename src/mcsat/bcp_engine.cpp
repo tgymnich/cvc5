@@ -107,22 +107,14 @@ void BCPEngine::propagate(SolverTrail::PropagationToken& out) {
 
     if (var.typeIndex() == c_BOOLEAN) {
       
-      Literal toPropagate;
-      
+      // Variable that was propagated
       Variable var_value = d_trail.value(var);
+      Assert(!var_value.isNull());
 
-      if (var_value == c_TRUE) {
-        // Look for ~var in clauses
-	toPropagate = Literal(var, true);
-      } else if (var_value == c_FALSE) {
-        // Look for var in clause
-	toPropagate = Literal(var, false);
-      } else {
-        // Everything in the trail must have a value
-        Unreachable();
-      }
+      // The literal that was propagated
+      Literal toPropagate(var, var_value == c_FALSE);
       
-      Debug("mcsat::bcp") << "BCPEngine::propagate(): propagating " << ~toPropagate << std::endl;
+      Debug("mcsat::bcp") << "BCPEngine::propagate(): propagating on " << toPropagate << std::endl;
 
       // Get the watchlist of the literal to propagate
       WatchListManager::remove_iterator w = d_watchManager.begin(toPropagate);
@@ -131,9 +123,12 @@ void BCPEngine::propagate(SolverTrail::PropagationToken& out) {
       while (d_trail.consistent() && !w.done()) {
 	// Get the watched clause
 	CRef cRef = *w;
+
+        Debug("mcsat::bcp") << "BCPEngine::propagate(): propagating over " << cRef << std::endl;
+
 	Clause& clause = cRef.getClause();
 	
-        // Put the propagation lister at position 1
+	// Put the propagation lister at position 1
 	if (clause[0] == toPropagate) {
 	  clause.swapLiterals(0, 1);
 	}

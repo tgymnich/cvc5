@@ -3,6 +3,7 @@
 #include "cvc4_private.h"
 
 #include <vector>
+#include <boost/static_assert.hpp>
 #include <boost/integer/integer_mask.hpp>
 
 #include "expr/node.h"
@@ -18,8 +19,7 @@ typedef VariableRef<true> Variable_Strong;
 /** Weak variable */
 typedef VariableRef<false> Variable;
 
-/** 
- * A variable from a variable database. If refCount is true the references are
+/**  * A variable from a variable database. If refCount is true the references are
  * counted in the variable database. All variables with referenc count 0 will can 
  * be reclaimed at search level 0. 
  */
@@ -114,7 +114,7 @@ public:
     }
     return *this;
   }
-  
+
   /** Get the node associated with this variable (if any) */
   TNode getNode() const;
 
@@ -167,6 +167,8 @@ inline std::ostream& operator << (std::ostream& out, const VariableRef<refCount>
   var.toStream(out); 
   return out;
 }
+
+BOOST_STATIC_ASSERT(sizeof(Variable) == sizeof(Variable_Strong));
 
 } /* Namespace mcsat */
 } /* Namespace CVC4 */

@@ -35,6 +35,7 @@ size_t VariableDatabase::getTypeIndex(TypeNode type) {
   size_t typeIndex;
   if (find_type == d_typenodeToVariableMap.end()) {
     typeIndex = d_variableTypes.size();
+    Debug("mcsat::var_db") << "VariableDatabase::getTypeIndex(" << type << ") => " << typeIndex << std::endl;
     d_typenodeToVariableMap[type] = typeIndex;
     d_variableTypes.push_back(type);
     d_variableNodes.resize(typeIndex + 1);
