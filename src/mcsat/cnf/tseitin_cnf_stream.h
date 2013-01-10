@@ -5,7 +5,7 @@
 #include "cnf_stream.h"
 
 #include "context/cdlist.h"
-#include "context/cdinsert_hashmap.h"
+#include "context/cdhashset.h"
 
 #include <ext/hash_map>
 
@@ -23,7 +23,7 @@ public:
    * Constructs the stream to use the given sat solver. All information
    * is kept with accordance to the given context.
    */
-  TseitinCnfStream(context::Context* cnfContext, VariableDatabase* variableDatabase);
+  TseitinCnfStream(context::Context* cnfContext);
 
   /**
    * Same as above, except that removable is remembered.
@@ -32,6 +32,20 @@ public:
 
 private:
 
+  typedef context::CDHashSet<Node, NodeHashFunction> NodeSet;
+
+  /** Set of nodes that have already been translated */
+  NodeSet d_alreadyTranslated;
+
+  /** Has the node been already translated */
+  bool alreadyTranslated(TNode node) const {
+    return d_alreadyTranslated.find(node) != d_alreadyTranslated.end();
+  }
+
+  /** Returns the positive literal */
+  Literal getLiteral(TNode node) const {
+    return Literal(VariableDatabase::getCurrentDB()->getVariable(node), false);
+  }
 
   // Each of these formulas handles takes care of a Node of each Kind.
   //

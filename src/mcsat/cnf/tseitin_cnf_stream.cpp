@@ -5,21 +5,20 @@ using namespace std;
 using namespace CVC4;
 using namespace mcsat;
 
-TseitinCnfStream::TseitinCnfStream(context::Context* cnfContext, VariableDatabase* variableDatabase) 
-: CnfStream(cnfContext, variableDatabase)
+TseitinCnfStream::TseitinCnfStream(context::Context* cnfContext)
+: d_alreadyTranslated(cnfContext)
 {
 }
 
-
 Literal TseitinCnfStream::handleXor(TNode xorNode) {
-  Assert(!hasLiteral(xorNode), "Atom already mapped!");
+  Assert(!alreadyTranslated(xorNode), "Atom already mapped!");
   Assert(xorNode.getKind() == kind::XOR, "Expecting an XOR expression!");
   Assert(xorNode.getNumChildren() == 2, "Expecting exactly 2 children!");
 
   Literal a = toCnfRecursive(xorNode[0]);
   Literal b = toCnfRecursive(xorNode[1]);
 
-  Literal xorLit = newLiteral(xorNode);
+  Literal xorLit = getLiteral(xorNode);
 
   outputClause(a, b, ~xorLit);
   outputClause(~a, ~b, ~xorLit);
@@ -30,7 +29,7 @@ Literal TseitinCnfStream::handleXor(TNode xorNode) {
 }
 
 Literal TseitinCnfStream::handleOr(TNode orNode) {
-  Assert(!hasLiteral(orNode), "Atom already mapped!");
+  Assert(!alreadyTranslated(orNode), "Atom already mapped!");
   Assert(orNode.getKind() == kind::OR, "Expecting an OR expression!");
   Assert(orNode.getNumChildren() > 1, "Expecting more then 1 child!");
 
@@ -46,7 +45,7 @@ Literal TseitinCnfStream::handleOr(TNode orNode) {
   }
 
   // Get the literal for this node
-  Literal orLit = newLiteral(orNode);
+  Literal orLit = getLiteral(orNode);
 
   // lit <- (a_1 | a_2 | a_3 | ... | a_n)
   // lit | ~(a_1 | a_2 | a_3 | ... | a_n)
@@ -66,7 +65,7 @@ Literal TseitinCnfStream::handleOr(TNode orNode) {
 }
 
 Literal TseitinCnfStream::handleAnd(TNode andNode) {
-  Assert(!hasLiteral(andNode), "Atom already mapped!");
+  Assert(!alreadyTranslated(andNode), "Atom already mapped!");
   Assert(andNode.getKind() == kind::AND, "Expecting an AND expression!");
   Assert(andNode.getNumChildren() > 1, "Expecting more than 1 child!");
 
@@ -82,7 +81,7 @@ Literal TseitinCnfStream::handleAnd(TNode andNode) {
   }
 
   // Get the literal for this node
-  Literal andLit = newLiteral(andNode);
+  Literal andLit = getLiteral(andNode);
 
   // lit -> (a_1 & a_2 & a_3 & ... & a_n)
   // ~lit | (a_1 & a_2 & a_3 & ... & a_n)
@@ -102,7 +101,7 @@ Literal TseitinCnfStream::handleAnd(TNode andNode) {
 }
 
 Literal TseitinCnfStream::handleImplies(TNode impliesNode) {
-  Assert(!hasLiteral(impliesNode), "Atom already mapped!");
+  Assert(!alreadyTranslated(impliesNode), "Atom already mapped!");
   Assert(impliesNode.getKind() == kind::IMPLIES, "Expecting an IMPLIES expression!");
   Assert(impliesNode.getNumChildren() == 2, "Expecting exactly 2 children!");
 
@@ -110,7 +109,7 @@ Literal TseitinCnfStream::handleImplies(TNode impliesNode) {
   Literal a = toCnfRecursive(impliesNode[0]);
   Literal b = toCnfRecursive(impliesNode[1]);
 
-  Literal impliesLit = newLiteral(impliesNode);
+  Literal impliesLit = getLiteral(impliesNode);
 
   // lit -> (a->b)
   // ~lit | ~ a | b
@@ -127,7 +126,7 @@ Literal TseitinCnfStream::handleImplies(TNode impliesNode) {
 
 
 Literal TseitinCnfStream::handleIff(TNode iffNode) {
-  Assert(!hasLiteral(iffNode), "Atom already mapped!");
+  Assert(!alreadyTranslated(iffNode), "Atom already mapped!");
   Assert(iffNode.getKind() == kind::IFF, "Expecting an IFF expression!");
   Assert(iffNode.getNumChildren() == 2, "Expecting exactly 2 children!");
 
@@ -138,7 +137,7 @@ Literal TseitinCnfStream::handleIff(TNode iffNode) {
   Literal b = toCnfRecursive(iffNode[1]);
 
   // Get the now literal
-  Literal iffLit = newLiteral(iffNode);
+  Literal iffLit = getLiteral(iffNode);
 
   // lit -> ((a-> b) & (b->a))
   // ~lit | ((~a | b) & (~b | a))
@@ -159,7 +158,7 @@ Literal TseitinCnfStream::handleIff(TNode iffNode) {
 
 
 Literal TseitinCnfStream::handleNot(TNode notNode) {
-  Assert(!hasLiteral(notNode), "Atom already mapped!");
+  Assert(!alreadyTranslated(notNode), "Atom already mapped!");
   Assert(notNode.getKind() == kind::NOT, "Expecting a NOT expression!");
   Assert(notNode.getNumChildren() == 1, "Expecting exactly 1 child!");
 
@@ -169,6 +168,7 @@ Literal TseitinCnfStream::handleNot(TNode notNode) {
 }
 
 Literal TseitinCnfStream::handleIte(TNode iteNode) {
+  Assert(!alreadyTranslated(iteNode), "Atom already mapped");
   Assert(iteNode.getKind() == kind::ITE);
   Assert(iteNode.getNumChildren() == 3);
 
@@ -178,7 +178,7 @@ Literal TseitinCnfStream::handleIte(TNode iteNode) {
   Literal thenLit = toCnfRecursive(iteNode[1]);
   Literal elseLit = toCnfRecursive(iteNode[2]);
 
-  Literal iteLit = newLiteral(iteNode);
+  Literal iteLit = getLiteral(iteNode);
 
   // If ITE is true then one of the branches is true and the condition
   // implies which one
@@ -211,7 +211,7 @@ Literal TseitinCnfStream::toCnfRecursive(TNode node, bool negated) {
   Node negatedNode = node.notNode();
 
   // If the non-negated node has already been translated, get the translation
-  if(hasLiteral(node)) {
+  if(alreadyTranslated(node)) {
     Debug("mcsat::cnf") << "toCNF(): already translated" << endl;
     nodeLit = getLiteral(node);
   } else {

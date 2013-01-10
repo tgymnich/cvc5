@@ -62,13 +62,16 @@ int main(int argc, char* argv[]) {
           // Assert to mcsat
           {
             smt::SmtScope smtScope(&smtEngine);
-            mcSolver->addAssertion(assertion);
+            mcSolver->addAssertion(assertion, true);
           }
         }
   
         delete cmd;
       }
   
+      // Check the problem
+      mcSolver->check();
+
       // Get rid of the parser
       delete parser;
       // Get rid of mcSat

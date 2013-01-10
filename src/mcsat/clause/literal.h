@@ -96,7 +96,7 @@ public:
 
   /** 0-based index of the literal */
   size_t index() const {
-    return (d_variable.index() << 1) | d_negated;
+    return (d_variable.index() << 1) | (d_negated ? 1 : 0);
   }
 
   /** Compare with some other literal */

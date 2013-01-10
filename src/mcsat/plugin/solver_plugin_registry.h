@@ -15,7 +15,7 @@ namespace mcsat {
 class ISolverPluginConstructor {
 public:
   virtual ~ISolverPluginConstructor() {}
-  virtual SolverPlugin* construct(const SolverTrail& d_trail) = 0;
+  virtual SolverPlugin* construct(const SolverTrail& d_trail, SolverPluginRequest& request) = 0;
 };
 
 /**
@@ -33,8 +33,8 @@ public:
   ~SolverPluginConstructor() {};
 
   /** Constructs the solver */
-  SolverPlugin* construct(const SolverTrail& trail) {
-    return new Solver(trail);
+  SolverPlugin* construct(const SolverTrail& trail, SolverPluginRequest& request) {
+    return new Solver(trail, request);
   }
 };
 

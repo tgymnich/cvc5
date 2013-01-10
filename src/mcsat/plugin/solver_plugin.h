@@ -9,10 +9,29 @@
 #include "context/cdlist.h"
 
 #include "mcsat/solver_trail.h"
-#include "mcsat/plugin/solver_plugin_registry.h"
 
 namespace CVC4 {
 namespace mcsat {
+
+class Solver;
+
+class SolverPluginRequest {
+
+  /** The solver */
+  Solver* d_solver;
+
+public:
+
+  /** Construct a request token for the given solver */
+  SolverPluginRequest(Solver* solver)
+  : d_solver(solver) {}
+
+  /**
+   * Ask for a backtrack to given level. The level must be smaller than the current decision level. The clause
+   * must not be satisfied, and it should propagate at the given level.
+   */
+  void backtrack(unsigned level, CRef cRef);
+};
 
 /**
  * Base class for model based T-solvers.
@@ -30,9 +49,13 @@ protected:
   /** The trail that the plugin should use */
   const SolverTrail& d_trail;
 
+  /** Channel to request something from the solver */
+  SolverPluginRequest& d_request;
+
   /** Construct the plugin. */
-  SolverPlugin(const SolverTrail& trail)
+  SolverPlugin(const SolverTrail& trail, SolverPluginRequest& request)
   : d_trail(trail)
+  , d_request(request)
   {}
 
   /** Get the SAT context associated to this Theory. */
@@ -51,6 +74,9 @@ public:
   /** Perform propagation */
   virtual void propagate(SolverTrail::PropagationToken& out) = 0;
 
+  /** Perform a decision */
+  virtual void decide(SolverTrail::DecisionToken& out) = 0;
+
   /** Return the listener for new clauses */
   virtual ClauseDatabase::INewClauseNotify* getNewClauseListener() = 0;
 
@@ -58,3 +84,5 @@ public:
 
 } /* CVC4::mcsat namespace */
 } /* CVC4 namespace */
+
+#include "mcsat/plugin/solver_plugin_registry.h"

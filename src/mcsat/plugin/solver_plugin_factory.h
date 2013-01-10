@@ -22,7 +22,7 @@ public:
 
 class SolverPluginFactory {
 public:
-  static SolverPlugin* create(std::string name, const SolverTrail& d_trail)
+  static SolverPlugin* create(std::string name, const SolverTrail& d_trail, SolverPluginRequest& request)
     throw(SolverPluginFactoryException);
 };
 

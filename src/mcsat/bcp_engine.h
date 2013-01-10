@@ -25,22 +25,28 @@ class BCPEngine : public SolverPlugin {
   /** Notification for new clauses */
   NewClauseNotify d_newClauseNotify;
 
-  /** Added unit clause */
-  std::vector<CRef> d_unitClauses;
+  /** Delayed propagations (c[0] is propagated) */
+  std::vector<CRef> d_delayedPropagations;
 
   /** New clause */
   void newClause(CRef cref);
 
+  /** Head pointer into the trail */
+  context::CDO<size_t> d_trailHead;
+
 public:
   
   /** New propagation engine */
-  BCPEngine(const SolverTrail& trail);
+  BCPEngine(const SolverTrail& trail, SolverPluginRequest& request);
   
   /** BCP does nothing in checks */
   void check() {}
 
-  /** Perform propagation */
+  /** Perform a propagation */
   void propagate(SolverTrail::PropagationToken& out);
+
+  /** Perform a decision */
+  void decide(SolverTrail::DecisionToken& out);
 
   /** Return the listener for new clauses */
   ClauseDatabase::INewClauseNotify* getNewClauseListener();

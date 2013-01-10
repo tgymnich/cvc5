@@ -114,14 +114,6 @@ public:
     }
     return *this;
   }
-
-  /** 
-   * Returns true if the variable has Boolean type. For example, p and (x < 5)
-   * will have Boolean type but (x + y) will not.
-   */
-  bool isBoolean() const {
-    return d_typeId;
-  }
   
   /** Get the node associated with this variable (if any) */
   TNode getNode() const;

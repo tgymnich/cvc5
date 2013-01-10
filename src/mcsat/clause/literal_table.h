@@ -13,6 +13,9 @@ class literal_table {
 
   std::vector<T> d_table;
 
+  typedef typename std::vector<T>::reference element_ref;
+  typedef typename std::vector<T>::const_reference element_const_ref;
+
   /** Default value for the vectors */
   T d_defaultValue;
 
@@ -35,18 +38,28 @@ public:
   literal_table(const T& defaultValue = T());
 
   /** Dereference */
-  const T& operator [] (Literal l) const {
+  element_const_ref& operator [] (Literal l) const {
     return d_table[l.index()];
   }
 
   /** Dereference */
-  T& operator [] (Literal l) {
+  element_ref operator [] (Literal l) {
     return d_table[l.index()];
   }
 
   /** Size of the table */
   size_t size() const {
     return d_table.size();
+  }
+
+  /** Element by index */
+  element_ref operator [] (size_t index) {
+    return d_table[index];
+  }
+
+  /** Element by index */
+  element_const_ref operator [] (size_t index) const {
+    return d_table[index];
   }
 
 };

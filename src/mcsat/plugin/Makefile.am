@@ -9,6 +9,7 @@ noinst_LTLIBRARIES = libmcsat_solver_plugin.la
 
 libmcsat_solver_plugin_la_SOURCES = \
   solver_plugin.h \
+  solver_plugin.cpp \
   solver_plugin_registry.h \
   solver_plugin_registry.cpp \
   solver_plugin_factory.h \

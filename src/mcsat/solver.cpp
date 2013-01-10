@@ -34,10 +34,12 @@ Solver::Solver(context::UserContext* userContext, context::Context* searchContex
 : d_variableDatabase(searchContext)
 , d_clauseFarm(searchContext)
 , d_problemClauses(d_clauseFarm.newClauseDB("problem_clauses"))
-, d_cnfStream(searchContext, &d_variableDatabase)
+, d_cnfStream(searchContext)
 , d_cnfStreamListener(*this)
 , d_trail(d_problemClauses, searchContext)
 , d_rule_InputClause(d_problemClauses, d_trail)
+, d_backtrackRequested(false)
+, d_backtrackLevel(0)
 {
   d_cnfStream.addOutputListener(&d_cnfStreamListener);
 
@@ -48,15 +50,23 @@ Solver::Solver(context::UserContext* userContext, context::Context* searchContex
 Solver::~Solver() {
   for (unsigned i = 0; i < d_plugins.size(); ++ i) {
     delete d_plugins[i];
+    delete d_pluginRequests[i];
   }
 }
 
 void Solver::addAssertion(TNode assertion, bool process) {
   VariableDatabase::SetCurrent scoped(&d_variableDatabase);
   Debug("mcsat::solver") << "Solver::addAssertion(" << assertion << ")" << endl; 
+
+  // Convert to CNF
   d_cnfStream.convert(theory::Rewriter::rewrite(assertion), false);
+
+  // Process the clause immediately if requested
   if (process) {
+    // Add the new clauses
     processNewClauses();
+    // Propagate the added clauses
+    propagate(SolverTrail::PropagationToken::PROPAGATION_INIT);
   }
 }
 
@@ -71,18 +81,23 @@ void Solver::processNewClauses() {
   for (unsigned clause_i = 0; clause_i < d_newClauses.size(); ++ clause_i) {
     // Apply the input clause rule
     d_rule_InputClause.apply(d_newClauses[clause_i]);
-    // Propagate
-    propagate();    
   }
   
   // Done with the clauses, clear
   d_newClauses.clear();
 }
 
-void Solver::propagate() {
-  SolverTrail::PropagationToken out(d_trail);
-  for (unsigned i = 0; d_trail.consistent() && i < d_plugins.size(); ++ i) {
-    d_plugins[i]->propagate(out);
+void Solver::propagate(SolverTrail::PropagationToken::Mode mode) {
+  bool propagationDone = false;
+  while (d_trail.consistent() && !propagationDone) {
+    // Token for the plugins to propagate at
+    SolverTrail::PropagationToken propagationOut(d_trail, mode);
+    // Let all plugins propagate
+    for (unsigned i = 0; d_trail.consistent() && i < d_plugins.size(); ++ i) {
+      d_plugins[i]->propagate(propagationOut);
+    }
+    // If the token wasn't used, we're done
+    propagationDone = !propagationOut.used();
   }
 }
 
@@ -94,14 +109,41 @@ bool Solver::check() {
     // Process any new clauses 
     processNewClauses();
     
-    // Propagate 
-    propagate();
+    // Normal propagate
+    propagate(SolverTrail::PropagationToken::PROPAGATION_NORMAL);
+
+    // If inconsistent, perform conflict analysis
+    if (!d_trail.consistent()) {
+
+      // If the conflict is at level 0, we're done
+      if (d_trail.decisionLevel() == 0) {
+        return false;
+      }
+
+      // Analyze the conflict
+
+      // Start over with propagation
+      continue;
+    }
     
-    // If no new clauses, we can do a decision
-    if (d_newClauses.size() == 0) {
-      Literal lit;
-      SolverTrail::DecisionToken out(d_trail);
-      out(lit);
+    // If new clauses were added, we need to process them
+    if (!d_newClauses.empty()) {
+      continue;
+    }
+
+    // Clauses processed, propagators done, we're ready for a decision
+    SolverTrail::DecisionToken decisionOut(d_trail);
+
+    for (unsigned i = 0; !decisionOut.used() && i < d_plugins.size(); ++ i) {
+      d_plugins[i]->decide(decisionOut);
+    }
+
+    // If no decisions were made we are done, do a completeness check
+    if (!decisionOut.used()) {
+      // Do complete propagation
+      propagate(SolverTrail::PropagationToken::PROPAGATION_COMPLETE);
+      // If no-one has anything to say, we're done
+      break;
     }
   }
 
@@ -109,5 +151,25 @@ bool Solver::check() {
 }
 
 void Solver::addPlugin(std::string plugin) {
-  d_plugins.push_back(SolverPluginFactory::create(plugin, d_trail));
+  d_pluginRequests.push_back(new SolverPluginRequest(this));
+  d_plugins.push_back(SolverPluginFactory::create(plugin, d_trail, *d_pluginRequests.back()));
 }
+
+void Solver::requestBacktrack(unsigned level, CRef cRef) {
+  Assert(level < d_trail.decisionLevel(), "Don't try to fool backtracking to do your propagation");
+
+  if (!d_backtrackRequested) {
+    // First time request
+    d_backtrackLevel = level;
+  } else {
+    if (d_backtrackLevel > level) {
+      // Even lower backtrack
+      d_backtrackLevel = level;
+      d_backtrackClauses.clear();
+    }
+  }
+
+  d_backtrackRequested = true;
+  d_backtrackClauses.push_back(cRef);
+}
+

@@ -103,12 +103,6 @@ private:
   /** Number of decisions */
   size_t d_decisionLevel;
   
-  /** Has there been a backtrack request */
-  bool d_backtrackRequested;
-  
-  /** The level of the backtrack request */
-  size_t d_backtrackLevel;
-  
   /** Mark a new decision */
   void newDecision();
   
@@ -126,7 +120,20 @@ private:
 
   /** Model indexed by variables */
   variable_table<Variable_Strong> d_model;
-  
+
+  struct VariableInfo {
+    unsigned decisionLevel;
+    unsigned trailIndex;
+  };
+
+  /** Information on the model variables */
+  variable_table<VariableInfo> d_modelInfo;
+
+  void setValue(Variable var, Variable value) {
+    Assert(d_model[var].isNull());
+    d_model[var] = value;
+  }
+
   /** The context of the search */
   context::Context* d_context;
 
@@ -180,6 +187,22 @@ public:
     return v;
   }
 
+  /** Returns true if the literal is true in the current model */
+  bool isTrue(Literal l) const {
+    return value(l) == c_TRUE;
+  }
+
+  /** Returns true if the literal is true in the current model */
+  bool isFalse(Literal l) const {
+    return value(l) == c_FALSE;
+  }
+
+  /** Get the decision level where the variable was assigned */
+  unsigned decisionLevel(Variable var) const;
+  /** Get the trail index where the variable was assigned */
+  unsigned trailIndex(Variable var) const;
+
+
   /** Get the true constant */
   Variable getTrue() const { return c_TRUE; }
   /** Get the false constant */
@@ -201,34 +224,82 @@ public:
   void addNewClauseListener(ClauseDatabase::INewClauseNotify* listener) const;
 
   /**
-   * Request a backtrack.
+   * Request a backtrack to a given decision level. Each backtrack request must be accompanied with a clause that
+   * needs to be satisfied. That means that the any assigned literals in the clause must be false.
    */
-  void requestBacktrack(size_t decisionLevel);
+  void requestBacktrack(size_t decisionLevel, CRef cref);
 
   /** Token for modules to perform propagations */
   class PropagationToken {
-    SolverTrail& d_trail;
+
   public:
-    PropagationToken(SolverTrail& trail)
-    : d_trail(trail) {}
-    /** Semantic propagation based on current model in the trail */
+
+    /** Mode of propagation */
+    enum Mode {
+      /** Initial propagation after new information has been added */
+      PROPAGATION_INIT,
+      /** Regular propagation */
+      PROPAGATION_NORMAL,
+      /** Complete propagation, have to be sure */
+      PROPAGATION_COMPLETE
+    };
+
+  private:
+
+    /** The trail that the token controls */
+    SolverTrail& d_trail;
+
+    /** The mode of propagation */
+    Mode d_mode;
+
+    /** Has the token been used */
+    bool d_used;
+
+  public:
+
+    PropagationToken(SolverTrail& trail, Mode mode)
+    : d_trail(trail), d_mode(mode), d_used(false) {}
+
+    /** Get the mode of propagation */
+    Mode mode() const { return d_mode; }
+    /** Has the token been used */
+    bool used() const { return d_used; }
+
+    /**
+     * Semantic propagation based on current model in the trail. A literal that is true in the model must evaluate
+     * to true. The literal will be marked with the level at which is true, and will be repropagated on backtracks.
+     */
     void operator () (Literal l);
-    /** Clausal propagation based on the current boolean model in the trail */
+
+    /**
+     * Propagation based on clause that propagates under the current Boolean assignment in the trail.
+     */
     void operator () (Literal l, CRef reason);
-    /** Clausal propagation with on-demand reason */
+
+    /** Same as propagation based on a clause, but the clause will be constructed on-demand,  reason */
     void operator () (Literal l, ReasonProvider* reason_provider);
   };
   
   /** Token for modules to perform decisions */
   class DecisionToken {
+
+    /** The trail that the token controls */
     SolverTrail& d_trail;
+
+    /** Has the token been used */
+    bool d_used;
+
   public:
     DecisionToken(SolverTrail& trail)
-    : d_trail(trail) {}
+    : d_trail(trail), d_used(false) {}
+
+    /** Has the token been used */
+    bool used() const { return d_used; }
+
     /** Decide a Boolean typed variable to a value */
     void operator () (Literal lit);
     /** Decide a non-Boolean typed variable to a value */
-    void operator () (Variable variable, TNode value);
+    void operator () (Variable variable, Variable value);
   };
 
   friend class PropagationToken;

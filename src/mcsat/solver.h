@@ -32,7 +32,7 @@ public:
    * @param assertion the assertion
    * @param process true if to be processed as soon as possible 
    */
-  void addAssertion(TNode assertion, bool process = true);
+  void addAssertion(TNode assertion, bool process);
 
   /** Check if the current set of assertions is satisfiable */
   bool check();
@@ -77,12 +77,28 @@ private:
   /** All the plugins */
   std::vector<SolverPlugin*> d_plugins;
 
+  /** The requests of the plugins */
+  std::vector<SolverPluginRequest*> d_pluginRequests;
+
   /** Process any new clauses that were asserted */
   void processNewClauses();
   
   /** Perform propagation */
-  void propagate();
+  void propagate(SolverTrail::PropagationToken::Mode mode);
+
+  /** Has there been a backtrack request */
+  bool d_backtrackRequested;
+
+  /** The level of the backtrack request */
+  size_t d_backtrackLevel;
+
+  /** The clauses to be processed on backtrack */
+  std::vector<CRef> d_backtrackClauses;
+
+  /** Will perfrom a backtrack in order to propagate/decide clause cRef at next apropriate time */
+  void requestBacktrack(unsigned level, CRef cRef);
   
+  friend class SolverPluginRequest;
 };
 
 }

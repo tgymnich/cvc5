@@ -13,6 +13,9 @@ class variable_table {
 
   typedef std::vector<T> per_type_table;
 
+  typedef typename std::vector<T>::reference element_ref;
+  typedef typename std::vector<T>::const_reference element_const_ref;
+
   std::vector<per_type_table> d_table;
 
   /** Default value for the vectors */
@@ -35,12 +38,12 @@ public:
   variable_table(const T& defaultValue = T());
 
   /** Dereference */
-  const T& operator [] (Variable var) const {
+  element_const_ref operator [] (Variable var) const {
     return d_table[var.typeIndex()][var.index()];
   }
 
   /** Dereference */
-  T& operator [] (Variable var) {
+  element_ref operator [] (Variable var) {
     return d_table[var.typeIndex()][var.index()];
   }
 

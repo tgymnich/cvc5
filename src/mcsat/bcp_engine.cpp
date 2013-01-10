@@ -12,9 +12,10 @@ void BCPEngine::NewClauseNotify::newClause(CRef cref) {
   d_engine.newClause(cref);
 };
 
-BCPEngine::BCPEngine(const SolverTrail& trail)
-: SolverPlugin(trail)
+BCPEngine::BCPEngine(const SolverTrail& trail, SolverPluginRequest& request)
+: SolverPlugin(trail, request)
 , d_newClauseNotify(*this)
+, d_trailHead(d_trail.getSearchContext())
 {
   d_trail.addNewClauseListener(&d_newClauseNotify);
 }
@@ -44,14 +45,10 @@ public:
 
     // Literals of the same value are sorted by decreasing levels
     if (l1_value == l2_value) {
-      return true; // solver.trail_index(var(x)) > solver.trail_index(var(y));
+      return d_trail.trailIndex(l1.getVariable()) > d_trail.trailIndex(l2.getVariable());
     } else {
-      // True literals go up front
-      if (l1_value == d_trail.getTrue()) {
-         return true;
-      } else {
-        return false;
-      }
+      // Of two assigned literals, the true literal goes up front
+      return (l1_value == d_trail.getTrue());
     }
   }
 };
@@ -60,10 +57,27 @@ void BCPEngine::newClause(CRef cRef) {
   Debug("mcsat::bcp") << "BCPEngine::newClause(" << cRef << ")" << std::endl;
   Clause& clause = cRef.getClause();
   if (clause.size() == 1) {
-    d_unitClauses.push_back(cRef);
+    d_delayedPropagations.push_back(cRef);
   } else {
+
     BCPNewClauseCmp cmp(d_trail);
     clause.sort(cmp);
+
+    Debug("mcsat::bcp") << "BCPEngine::newClause(): sorted: " << cRef << std::endl;
+
+    // Attach the top two literals
+    d_watchManager.add(~clause[0], cRef);
+    d_watchManager.add(~clause[1], cRef);
+
+    // If clause[1] is false, the clause propagates
+    if (d_trail.isFalse(clause[1])) {
+      unsigned propagationLevel = d_trail.decisionLevel(clause[1].getVariable());
+      if (propagationLevel < d_trail.decisionLevel()) {
+        d_request.backtrack(propagationLevel, cRef);
+      } else {
+        d_delayedPropagations.push_back(cRef);
+      }
+    }
   }
 }
 
@@ -72,10 +86,10 @@ void BCPEngine::propagate(SolverTrail::PropagationToken& out) {
   Debug("mcsat::bcp") << "BCPEngine::propagate()" << std::endl;
 
   // Propagate the unit clauses
-  for (unsigned i = 0; i < d_unitClauses.size(); ++ i) {
-    out(d_unitClauses[i].getClause()[0], d_unitClauses[i]);
+  for (unsigned i = 0; i < d_delayedPropagations.size(); ++ i) {
+    out(d_delayedPropagations[i].getClause()[0], d_delayedPropagations[i]);
   }
-  d_unitClauses.clear();
+  d_delayedPropagations.clear();
 
   // Make sure the watches are clean
   d_watchManager.clean();
@@ -83,10 +97,15 @@ void BCPEngine::propagate(SolverTrail::PropagationToken& out) {
   Variable c_TRUE = d_trail.getTrue();
   Variable c_FALSE = d_trail.getFalse();
 
+  // Type index of the Booleans
+  size_t c_BOOLEAN = c_TRUE.typeIndex();
+
   // Propagate
-  for (unsigned i = 0; d_trail.consistent() && i < d_trail.size(); ++ i) {
+  unsigned i = d_trailHead;
+  for (; d_trail.consistent() && i < d_trail.size(); ++ i) {
     Variable var = d_trail[i].var;
-    if (var.isBoolean()) {      
+
+    if (var.typeIndex() == c_BOOLEAN) {
       
       Literal toPropagate;
       
@@ -103,6 +122,8 @@ void BCPEngine::propagate(SolverTrail::PropagationToken& out) {
         Unreachable();
       }
       
+      Debug("mcsat::bcp") << "BCPEngine::propagate(): propagating " << ~toPropagate << std::endl;
+
       // Get the watchlist of the literal to propagate
       WatchListManager::remove_iterator w = d_watchManager.begin(toPropagate);
       
@@ -141,4 +162,11 @@ void BCPEngine::propagate(SolverTrail::PropagationToken& out) {
       }
     }
   }
+
+  /** Update the CD trail head */
+  d_trailHead = i;
+}
+
+void BCPEngine::decide(SolverTrail::DecisionToken& out) {
+
 }
