@@ -85,6 +85,13 @@ Variable VariableDatabase::getVariable(TNode node) {
 
 void VariableDatabase::addNewVariableListener(INewVariableNotify* listener) {
   Assert(d_context->getLevel() == 0);
+
+  for (unsigned typeIndex = 0; typeIndex < d_variableTypes.size(); ++ typeIndex) {
+    for (unsigned variableIndex = 0; variableIndex < d_variableNodes[typeIndex].size(); ++ variableIndex) {
+      listener->newVariable(Variable(variableIndex, typeIndex));
+    }
+  }
+  
   if (listener->isContextDependent()) {
     d_cd_notifySubscribers.push_back(listener);
   }
