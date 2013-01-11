@@ -37,7 +37,6 @@ CRef_Strong InputClauseRule::apply(Literals& literals) {
   int previous = -1;
   for (unsigned i = 0; i < literals.size(); ++ i) 
   {
-      
     // Ignore duplicate literals 
     if (previous >= 0 && literals[i] == literals[previous]) {
       continue;
@@ -51,7 +50,13 @@ CRef_Strong InputClauseRule::apply(Literals& literals) {
       
     // Check if the literal is assigned already 
     Variable value = d_trail.value(literals[i]);
-      
+    if (!value.isNull()) {
+      // This value has a meaning only if it's at 0 level
+      if (d_trail.decisionLevel(literals[i].getVariable()) > 0) {
+	value = Variable::null;
+      }
+    }
+    
     if (value == c_True) {
       // Literal is true and hence the clause too
       return CRef_Strong::null;
@@ -63,14 +68,16 @@ CRef_Strong InputClauseRule::apply(Literals& literals) {
     }
       
     // Move on
-    previous = i;
+    literals[++previous] = literals[i];
   }
     
   // Resize to clause size
   literals.resize(previous + 1);
     
   if (literals.size() == 0) {
-    // Push back the false literal 
+    Node falseNode = NodeManager::currentNM()->mkConst<bool>(false);
+    Variable falseVar = VariableDatabase::getCurrentDB()->getVariable(falseNode);
+    literals.push_back(Literal(falseVar, false));
   } 
     
   // Make the clause

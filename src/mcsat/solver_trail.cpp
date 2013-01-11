@@ -76,8 +76,6 @@ void SolverTrail::PropagationToken::operator () (Literal l) {
     }
     d_trail.d_trail.push_back(Element(SEMANTIC_PROPAGATION, l.getVariable()));
   }
-
-
 }
 
 void SolverTrail::PropagationToken::operator () (Literal l, CRef reason) {

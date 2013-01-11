@@ -70,8 +70,10 @@ int main(int argc, char* argv[]) {
       }
   
       // Check the problem
-      mcSolver->check();
-
+      bool result = mcSolver->check();
+    
+      cout << (result ? "sat" : "unsat") << endl;
+      
       // Get rid of the parser
       delete parser;
       // Get rid of mcSat
