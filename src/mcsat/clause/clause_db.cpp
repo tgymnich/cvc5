@@ -82,7 +82,7 @@ CRef ClauseDatabase::newClause(const Literals& literals, size_t ruleId) {
   Debug("mcsat::clause_db") << "ClauseDatabase::newClause(" << literals << ", " << ruleId << ")" << std::endl;
 
   // Compute the size (this should be safe as variant puts the template data at the end)
-  size_t size = sizeof(Clause) + sizeof(int)*literals.size();
+  size_t size = sizeof(Clause) + sizeof(Clause::literal_type)*literals.size();
 
   // Allocate the memory
   char* memory = allocate(size);
