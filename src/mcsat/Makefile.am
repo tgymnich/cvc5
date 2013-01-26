@@ -33,5 +33,5 @@ libmcsat_la_LIBADD = \
 	
 EXTRA_DIST = 
 
-SUBDIRS = variable clause rules cnf plugin . main 
+SUBDIRS = variable clause rules cnf plugin . 
 
