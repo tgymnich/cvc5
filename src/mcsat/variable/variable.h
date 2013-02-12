@@ -2,9 +2,13 @@
 
 #include "cvc4_private.h"
 
+#include <set>
 #include <vector>
+#include <hash_set>
+
 #include <boost/static_assert.hpp>
 #include <boost/integer/integer_mask.hpp>
+#include <boost/functional/hash.hpp>
 
 #include "expr/node.h"
 
@@ -19,8 +23,9 @@ typedef VariableRef<true> Variable_Strong;
 /** Weak variable */
 typedef VariableRef<false> Variable;
 
-/**  * A variable from a variable database. If refCount is true the references are
- * counted in the variable database. All variables with referenc count 0 will can 
+/**
+ * A variable from a variable database. If refCount is true the references are
+ * counted in the variable database. All variables with reference count 0 can
  * be reclaimed at search level 0. 
  */
 template <bool refCount>
@@ -169,6 +174,24 @@ inline std::ostream& operator << (std::ostream& out, const VariableRef<refCount>
 }
 
 BOOST_STATIC_ASSERT(sizeof(Variable) == sizeof(Variable_Strong));
+
+/** A vector of variables */
+typedef std::vector<Variable> VariableVector;
+
+/** A set of variables */
+typedef std::set<Variable> VariableSet;
+
+class VariableHashFunction {
+public:
+  size_t operator () (const Variable& variable) const {
+    typedef std::pair<size_t, size_t> int_pair;
+    return boost::hash<int_pair>()(int_pair(variable.index(), variable.typeIndex()));
+  }
+};
+
+
+/** A hash set of variables */
+typedef std::hash_set<Variable, VariableHashFunction> VariableHashSet;
 
 } /* Namespace mcsat */
 } /* Namespace CVC4 */

@@ -12,12 +12,29 @@ void BCPEngine::NewClauseNotify::newClause(CRef cref) {
   d_engine.newClause(cref);
 };
 
+BCPEngine::NewVariableNotify::NewVariableNotify(BCPEngine& engine)
+: INewVariableNotify(false)
+, d_engine(engine)
+, d_bool_type_index(VariableDatabase::getCurrentDB()->getTypeIndex(NodeManager::currentNM()->booleanType()))
+{}
+
+void BCPEngine::NewVariableNotify::newVariable(Variable var) {
+  if (var.typeIndex() == d_bool_type_index) {
+    d_engine.newVariable(var);
+  }
+}
+
 BCPEngine::BCPEngine(const SolverTrail& trail, SolverPluginRequest& request)
 : SolverPlugin(trail, request)
 , d_newClauseNotify(*this)
+, d_newVariableNotify(*this)
 , d_trailHead(d_trail.getSearchContext())
+, d_variableScoresMax(1.0)
+, d_variableScoreCmp(d_variableScores)
+, d_variableQueue(d_variableScoreCmp)
 {
   d_trail.addNewClauseListener(&d_newClauseNotify);
+  VariableDatabase::getCurrentDB()->addNewVariableListener(&d_newVariableNotify);
 }
 
 ClauseDatabase::INewClauseNotify* BCPEngine::getNewClauseListener() {
@@ -79,6 +96,19 @@ void BCPEngine::newClause(CRef cRef) {
       }
     }
   }
+}
+
+void BCPEngine::newVariable(Variable var) {
+
+  Debug("mcsat::bcp") << "BCPEngine::newVariable(" << var << ")" << std::endl;
+
+  // Insert a new score (max of the current scores)
+  d_variableScores.resize(var.index() + 1, d_variableScoresMax);
+  // Make sure that there is enough space for the pointer
+  d_variableQueuePositions.resize(var.index() + 1);
+  // Add to the queue
+  variable_queue::point_iterator it = d_variableQueue.push(var);
+  d_variableQueuePositions[var.index()] = it;
 }
 
 void BCPEngine::propagate(SolverTrail::PropagationToken& out) {
@@ -171,5 +201,16 @@ void BCPEngine::propagate(SolverTrail::PropagationToken& out) {
 }
 
 void BCPEngine::decide(SolverTrail::DecisionToken& out) {
+  Debug("mcsat::bcp") << "BCPEngine::decide()" << std::endl;
+  while (!d_variableQueue.empty()) {
+    Variable var = d_variableQueue.top();
+    d_variableQueue.pop();
+    d_variableQueuePositions[var.index()] = variable_queue::point_iterator();
 
+    if (d_trail.value(var).isNull()) {
+      // Decide !var first
+      out(Literal(var, true));
+      return;
+    }
+  }
 }

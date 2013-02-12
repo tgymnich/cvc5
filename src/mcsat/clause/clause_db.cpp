@@ -77,7 +77,7 @@ char* ClauseDatabase::allocate(unsigned size) {
   return pointer;
 }
 
-CRef ClauseDatabase::newClause(const Literals& literals, size_t ruleId) {
+CRef ClauseDatabase::newClause(const LiteralVector& literals, size_t ruleId) {
 
   Debug("mcsat::clause_db") << "ClauseDatabase::newClause(" << literals << ", " << ruleId << ")" << std::endl;
 

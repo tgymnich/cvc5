@@ -21,7 +21,7 @@ public:
   virtual ~CnfOutputListener() {}
 
   /** Notification of a new clause */
-  virtual void newClause(Literals& clause) = 0;
+  virtual void newClause(LiteralVector& clause) = 0;
 };
 
 class CnfStream {
@@ -55,7 +55,7 @@ protected:
   /**
    * Output the clause.
    */
-  void outputClause(Literals& clause);
+  void outputClause(LiteralVector& clause);
 
   /**
    * Output the unit clause.

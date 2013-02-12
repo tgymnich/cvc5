@@ -48,8 +48,11 @@ private:
   /** Farm for all the clauses */
   ClauseFarm d_clauseFarm;
 
-  /** The clause database */
+  /** The clause database for input clauses */
   ClauseDatabase& d_problemClauses;
+
+  /** The clause database for input clauses */
+  ClauseDatabase& d_auxilaryClauses;
 
   /** CNF transform of the solver */
   TseitinCnfStream d_cnfStream;
@@ -58,15 +61,15 @@ private:
   class CnfListener : public CnfOutputListener, public InnerClass<Solver> {
     public:
       CnfListener(Solver& solver) : InnerClass(solver) {}
-      void newClause(Literals& clause);
+      void newClause(LiteralVector& clause);
   } d_cnfStreamListener; 
 
 
   /** Main method to add a clause */ 
-  void addClause(Literals& clause);
+  void addClause(LiteralVector& clause);
   
   /** List of problem assertions */
-  std::vector<Literals> d_newClauses;
+  std::vector<LiteralVector> d_newClauses;
  
   /** Main solver trail */
   SolverTrail d_trail;
@@ -85,6 +88,9 @@ private:
   
   /** Perform propagation */
   void propagate(SolverTrail::PropagationToken::Mode mode);
+
+  /** Analayze all the conflicts in the trail */
+  void analyzeConflicts();
 
   /** Has there been a backtrack request */
   bool d_backtrackRequested;

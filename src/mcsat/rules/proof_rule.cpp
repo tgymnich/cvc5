@@ -6,10 +6,24 @@ using namespace CVC4::mcsat::rules;
 
 using namespace std;
 
-CRef_Strong ProofRule::commit(Literals& literals) {
+CRef ProofRule::commit(LiteralVector& literals) {
   Debug("mcsat::rules") << "ProofRule<" << d_name << ">::commit(" << literals << ")" << endl;
   ++ d_applications;
   return d_clauseDB.newClause(literals, d_id);
+}
+
+CRef ProofRule::commit(LiteralSet& literals) {
+  Debug("mcsat::rules") << "ProofRule<" << d_name << ">::commit(" << literals << ")" << endl;
+  ++ d_applications;
+  LiteralVector literalVector(literals.begin(), literals.end());
+  return d_clauseDB.newClause(literalVector, d_id);
+}
+
+CRef ProofRule::commit(LiteralHashSet& literals) {
+  Debug("mcsat::rules") << "ProofRule<" << d_name << ">::commit(" << literals << ")" << endl;
+  ++ d_applications;
+  LiteralVector literalVector(literals.begin(), literals.end());
+  return d_clauseDB.newClause(literalVector, d_id);
 }
 
 ProofRule::ProofRule(string name, ClauseDatabase& clauseDb)
@@ -25,7 +39,7 @@ ProofRule::~ProofRule() {
   StatisticsRegistry::unregisterStat(&d_applications);
 }
 
-CRef_Strong InputClauseRule::apply(Literals& literals) {
+CRef InputClauseRule::apply(LiteralVector& literals) {
 
   // Get the true/false constants
   Variable c_True = d_trail.getTrue();
@@ -44,7 +58,7 @@ CRef_Strong InputClauseRule::apply(Literals& literals) {
       
     // Tautologies are ignored
     if (previous >= 0 && literals[i].isNegationOf(literals[previous])) {
-      return CRef_Strong::null;
+      return CRef::null;
       break;
     }
       
@@ -82,4 +96,34 @@ CRef_Strong InputClauseRule::apply(Literals& literals) {
     
   // Make the clause
   return commit(literals);
+}
+
+
+BooleanResolutionRule::BooleanResolutionRule(ClauseDatabase& clauseDB, CRef initialClause)
+: ProofRule("mcsat::resolution_rule", clauseDB) {
+  Clause& clause = initialClause.getClause();
+  for (unsigned i = 0; i < clause.size(); ++ i) {
+    d_literals.insert(clause[i]);
+  }
+}
+
+void BooleanResolutionRule::resolve(CRef cRef, unsigned literalIndex) {
+  Clause& toResolve = cRef.getClause();
+  Assert(literalIndex < toResolve.size());
+  for (unsigned i = 0; i < toResolve.size(); ++ i) {
+    Literal l = toResolve[i];
+    if (i == literalIndex) {
+      Literal not_l = ~l;
+      LiteralHashSet::iterator find = d_literals.find(not_l);
+      Assert(find != d_literals.end());
+      d_literals.erase(find);
+    } else {
+      Assert(d_literals.find(~l) == d_literals.end());
+      d_literals.insert(l);
+    }
+  }
+}
+
+CRef BooleanResolutionRule::finish() {
+  return commit(d_literals);
 }

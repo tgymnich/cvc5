@@ -70,7 +70,11 @@ int main(int argc, char* argv[]) {
       }
   
       // Check the problem
-      bool result = mcSolver->check();
+      bool result;
+      {
+        smt::SmtScope smtScope(&smtEngine);
+        result = mcSolver->check();
+      }
     
       cout << (result ? "sat" : "unsat") << endl;
       

@@ -6,8 +6,7 @@ using namespace CVC4;
 using namespace CVC4::mcsat;
 
 SolverTrail::SolverTrail(const ClauseDatabase& clauses, context::Context* context)
-: d_consistent(true)
-, d_decisionLevel(0)
+: d_decisionLevel(0)
 , d_problemClauses(clauses)
 , d_auxilaryClauses(ClauseFarm::getCurrent()->newClauseDB("analysis_clauses"))
 , d_context(context)
@@ -38,15 +37,6 @@ void SolverTrail::addNewClauseListener(ClauseDatabase::INewClauseNotify* listene
   d_auxilaryClauses.addNewClauseListener(listener);
 }
 
-void SolverTrail::ClauseReasonProvider::explain(Literal l, std::vector<Literal>& reason) {
-  Assert(!d_reasons[l].isNull());
-  Clause& clause = d_reasons[l].getClause();
-  Assert(clause[0] == l);
-  for (unsigned i = 1; i < clause.size(); ++ i) {
-    reason.push_back(clause[i]);
-  }
-}
-
 unsigned SolverTrail::decisionLevel(Variable var) const {
   Assert(!value(var).isNull());
   return d_modelInfo[var].decisionLevel;
@@ -74,7 +64,10 @@ void SolverTrail::PropagationToken::operator () (Literal l) {
     } else {
       d_trail.setValue(l.getVariable(), d_trail.c_TRUE);
     }
-    d_trail.d_trail.push_back(Element(SEMANTIC_PROPAGATION, l.getVariable()));
+    Variable var = l.getVariable();
+    d_trail.d_modelInfo[var].decisionLevel = d_trail.decisionLevel();
+    d_trail.d_modelInfo[var].trailIndex = d_trail.d_trail.size();
+    d_trail.d_trail.push_back(Element(SEMANTIC_PROPAGATION, var));
   }
 }
 
@@ -89,22 +82,33 @@ void SolverTrail::PropagationToken::operator () (Literal l, CRef reason) {
   Assert(true); // TODO: Check that reason propagates l
 
   // If new propagation, record in model and in trail
-  if (currentValue.isNull()) {
-    if (l.isNegated()) {
-      d_trail.setValue(l.getVariable(), d_trail.c_FALSE);
+  if (currentValue != d_trail.c_TRUE) {
+    // Check that we're not in conflict with this propagation
+    if (currentValue == d_trail.c_FALSE) {
+      // Conflict
+      d_trail.d_inconsistentPropagations.push_back(InconsistentPropagation(l, reason));
     } else {
-      d_trail.setValue(l.getVariable(), d_trail.c_TRUE);
+      // No conflict, remember the l value in the model
+      if (l.isNegated()) {
+	d_trail.setValue(l.getVariable(), d_trail.c_FALSE);
+      } else {
+	d_trail.setValue(l.getVariable(), d_trail.c_TRUE);
+      }
+      // Set the model information
+      Variable var = l.getVariable();
+      d_trail.d_modelInfo[var].decisionLevel = d_trail.decisionLevel();
+      d_trail.d_modelInfo[var].trailIndex = d_trail.d_trail.size();
+      // Remember the reason
+      d_trail.d_clauseReasons[l] = reason;
     }
-    d_trail.d_trail.push_back(Element(SEMANTIC_PROPAGATION, l.getVariable()));
-    d_trail.d_clauseReasons[l] = reason;
-  }
+  } 
 }
 
 void SolverTrail::DecisionToken::operator () (Literal l) {
   Assert(!d_used);
   Assert(d_trail.d_model[l.getVariable()].isNull());
 
-  Debug("mcsat::trail") << "PropagationToken::operator () (" << l << ")" << std::endl;
+  Debug("mcsat::trail") << "DecisionToken::operator () (" << l << ")" << std::endl;
 
   d_trail.newDecision();
   d_used = true;
@@ -114,6 +118,11 @@ void SolverTrail::DecisionToken::operator () (Literal l) {
   } else {
     d_trail.setValue(l.getVariable(), d_trail.c_TRUE);
   }
+  // Set the model information
+  Variable var = l.getVariable();
+  d_trail.d_modelInfo[var].decisionLevel = d_trail.decisionLevel();
+  d_trail.d_modelInfo[var].trailIndex = d_trail.d_trail.size();
+  // Push to the trail
   d_trail.d_trail.push_back(Element(BOOLEAN_DECISION, l.getVariable()));
 }
 
@@ -121,7 +130,7 @@ void SolverTrail::DecisionToken::operator () (Variable var, Variable val) {
   Assert(!d_used);
   Assert(d_trail.d_model[var].isNull());
 
-  Debug("mcsat::trail") << "PropagationToken::operator () (" << var << ", " << val << ")" << std::endl;
+  Debug("mcsat::trail") << "DecisionToken::operator () (" << var << ", " << val << ")" << std::endl;
 
   d_trail.newDecision();
   d_used = true;
@@ -129,4 +138,29 @@ void SolverTrail::DecisionToken::operator () (Variable var, Variable val) {
   d_trail.setValue(var, val);
 
   d_trail.d_trail.push_back(Element(SEMANTIC_DECISION, var));
+}
+
+bool SolverTrail::hasReason(Literal literal) const {
+  // You can resolve with l if ~l has been propagated true with a clausal reason
+  return d_reasonProviders[literal] != 0;
+}
+
+CRef SolverTrail::reason(Literal literal) {
+  Assert(hasReason(literal));
+  ReasonProvider* reasonProvider = d_reasonProviders[literal];
+  CRef reason = reasonProvider->explain(literal);
+  // If not a clausal reason provider, remember just in case
+  if (reasonProvider != &d_clauseReasons) {
+    d_clauseReasons[literal] = reason;
+    d_reasonProviders[literal] = &d_clauseReasons;
+  }
+  // Return the explanation
+  return reason;
+}
+
+void SolverTrail::getInconsistentPropagations(std::vector<InconsistentPropagation>& out) const {
+  out.clear();
+  for (unsigned i = 0; i < d_inconsistentPropagations.size(); ++ i) {
+    out.push_back(d_inconsistentPropagations[i]);
+  }
 }

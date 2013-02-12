@@ -5,7 +5,7 @@ using namespace std;
 using namespace CVC4;
 using namespace mcsat;
 
-void CnfStream::outputClause(Literals& c) {
+void CnfStream::outputClause(LiteralVector& c) {
   Debug("mcsat::cnf") << "CNF Output " << c << endl;
   for (unsigned i = 0; i < d_outputNotifyList.size(); ++ i) {
     d_outputNotifyList[i]->newClause(c);
@@ -13,20 +13,20 @@ void CnfStream::outputClause(Literals& c) {
 }
 
 void CnfStream::outputClause(Literal a) {
-  Literals clause(1);
+  LiteralVector clause(1);
   clause[0] = a;
   outputClause(clause);
 }
 
 void CnfStream::outputClause(Literal a, Literal b) {
-  Literals clause(2);
+  LiteralVector clause(2);
   clause[0] = a;
   clause[1] = b;
   outputClause(clause);
 }
 
 void CnfStream::outputClause(Literal a, Literal b, Literal c) {
-  Literals clause(3);
+  LiteralVector clause(3);
   clause[0] = a;
   clause[1] = b;
   clause[2] = c;

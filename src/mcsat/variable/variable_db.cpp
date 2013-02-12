@@ -46,6 +46,10 @@ size_t VariableDatabase::getTypeIndex(TypeNode type) {
   return typeIndex;
 }
 
+size_t VariableDatabase::size(size_t typeIndex) const {
+  return d_variableNodes[typeIndex].size();
+}
+
 Variable VariableDatabase::getVariable(TNode node) {
 
   // Find the variable (it might exist already)

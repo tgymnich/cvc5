@@ -8,7 +8,24 @@
 namespace CVC4 {
 namespace mcsat {
 
-template <typename T>
+/** Filters all variables */
+struct variable_filter_none {
+  bool operator () (const Variable& var) const { return true; }
+};
+
+/** Filters variables by given type */
+class variable_filter_by_type {
+  size_t d_type_index;
+public:
+  variable_filter_by_type(TypeNode type)
+  : d_type_index(VariableDatabase::getCurrentDB()->getTypeIndex(type)) {
+  }
+  bool operator () (const Variable& var) const {
+    return d_type_index == var.typeIndex();
+  }
+};
+
+template <typename T, typename variable_filter = variable_filter_none>
 class variable_table {
 
   typedef std::vector<T> per_type_table;
@@ -16,16 +33,18 @@ class variable_table {
   typedef typename std::vector<T>::reference element_ref;
   typedef typename std::vector<T>::const_reference element_const_ref;
 
+  /** The table per type */
   std::vector<per_type_table> d_table;
 
   /** Default value for the vectors */
   T d_defaultValue;
 
   /** On every new variable the table is resized */
-  class new_literal_listener : public VariableDatabase::INewVariableNotify {
+  class new_variable_listener : public VariableDatabase::INewVariableNotify {
     variable_table& d_table;
+    variable_filter d_filter;
   public:
-    new_literal_listener(variable_table& table)
+    new_variable_listener(variable_table& table)
     : INewVariableNotify(false)
     , d_table(table)
     {}
@@ -54,20 +73,22 @@ public:
 
 };
 
-template<typename T>
-void variable_table<T>::new_literal_listener::newVariable(Variable var) {
-  size_t typeIndex = var.typeIndex();
-  if (d_table.d_table.size() <= typeIndex) {
-    d_table.d_table.resize(typeIndex + 1);
-  }
-  size_t index = var.index();
-  if (d_table.d_table[typeIndex].size() <= index) {
-    d_table.d_table[typeIndex].resize(index + 1, d_table.d_defaultValue);
+template<typename T, typename variable_filter>
+void variable_table<T, variable_filter>::new_variable_listener::newVariable(Variable var) {
+  if (d_filter(var)) {
+    size_t typeIndex = var.typeIndex();
+    if (d_table.d_table.size() <= typeIndex) {
+      d_table.d_table.resize(typeIndex + 1);
+    }
+    size_t index = var.index();
+    if (d_table.d_table[typeIndex].size() <= index) {
+      d_table.d_table[typeIndex].resize(index + 1, d_table.d_defaultValue);
+    }
   }
 }
 
-template<typename T>
-variable_table<T>::variable_table(const T& defaultValue)
+template<typename T, typename variable_filter>
+variable_table<T, variable_filter>::variable_table(const T& defaultValue)
 : d_defaultValue(defaultValue)
 , d_new_literal_listener(*this)
 {

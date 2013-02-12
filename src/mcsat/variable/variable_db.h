@@ -139,6 +139,9 @@ public:
   /** Get the index of the given type */
   size_t getTypeIndex(TypeNode type);
 
+  /** Returns the number of variables of a given type */
+  size_t size(size_t typeIndex) const;
+
   /** Check whether the variable is in use (rc > 0) */
   bool inUse(Variable var) const {
     return d_variableRefCount[var.typeIndex()][var.index()] > 0;

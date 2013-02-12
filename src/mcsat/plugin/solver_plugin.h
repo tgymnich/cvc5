@@ -80,7 +80,14 @@ public:
   /** Return the listener for new clauses */
   virtual ClauseDatabase::INewClauseNotify* getNewClauseListener() = 0;
 
+  /** String representation of the plugin (for debug purposes mainly) */
+  virtual std::string toString() const = 0;
 }; /* class SolverPlugin */
+
+inline std::ostream& operator << (std::ostream& out, const SolverPlugin& plugin) {
+  out << plugin.toString();
+  return out;
+}
 
 } /* CVC4::mcsat namespace */
 } /* CVC4 namespace */

@@ -64,11 +64,27 @@ public:
   class ReasonProvider {
   public:
     /**
-     * Provide the literals that imply the propagation of l. The literals that imply l should be put into
-     * the reason array and must all be present in the trail before l.
+     * Provide the clausal explanation of the propagation of l.
      */
-    virtual void explain(Literal l, std::vector<Literal>& reason) = 0;
+    virtual CRef explain(Literal l) = 0;
   };
+
+  /** Captures the inconsistently propagated literal and the reason for it */
+  struct InconsistentPropagation {
+    /** Literal that was propagated */
+    Literal literal;
+    /** The reason of this propagation */
+    CRef reason;
+
+    InconsistentPropagation(Literal literal, CRef reason)
+    : literal(literal), reason(reason) {}
+  };
+
+  /** True value */
+  Variable c_TRUE;
+
+  /** False value */
+  Variable c_FALSE;
 
 private:
 
@@ -81,21 +97,20 @@ private:
     /** Map from literals to clausal reasons */
     reasons_map d_reasons;
   public:
-    void explain(Literal l, std::vector<Literal>& reason);
+    CRef explain(Literal l) {
+      return d_reasons[l];
+    }
     CRef_Strong& operator [] (Literal l) { return d_reasons[l]; }
   };
   
-  /** Is the consistent (the last element is the cause) */
-  bool d_consistent;
-  
-  /** Vector of propagated literals that are inconsistent */
-  std::set<Literal> d_inconsistentPropagations;
-
   /** The actual trail */
   std::vector<Element> d_trail;
 
   /** Reason providers for clausal propagations */
   literal_table<ReasonProvider*> d_reasonProviders;
+
+  /** Vector of propagated literals that are inconsistent */
+  std::vector<InconsistentPropagation> d_inconsistentPropagations;
 
   /** Trail containing trail sizes per decision level */
   std::vector<size_t> d_decisionTrail;
@@ -111,12 +126,6 @@ private:
   
   /** Auxiliary clause important for the search (conflict analysis clauses) */
   ClauseDatabase& d_auxilaryClauses;
-
-  /** True value */
-  Variable c_TRUE;
-
-  /** False value */
-  Variable c_FALSE;
 
   /** Model indexed by variables */
   variable_table<Variable_Strong> d_model;
@@ -139,7 +148,7 @@ private:
 
   /** Reason provider for clause propagations */
   ClauseReasonProvider d_clauseReasons;
-
+  
 public:
   
   /** Create an empty trail with the give set of clauses */
@@ -158,9 +167,15 @@ public:
     return d_trail.size();     
   }
   
+  /** Get the size of the trail at given decision level */
+  size_t size(unsigned level) const {
+    if (level >= d_decisionLevel) return d_trail.size();
+    else return d_decisionTrail[level];
+  }
+
   /** Is the trail consistent */
   bool consistent() const {
-    return d_consistent;
+    return d_inconsistentPropagations.empty();
   }
 
   /** Returns the current decision level */
@@ -202,6 +217,14 @@ public:
   /** Get the trail index where the variable was assigned */
   unsigned trailIndex(Variable var) const;
 
+  /** Returns the reason for this clause */
+  CRef reason(Literal literal);
+  /** Does this literal have a clausal reason for it's value */
+  bool hasReason(Literal literal) const;
+
+
+  /** Returns inconsistent propagations */
+  void getInconsistentPropagations(std::vector<InconsistentPropagation>& out) const;
 
   /** Get the true constant */
   Variable getTrue() const { return c_TRUE; }
@@ -305,6 +328,21 @@ public:
   friend class PropagationToken;
   friend class DecisionToken;
 };
+
+inline std::ostream& operator << (std::ostream& out, const SolverTrail::PropagationToken::Mode& mode) {
+  switch (mode) {
+  case SolverTrail::PropagationToken::PROPAGATION_INIT:
+    out << "PROPAGATION_INIT";
+    break;
+  case SolverTrail::PropagationToken::PROPAGATION_NORMAL:
+    out << "PROPAGATION_NORMAL";
+    break;
+  case SolverTrail::PropagationToken::PROPAGATION_COMPLETE:
+    out << "PROPAGATION_COMPLETE";
+    break;
+  }
+  return out;
+}
 
 }
 }

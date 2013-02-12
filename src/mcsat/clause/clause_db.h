@@ -98,7 +98,7 @@ private:
   /**
    * Add a clause to the database (only proof rules can do this).
    */
-  CRef newClause(const Literals& literals, size_t ruleId);
+  CRef newClause(const LiteralVector& literals, size_t ruleId);
 
   friend class ClauseFarm;
   

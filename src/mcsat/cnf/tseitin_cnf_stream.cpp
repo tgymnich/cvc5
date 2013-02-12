@@ -39,7 +39,7 @@ Literal TseitinCnfStream::handleOr(TNode orNode) {
   // Transform all the children first
   TNode::const_iterator node_it = orNode.begin();
   TNode::const_iterator node_it_end = orNode.end();
-  Literals clause(n_children + 1);
+  LiteralVector clause(n_children + 1);
   for(int i = 0; node_it != node_it_end; ++node_it, ++i) {
     clause[i] = toCnfRecursive(*node_it);
   }
@@ -75,7 +75,7 @@ Literal TseitinCnfStream::handleAnd(TNode andNode) {
   // Transform all the children first (remembering the negation)
   TNode::const_iterator node_it = andNode.begin();
   TNode::const_iterator node_it_end = andNode.end();
-  Literals clause(n_children + 1);
+  LiteralVector clause(n_children + 1);
   for(int i = 0; node_it != node_it_end; ++node_it, ++i) {
     clause[i] = ~toCnfRecursive(*node_it);
   }
@@ -271,7 +271,7 @@ void TseitinCnfStream::topLevelAnd(TNode node, bool negated) {
   } else {
     // If the node is a disjunction, we construct a clause and assert it
     int nChildren = node.getNumChildren();
-    Literals clause(nChildren);
+    LiteralVector clause(nChildren);
     TNode::const_iterator disjunct = node.begin();
     for(int i = 0; i < nChildren; ++ disjunct, ++ i) {
       Assert( disjunct != node.end() );
@@ -287,7 +287,7 @@ void TseitinCnfStream::topLevelOr(TNode node, bool negated) {
   if (!negated) {
     // If the node is a disjunction, we construct a clause and assert it
     int nChildren = node.getNumChildren();
-    Literals clause(nChildren);
+    LiteralVector clause(nChildren);
     TNode::const_iterator disjunct = node.begin();
     for(int i = 0; i < nChildren; ++ disjunct, ++ i) {
       Assert( disjunct != node.end() );
@@ -310,11 +310,11 @@ void TseitinCnfStream::topLevelXor(TNode node, bool negated) {
     Literal p = toCnfRecursive(node[0], false);
     Literal q = toCnfRecursive(node[1], false);
     // Construct the clauses (p => !q) and (!q => p)
-    Literals clause1(2);
+    LiteralVector clause1(2);
     clause1[0] = ~p;
     clause1[1] = ~q;
     outputClause(clause1);
-    Literals clause2(2);
+    LiteralVector clause2(2);
     clause2[0] = p;
     clause2[1] = q;
     outputClause(clause2);
@@ -323,11 +323,11 @@ void TseitinCnfStream::topLevelXor(TNode node, bool negated) {
     Literal p = toCnfRecursive(node[0], false);
     Literal q = toCnfRecursive(node[1], false);
     // Construct the clauses (p => q) and (q => p)
-    Literals clause1(2);
+    LiteralVector clause1(2);
     clause1[0] = ~p;
     clause1[1] = q;
     outputClause(clause1);
-    Literals clause2(2);
+    LiteralVector clause2(2);
     clause2[0] = p;
     clause2[1] = ~q;
     outputClause(clause2);
@@ -340,11 +340,11 @@ void TseitinCnfStream::topLevelIff(TNode node, bool negated) {
     Literal p = toCnfRecursive(node[0], false);
     Literal q = toCnfRecursive(node[1], false);
     // Construct the clauses (p => q) and (q => p)
-    Literals clause1(2);
+    LiteralVector clause1(2);
     clause1[0] = ~p;
     clause1[1] = q;
     outputClause(clause1);
-    Literals clause2(2);
+    LiteralVector clause2(2);
     clause2[0] = p;
     clause2[1] = ~q;
     outputClause(clause2);
@@ -353,11 +353,11 @@ void TseitinCnfStream::topLevelIff(TNode node, bool negated) {
     Literal p = toCnfRecursive(node[0], false);
     Literal q = toCnfRecursive(node[1], false);
     // Construct the clauses (p => !q) and (!q => p)
-    Literals clause1(2);
+    LiteralVector clause1(2);
     clause1[0] = ~p;
     clause1[1] = ~q;
     outputClause(clause1);
-    Literals clause2(2);
+    LiteralVector clause2(2);
     clause2[0] = p;
     clause2[1] = q;
     outputClause(clause2);
@@ -370,7 +370,7 @@ void TseitinCnfStream::topLevelImplies(TNode node, bool negated) {
     Literal p = toCnfRecursive(node[0], false);
     Literal q = toCnfRecursive(node[1], false);
     // Construct the clause ~p || q
-    Literals clause(2);
+    LiteralVector clause(2);
     clause[0] = ~p;
     clause[1] = q;
     outputClause(clause);
@@ -388,11 +388,11 @@ void TseitinCnfStream::topLevelIte(TNode node, bool negated) {
   Literal r = toCnfRecursive(node[2], negated);
   // Construct the clauses:
   // (p => q) and (!p => r)
-  Literals clause1(2);
+  LiteralVector clause1(2);
   clause1[0] = ~p;
   clause1[1] = q;
   outputClause(clause1);
-  Literals clause2(2);
+  LiteralVector clause2(2);
   clause2[0] = p;
   clause2[1] = r;
   outputClause(clause2);
