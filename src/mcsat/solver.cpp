@@ -38,11 +38,16 @@ Solver::Solver(context::UserContext* userContext, context::Context* searchContex
 , d_auxilaryClauses(d_clauseFarm.newClauseDB("conflict_analysis_clauses"))
 , d_cnfStream(searchContext)
 , d_cnfStreamListener(*this)
-, d_trail(d_problemClauses, searchContext)
+, d_trail(searchContext)
 , d_rule_InputClause(d_problemClauses, d_trail)
 , d_backtrackRequested(false)
 , d_backtrackLevel(0)
 {
+  // Add the two clause database we'll be solving
+  d_trail.addClauseDatabase(d_problemClauses);
+  d_trail.addClauseDatabase(d_auxilaryClauses);
+
+  // Add the listener for the CNF converter
   d_cnfStream.addOutputListener(&d_cnfStreamListener);
 
   // Add some engines
@@ -164,6 +169,8 @@ void Solver::addPlugin(std::string plugin) {
 
 void Solver::requestBacktrack(unsigned level, CRef cRef) {
   Assert(level < d_trail.decisionLevel(), "Don't try to fool backtracking to do your propagation");
+
+  Debug("mcsat::solver") << "Solver::requestBacktrack(" << level << ", " << cRef << ")" << std::endl;
 
   if (!d_backtrackRequested) {
     // First time request

@@ -112,6 +112,8 @@ void BooleanResolutionRule::resolve(CRef cRef, unsigned literalIndex) {
   Debug("mcsat::resolution_rule") << "BooleanResolutionRule(): resolving " << d_literals << " with " << cRef << std::endl;
   Clause& toResolve = cRef.getClause();
   Assert(literalIndex < toResolve.size());
+
+  // Add all the literals and remove the one we're resolving
   for (unsigned i = 0; i < toResolve.size(); ++ i) {
     Literal l = toResolve[i];
     if (i == literalIndex) {
@@ -124,6 +126,15 @@ void BooleanResolutionRule::resolve(CRef cRef, unsigned literalIndex) {
       d_literals.insert(l);
     }
   }
+
+  // Make sure that empty clause is false
+  if (d_literals.size() == 0) {
+    Node falseNode = NodeManager::currentNM()->mkConst<bool>(false);
+    Variable falseVar = VariableDatabase::getCurrentDB()->getVariable(falseNode);
+    d_literals.insert(Literal(falseVar, false));
+  }
+
+
   Debug("mcsat::resolution_rule") << "BooleanResolutionRule(): got " << d_literals << std::endl;
 }
 

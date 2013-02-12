@@ -62,7 +62,9 @@ public:
 
     // Literals of the same value are sorted by decreasing levels
     if (l1_value == l2_value) {
-      return d_trail.trailIndex(l1.getVariable()) > d_trail.trailIndex(l2.getVariable());
+      Variable l1_var = l1.getVariable();
+      Variable l2_var = l2.getVariable();
+      return d_trail.trailIndex(l1_var) > d_trail.trailIndex(l2_var);
     } else {
       // Of two assigned literals, the true literal goes up front
       return (l1_value == d_trail.getTrue());
@@ -74,7 +76,11 @@ void BCPEngine::newClause(CRef cRef) {
   Debug("mcsat::bcp") << "BCPEngine::newClause(" << cRef << ")" << std::endl;
   Clause& clause = cRef.getClause();
   if (clause.size() == 1) {
-    d_delayedPropagations.push_back(cRef);
+    if (d_trail.decisionLevel() > 0) {
+      d_request.backtrack(0, cRef);
+    } else {
+      d_delayedPropagations.push_back(cRef);
+    }
   } else {
 
     BCPNewClauseCmp cmp(d_trail);
@@ -202,6 +208,7 @@ void BCPEngine::propagate(SolverTrail::PropagationToken& out) {
 
 void BCPEngine::decide(SolverTrail::DecisionToken& out) {
   Debug("mcsat::bcp") << "BCPEngine::decide()" << std::endl;
+  Assert(d_delayedPropagations.size() == 0 && d_trailHead == d_trail.size());
   while (!d_variableQueue.empty()) {
     Variable var = d_variableQueue.top();
     d_variableQueue.pop();

@@ -5,10 +5,8 @@
 using namespace CVC4;
 using namespace CVC4::mcsat;
 
-SolverTrail::SolverTrail(const ClauseDatabase& clauses, context::Context* context)
+SolverTrail::SolverTrail(context::Context* context)
 : d_decisionLevel(0)
-, d_problemClauses(clauses)
-, d_auxilaryClauses(ClauseFarm::getCurrent()->newClauseDB("analysis_clauses"))
 , d_context(context)
 {
   Node trueNode = NodeManager::currentNM()->mkConst<bool>(true);
@@ -33,8 +31,9 @@ void SolverTrail::newDecision() {
 }
 
 void SolverTrail::addNewClauseListener(ClauseDatabase::INewClauseNotify* listener) const {
-  d_problemClauses.addNewClauseListener(listener);
-  d_auxilaryClauses.addNewClauseListener(listener);
+  for (unsigned i = 0; i < d_clauses.size(); ++ i) {
+    d_clauses[i]->addNewClauseListener(listener);
+  }
 }
 
 unsigned SolverTrail::decisionLevel(Variable var) const {

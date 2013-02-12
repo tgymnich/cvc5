@@ -134,12 +134,6 @@ private:
   /** Mark a new decision */
   void newDecision();
   
-  /** Clause of the problem */
-  const ClauseDatabase& d_problemClauses;
-  
-  /** Auxiliary clause important for the search (conflict analysis clauses) */
-  ClauseDatabase& d_auxilaryClauses;
-
   /** Model indexed by variables */
   variable_table<Variable_Strong> d_model;
 
@@ -162,13 +156,21 @@ private:
   /** Reason provider for clause propagations */
   ClauseReasonProvider d_clauseReasons;
   
+  /** The databases that are being solved */
+  std::vector<ClauseDatabase*> d_clauses;
+
 public:
   
   /** Create an empty trail with the give set of clauses */
-  SolverTrail(const ClauseDatabase& clauses, context::Context* context);
+  SolverTrail(context::Context* context);
   
   /** Destructor */
   ~SolverTrail();
+
+  /** Add a clause database that we are solving (should be done initially) */
+  void addClauseDatabase(ClauseDatabase& db) {
+    d_clauses.push_back(&db);
+  }
 
   /** Get the i-th element of the trail */
   const Element& operator [] (size_t i) const { 
@@ -234,7 +236,6 @@ public:
   CRef reason(Literal literal);
   /** Does this literal have a clausal reason for it's value */
   bool hasReason(Literal literal) const;
-
 
   /** Returns inconsistent propagations */
   void getInconsistentPropagations(std::vector<InconsistentPropagation>& out) const;
