@@ -120,6 +120,12 @@ public:
     return *this;
   }
 
+  /** Return a hash of the variable */
+  size_t hash() const {
+    typedef std::pair<size_t, size_t> int_pair;
+    return boost::hash<int_pair>()(int_pair(d_typeId, d_varId));
+  }
+
   /** Get the node associated with this variable (if any) */
   TNode getNode() const;
 
@@ -139,12 +145,12 @@ public:
 
   /** Comparison operator */
   bool operator == (const VariableRef& other) const {
-    return d_varId == other.d_varId;
+    return d_varId == other.d_varId && d_typeId == other.d_typeId;
   }
 
   /** Comparison operator */
   bool operator != (const VariableRef& other) const {
-    return d_varId != other.d_varId;
+    return !(*this == other);
   }
   
   /** Return the 0-based index of the variable of it's type */
@@ -184,14 +190,47 @@ typedef std::set<Variable> VariableSet;
 class VariableHashFunction {
 public:
   size_t operator () (const Variable& variable) const {
-    typedef std::pair<size_t, size_t> int_pair;
-    return boost::hash<int_pair>()(int_pair(variable.index(), variable.typeIndex()));
+    return variable.hash();
   }
 };
 
-
 /** A hash set of variables */
 typedef std::hash_set<Variable, VariableHashFunction> VariableHashSet;
+
+inline std::ostream& operator << (std::ostream& out, const VariableVector& vars) {
+  out << "Variables[";
+  for (unsigned i = 0; i < vars.size(); ++ i) {
+    if (i > 0) { out << ", "; }
+    out << vars[i];
+  }
+  out << "]";
+  return out;
+}
+
+inline std::ostream& operator << (std::ostream& out, const VariableSet& vars) {
+  out << "Variables[";
+  VariableSet::const_iterator it = vars.begin();
+  bool first = true;
+  for (; it != vars.end(); ++ it) {
+    if (!first) { out << ", " << *it; }
+    else { out << *it; first = false; }
+  }
+  out << "]";
+  return out;
+}
+
+inline std::ostream& operator << (std::ostream& out, const VariableHashSet& vars) {
+  out << "Variables[";
+  VariableHashSet::const_iterator it = vars.begin();
+  bool first = true;
+  for (; it != vars.end(); ++ it) {
+    if (!first) { out << ", " << *it; }
+    else { out << *it; first = false; }
+  }
+  out << "]";
+  return out;
+}
+
 
 } /* Namespace mcsat */
 } /* Namespace CVC4 */

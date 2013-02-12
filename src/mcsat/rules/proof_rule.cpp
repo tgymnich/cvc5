@@ -101,6 +101,7 @@ CRef InputClauseRule::apply(LiteralVector& literals) {
 
 BooleanResolutionRule::BooleanResolutionRule(ClauseDatabase& clauseDB, CRef initialClause)
 : ProofRule("mcsat::resolution_rule", clauseDB) {
+  Debug("mcsat::resolution_rule") << "BooleanResolutionRule(): starting with " << initialClause << std::endl;
   Clause& clause = initialClause.getClause();
   for (unsigned i = 0; i < clause.size(); ++ i) {
     d_literals.insert(clause[i]);
@@ -108,6 +109,7 @@ BooleanResolutionRule::BooleanResolutionRule(ClauseDatabase& clauseDB, CRef init
 }
 
 void BooleanResolutionRule::resolve(CRef cRef, unsigned literalIndex) {
+  Debug("mcsat::resolution_rule") << "BooleanResolutionRule(): resolving " << d_literals << " with " << cRef << std::endl;
   Clause& toResolve = cRef.getClause();
   Assert(literalIndex < toResolve.size());
   for (unsigned i = 0; i < toResolve.size(); ++ i) {
@@ -122,6 +124,7 @@ void BooleanResolutionRule::resolve(CRef cRef, unsigned literalIndex) {
       d_literals.insert(l);
     }
   }
+  Debug("mcsat::resolution_rule") << "BooleanResolutionRule(): got " << d_literals << std::endl;
 }
 
 CRef BooleanResolutionRule::finish() {

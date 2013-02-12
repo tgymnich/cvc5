@@ -100,6 +100,9 @@ void SolverTrail::PropagationToken::operator () (Literal l, CRef reason) {
       d_trail.d_modelInfo[var].trailIndex = d_trail.d_trail.size();
       // Remember the reason
       d_trail.d_clauseReasons[l] = reason;
+      d_trail.d_reasonProviders[l] = &d_trail.d_clauseReasons;
+      // Push to the trail
+      d_trail.d_trail.push_back(Element(CLAUSAL_PROPAGATION, var));
     }
   } 
 }
@@ -163,4 +166,15 @@ void SolverTrail::getInconsistentPropagations(std::vector<InconsistentPropagatio
   for (unsigned i = 0; i < d_inconsistentPropagations.size(); ++ i) {
     out.push_back(d_inconsistentPropagations[i]);
   }
+}
+
+void SolverTrail::toStream(std::ostream& out) const {
+  out << "[";
+  for (unsigned i = 0; i < d_trail.size(); ++ i) {
+    if (i > 0) {
+      out << ", ";
+    }
+    out << "(" << d_trail[i].var << " -> " << value(d_trail[i].var) << ")";
+  }
+  out << "]";
 }

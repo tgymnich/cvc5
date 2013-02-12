@@ -54,6 +54,16 @@ public:
     /** The variable that got changed */
     Variable var;
 
+    /** Is this a decision */
+    bool isDecision() const {
+      return type == BOOLEAN_DECISION || type == SEMANTIC_DECISION;
+    }
+
+    /** Is it a propagation with a clausal reason */
+    bool hasReason() const {
+      return type == CLAUSAL_PROPAGATION;
+    }
+
     Element(Type type, Variable var)
     : type(type), var(var) {}
   };
@@ -85,6 +95,9 @@ public:
 
   /** False value */
   Variable c_FALSE;
+
+  /** Print the trail to the stream */
+  void toStream(std::ostream& out) const;
 
 private:
 
@@ -341,6 +354,11 @@ inline std::ostream& operator << (std::ostream& out, const SolverTrail::Propagat
     out << "PROPAGATION_COMPLETE";
     break;
   }
+  return out;
+}
+
+inline std::ostream& operator << (std::ostream& out, const SolverTrail& trail) {
+  trail.toStream(out);
   return out;
 }
 

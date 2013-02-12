@@ -152,7 +152,6 @@ inline std::ostream& operator << (std::ostream& out, const LiteralRef<refCount>&
   return out;
 }
 
-/** Output operator for a vector of literals */
 inline std::ostream& operator << (std::ostream& out, const LiteralVector& literals) {
   out << "Literals[";
   for (unsigned i = 0; i < literals.size(); ++ i) {
