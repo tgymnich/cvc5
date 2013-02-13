@@ -94,8 +94,58 @@ void Solver::processNewClauses() {
   d_newClauses.clear();
 }
 
+void Solver::processBacktrackRequests() {
+
+  if (d_backtrackRequested) {
+    Debug("mcsat::solver") << "Solver::processBacktrackRequests()" << std::endl;
+
+    // Pop to the requested level
+    std::vector<Variable> variablesUnset;
+    d_trail.popToLevel(d_backtrackLevel, variablesUnset);
+
+    // Notify the plugins about the unset variables
+    for (unsigned i = 0; i < d_plugins.size(); ++ i) {
+      d_plugins[i]->unsetVariables(variablesUnset);
+    }
+
+    // Propagate all the added clauses
+    std::set<CRef>::iterator it = d_backtrackClauses.begin();
+    for (; it != d_backtrackClauses.end(); ++ it) {
+      SolverTrail::PropagationToken propagate(d_trail, SolverTrail::PropagationToken::PROPAGATION_INIT);
+      Clause& clause = it->getClause();
+      Debug("mcsat::solver") << "Solver::processBacktrackRequests(): processing " << clause << std::endl;
+      propagate(clause[0], *it);
+    }
+
+    // Clear the requests
+    d_backtrackRequested = false;
+    d_backtrackClauses.clear();
+  }
+}
+
+void Solver::requestBacktrack(unsigned level, CRef cRef) {
+  Assert(level < d_trail.decisionLevel(), "Don't try to fool backtracking to do your propagation");
+
+  Debug("mcsat::solver") << "Solver::requestBacktrack(" << level << ", " << cRef << ")" << std::endl;
+
+  if (!d_backtrackRequested) {
+    // First time request
+    d_backtrackLevel = level;
+  } else {
+    if (d_backtrackLevel > level) {
+      // Even lower backtrack
+      d_backtrackLevel = level;
+      d_backtrackClauses.clear();
+    }
+  }
+
+  d_backtrackRequested = true;
+  d_backtrackClauses.insert(cRef);
+}
+
+
 void Solver::propagate(SolverTrail::PropagationToken::Mode mode) {
-  Debug("mcsat::solver") << "propagate(" << mode << ")" << std::endl;
+  Debug("mcsat::solver") << "Solver::propagate(" << mode << ")" << std::endl;
 
   bool propagationDone = false;
   while (d_trail.consistent() && !propagationDone) {
@@ -113,19 +163,24 @@ void Solver::propagate(SolverTrail::PropagationToken::Mode mode) {
 
 bool Solver::check() {
   
+  Debug("mcsat::solver::search") << "Solver::check()" << std::endl;
+
   // Search while not all variables assigned 
   while (true) {
 
     // Process any new clauses 
     processNewClauses();
     
+    // If a backtrack was requested then
+    processBacktrackRequests();
+
     // Normal propagate
     propagate(SolverTrail::PropagationToken::PROPAGATION_NORMAL);
 
     // If inconsistent, perform conflict analysis
     if (!d_trail.consistent()) {
 
-      Debug("mcsat::solver::search") << "Conflict" << std::endl;
+      Debug("mcsat::solver::search") << "Solver::check(): Conflict" << std::endl;
 
       // If the conflict is at level 0, we're done
       if (d_trail.decisionLevel() == 0) {
@@ -165,26 +220,6 @@ bool Solver::check() {
 void Solver::addPlugin(std::string plugin) {
   d_pluginRequests.push_back(new SolverPluginRequest(this));
   d_plugins.push_back(SolverPluginFactory::create(plugin, d_trail, *d_pluginRequests.back()));
-}
-
-void Solver::requestBacktrack(unsigned level, CRef cRef) {
-  Assert(level < d_trail.decisionLevel(), "Don't try to fool backtracking to do your propagation");
-
-  Debug("mcsat::solver") << "Solver::requestBacktrack(" << level << ", " << cRef << ")" << std::endl;
-
-  if (!d_backtrackRequested) {
-    // First time request
-    d_backtrackLevel = level;
-  } else {
-    if (d_backtrackLevel > level) {
-      // Even lower backtrack
-      d_backtrackLevel = level;
-      d_backtrackClauses.clear();
-    }
-  }
-
-  d_backtrackRequested = true;
-  d_backtrackClauses.push_back(cRef);
 }
 
 void Solver::analyzeConflicts() {
@@ -294,12 +329,13 @@ void Solver::analyzeConflicts() {
           }
         }
       }
+
+      // Done with this trail element
+      -- trailIndex;
     }
 
     // Finish the resolution
     CRef resolvent = resolution.finish();
     Debug("mcsat::solver::analyze") << "Solver::analyzeConflicts(): resolvent: " << resolvent << std::endl;
   }
-
-  exit(0);
 }

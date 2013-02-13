@@ -113,6 +113,10 @@ void BCPEngine::newVariable(Variable var) {
   // Make sure that there is enough space for the pointer
   d_variableQueuePositions.resize(var.index() + 1);
   // Add to the queue
+  enqueue(var);
+}
+
+void BCPEngine::enqueue(Variable var) {
   variable_queue::point_iterator it = d_variableQueue.push(var);
   d_variableQueuePositions[var.index()] = it;
 }
@@ -204,6 +208,9 @@ void BCPEngine::propagate(SolverTrail::PropagationToken& out) {
 
   /** Update the CD trail head */
   d_trailHead = i;
+
+  Debug("mcsat::bcp") << "BCPEngine::propagate(): done" << std::endl;
+
 }
 
 void BCPEngine::decide(SolverTrail::DecisionToken& out) {
@@ -219,5 +226,13 @@ void BCPEngine::decide(SolverTrail::DecisionToken& out) {
       out(Literal(var, true));
       return;
     }
+  }
+}
+
+
+void BCPEngine::unsetVariables(const std::vector<Variable>& vars) {
+  // Just add the Boolean variables to the queue
+  for (unsigned i = 0; i < vars.size(); ++ i) {
+    enqueue(vars[i]);
   }
 }

@@ -25,9 +25,58 @@ SolverTrail::~SolverTrail() {
 }
 
 void SolverTrail::newDecision() {
+  Assert(consistent());
+
   d_context->push();
   d_decisionLevel ++;
   d_decisionTrail.push_back(d_trail.size());
+}
+
+void SolverTrail::popDecision(std::vector<Variable>& variablesUnset) {
+
+  Assert(d_decisionTrail.size() > 0);
+
+  // Pop the trail elements
+  while (d_trail.size() > d_decisionTrail.back()) {
+
+    // The variable that was set
+    Variable var = d_trail.back().var;
+    variablesUnset.push_back(var);
+
+    // Unset all the variable info
+    d_model[var] = Variable::null;
+    d_modelInfo[var].decisionLevel = 0;
+    d_modelInfo[var].trailIndex = 0;
+
+    // Remember the reason
+    Literal var_pos(var, false);
+    Literal var_neg(var, true);
+
+    // Remove any reasons
+    d_clauseReasons[var_pos] = CRef_Strong::null;
+    d_clauseReasons[var_neg] = CRef_Strong::null;
+    d_reasonProviders[var_pos] = 0;
+    d_reasonProviders[var_neg] = 0;
+
+    // Pop the element
+    d_trail.pop_back();
+  }
+
+  // Update the info
+  d_decisionTrail.pop_back();
+  d_decisionLevel --;
+  d_context->pop();
+
+  // If we were inconsistent, not anymore
+  d_inconsistentPropagations.clear();
+}
+
+void SolverTrail::popToLevel(unsigned level, std::vector<Variable>& variablesUnset) {
+  Debug("mcsat::trail") << "SolverTrail::popToLevel(" << level << "): at level " << d_decisionLevel << std::endl;
+  while (d_decisionLevel > level) {
+    popDecision(variablesUnset);
+  }
+  Debug("mcsat::trail") << "SolverTrail::popToLevel(" << level << "): new trail: " << *this << std::endl;
 }
 
 void SolverTrail::addNewClauseListener(ClauseDatabase::INewClauseNotify* listener) const {
@@ -85,6 +134,7 @@ void SolverTrail::PropagationToken::operator () (Literal l, CRef reason) {
     // Check that we're not in conflict with this propagation
     if (currentValue == d_trail.c_FALSE) {
       // Conflict
+      Debug("mcsat::trail") << "PropagationToken::operator () (" << l << ", " << reason << "): conflict" << std::endl;
       d_trail.d_inconsistentPropagations.push_back(InconsistentPropagation(l, reason));
     } else {
       // No conflict, remember the l value in the model
@@ -108,6 +158,7 @@ void SolverTrail::PropagationToken::operator () (Literal l, CRef reason) {
 
 void SolverTrail::DecisionToken::operator () (Literal l) {
   Assert(!d_used);
+  Assert(d_trail.consistent());
   Assert(d_trail.d_model[l.getVariable()].isNull());
 
   Debug("mcsat::trail") << "DecisionToken::operator () (" << l << ")" << std::endl;
@@ -130,6 +181,7 @@ void SolverTrail::DecisionToken::operator () (Literal l) {
 
 void SolverTrail::DecisionToken::operator () (Variable var, Variable val) {
   Assert(!d_used);
+  Assert(d_trail.consistent());
   Assert(d_trail.d_model[var].isNull());
 
   Debug("mcsat::trail") << "DecisionToken::operator () (" << var << ", " << val << ")" << std::endl;

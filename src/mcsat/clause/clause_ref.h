@@ -141,6 +141,15 @@ public:
   /** Compare two references */
   template<bool rc2>
   bool operator == (const ClauseRef<rc2>& other) const;
+
+  /** Compare two references (by pointer value) */
+  bool operator < (const ClauseRef& other) const {
+    if (d_db == other.d_db) {
+      return d_ref < other.d_ref;
+    } else {
+      return d_db < other.d_db;
+    }
+  }
 };
 
 /** Non reference counted reference */

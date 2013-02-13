@@ -75,6 +75,9 @@ class BCPEngine : public SolverPlugin {
   /** Position in the variable queue */
   std::vector<variable_queue::point_iterator> d_variableQueuePositions;
 
+  /** Enqueues the variable for decision making */
+  void enqueue(Variable var);
+
 public:
   
   /** New propagation engine */
@@ -88,6 +91,9 @@ public:
 
   /** Perform a decision */
   void decide(SolverTrail::DecisionToken& out);
+
+  /** Called to notify of unset variables */
+  void unsetVariables(const std::vector<Variable>& vars);
 
   /** String representation */
   std::string toString() const { return "BCP Engine"; }

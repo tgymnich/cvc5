@@ -80,6 +80,9 @@ public:
   /** Return the listener for new clauses */
   virtual ClauseDatabase::INewClauseNotify* getNewClauseListener() = 0;
 
+  /** On backtracks the plugin is notified of the unset variables */
+  virtual void unsetVariables(const std::vector<Variable>& vars) {}
+
   /** String representation of the plugin (for debug purposes mainly) */
   virtual std::string toString() const = 0;
 }; /* class SolverPlugin */

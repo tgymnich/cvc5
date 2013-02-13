@@ -198,6 +198,12 @@ public:
     return d_decisionLevel;
   }
   
+  /** Pop the last decision level. All unset variables are pushed into the vector. */
+  void popDecision(std::vector<Variable>& variablesUnset);
+
+  /** Pop to the given decision level. All unset variables are pushed into the vector. */
+  void popToLevel(unsigned level, std::vector<Variable>& variablesUnset);
+
   /** Returns the context that the trail is controlling */
   context::Context* getSearchContext() const {
     return d_context;

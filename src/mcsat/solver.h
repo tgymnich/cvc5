@@ -86,6 +86,9 @@ private:
   /** Process any new clauses that were asserted */
   void processNewClauses();
   
+  /** Process any backtrack requests */
+  void processBacktrackRequests();
+
   /** Perform propagation */
   void propagate(SolverTrail::PropagationToken::Mode mode);
 
@@ -99,7 +102,7 @@ private:
   size_t d_backtrackLevel;
 
   /** The clauses to be processed on backtrack */
-  std::vector<CRef> d_backtrackClauses;
+  std::set<CRef> d_backtrackClauses;
 
   /** Will perfrom a backtrack in order to propagate/decide clause cRef at next apropriate time */
   void requestBacktrack(unsigned level, CRef cRef);
