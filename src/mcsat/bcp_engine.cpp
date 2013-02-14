@@ -192,6 +192,7 @@ void BCPEngine::propagate(SolverTrail::PropagationToken& out) {
 	    w.next_and_remove();
 	    // We found a watch
 	    watchFound = true;
+	    break;
 	  }
 	}
 
@@ -232,7 +233,10 @@ void BCPEngine::decide(SolverTrail::DecisionToken& out) {
 
 void BCPEngine::unsetVariables(const std::vector<Variable>& vars) {
   // Just add the Boolean variables to the queue
+  size_t boolIndex = d_trail.c_TRUE.typeIndex();
   for (unsigned i = 0; i < vars.size(); ++ i) {
-    enqueue(vars[i]);
+    if (vars[i].typeIndex() == boolIndex) {
+      enqueue(vars[i]);
+    }
   }
 }
