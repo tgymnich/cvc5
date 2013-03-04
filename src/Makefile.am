@@ -17,7 +17,7 @@ AM_CPPFLAGS = \
 	-I@srcdir@/include -I@srcdir@ -I@builddir@
 AM_CXXFLAGS = -Wall -Wno-unknown-pragmas $(FLAG_VISIBILITY_HIDDEN)
 
-SUBDIRS = lib options expr util context theory prop mcsat decision smt printer proof . parser compat bindings main mcsat/main
+SUBDIRS = lib options expr util context theory prop decision smt printer proof mcsat . parser compat bindings main mcsat/main
 
 lib_LTLIBRARIES = libcvc4.la
 if HAVE_CXXTESTGEN
@@ -44,7 +44,8 @@ libcvc4_la_LIBADD = \
 	@builddir@/printer/libprinter.la \
 	@builddir@/smt/libsmt.la \
 	@builddir@/theory/libtheory.la \
-	@builddir@/decision/libdecision.la
+	@builddir@/decision/libdecision.la \
+	@builddir@/mcsat/libmcsat.la
 libcvc4_noinst_la_LIBADD = \
 	@builddir@/options/liboptions.la \
 	@builddir@/util/libutil.la \
@@ -57,7 +58,8 @@ libcvc4_noinst_la_LIBADD = \
 	@builddir@/printer/libprinter.la \
 	@builddir@/smt/libsmt.la \
 	@builddir@/theory/libtheory.la \
-	@builddir@/decision/libdecision.la
+	@builddir@/decision/libdecision.la \
+	@builddir@/mcsat/libmcsat.la
 
 if CVC4_NEEDS_REPLACEMENT_FUNCTIONS
 libcvc4_la_LIBADD += \

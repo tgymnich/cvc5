@@ -16,21 +16,17 @@ libmcsat_la_SOURCES = \
 	watch_list_manager.h \
 	watch_list_manager.cpp \
 	bcp_engine.h \
-	bcp_engine.cpp 
+	bcp_engine.cpp \
+	mcsat.h \
+	mcsat.cpp
 
-libmcsat_noinst_la_LIBADD = \
-	@builddir@/clause/libmcsat_clause.la \
-	@builddir@/rules/libmcsat_rules.la \
-	@builddir@/plugin/libmcsat_solver_plugin.la \
-	@builddir@/variable/libmcsat_variable.la \
-	@builddir@/cnf/libmcsat_cnf.la
 libmcsat_la_LIBADD = \
 	@builddir@/clause/libmcsat_clause.la \
 	@builddir@/rules/libmcsat_rules.la \
 	@builddir@/plugin/libmcsat_solver_plugin.la \
 	@builddir@/variable/libmcsat_variable.la \
 	@builddir@/cnf/libmcsat_cnf.la
-	
+
 EXTRA_DIST = 
 
 SUBDIRS = variable clause rules cnf plugin . 

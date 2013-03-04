@@ -9,9 +9,8 @@ mcsat_SOURCES = \
 	mcsat.cpp 
 mcsat_LDADD = \
 	@builddir@/../../parser/libcvc4parser.la \
-	@builddir@/../../libcvc4.la \
 	@builddir@/../../util/libstatistics.la \
-	@builddir@/../../mcsat/libmcsat.la \
+	@builddir@/../../libcvc4.la \
 	$(READLINE_LIBS)
 if CVC4_NEEDS_REPLACEMENT_FUNCTIONS
 mcsat_LDADD += \
