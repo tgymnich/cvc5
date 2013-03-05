@@ -156,7 +156,7 @@ void BCPEngine::propagate(SolverTrail::PropagationToken& out) {
       // Negation of the literal (one that we're looking for in clauses)
       Literal lit_neg = ~lit;
       
-      Debug("mcsat::bcp") << "BCPEngine::propagate(): propagating on " << lit << std::endl;
+      Debug("mcsat::bcp") << "BCPEngine::propagate(): propagating on " << lit << " with value " << d_trail.value(lit) << std::endl;
 
       // Get the watchlist of the literal to propagate
       WatchListManager::remove_iterator w = d_watchManager.begin(lit);
@@ -176,7 +176,8 @@ void BCPEngine::propagate(SolverTrail::PropagationToken& out) {
 	}
         
         // If 0th literal is true, the clause is already satisfied.
-        if (d_trail.value(clause[0]) == c_TRUE) {
+	if (d_trail.isTrue(clause[0])) {
+          Debug("mcsat::bcp") << "BCPEngine::propagate(): clause " << clause << "is true";
 	  // Keep this watch and go to the next one 
 	  w.next_and_keep();
 	  continue;
@@ -185,7 +186,8 @@ void BCPEngine::propagate(SolverTrail::PropagationToken& out) {
 	// Try to find a new watch
 	bool watchFound = false;
         for (unsigned j = 2; j < clause.size(); j++) {
-	  if (d_trail.value(clause[j]) != c_FALSE) {
+          Debug("mcsat::bcp") << "BCPEngine::propagate(): checking " << clause[j] << std::endl;
+          if (!d_trail.isFalse(clause[j])) {
 	    // Put the new watch in place
 	    clause.swapLiterals(1, j);
 	    d_watchManager.add(~clause[1], cRef);
@@ -196,7 +198,9 @@ void BCPEngine::propagate(SolverTrail::PropagationToken& out) {
 	  }
 	}
 
-	if (!watchFound) {
+        Debug("mcsat::bcp") << "BCPEngine::propagate(): found watch = " << (watchFound ? "true" : "false") << std::endl;
+
+        if (!watchFound) {
 	  // We did not find a watch so clause[0] is propagated to be true
 	  out(clause[0], cRef);
 	

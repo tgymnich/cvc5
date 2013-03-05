@@ -71,6 +71,17 @@ public:
     return d_table[typeId].size();
   }
 
+  /** Output to stream */
+  void toStream(std::ostream& out) const {
+    for (unsigned i = 0; i < d_table.size(); ++ i) {
+      for (unsigned j = 0; j < d_table[i].size(); ++ j) {
+        if (j > 0) { out << ", "; }
+        out << d_table[i][j];
+      }
+      out << std::endl;
+    }
+  }
+
 };
 
 template<typename T, typename variable_filter>
@@ -94,6 +105,12 @@ variable_table<T, variable_filter>::variable_table(const T& defaultValue)
 {
   VariableDatabase* db = VariableDatabase::getCurrentDB();
   db->addNewVariableListener(&d_new_literal_listener);
+}
+
+template<typename T, typename variable_filter>
+std::ostream& operator << (std::ostream& out, const variable_table<T, variable_filter>& table) {
+  table.toStream(out);
+  return out;
 }
 
 }

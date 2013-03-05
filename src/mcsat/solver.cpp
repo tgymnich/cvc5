@@ -202,6 +202,7 @@ bool Solver::check() {
     // Clauses processed, propagators done, we're ready for a decision
     SolverTrail::DecisionToken decisionOut(d_trail);
     for (unsigned i = 0; !decisionOut.used() && i < d_plugins.size(); ++ i) {
+      Debug("mcsat::solver") << "deciding with " << *d_plugins[i] << std::endl;
       d_plugins[i]->decide(decisionOut);
     }
 
@@ -260,7 +261,7 @@ void Solver::analyzeConflicts() {
 
     // Setup the initial variable info
     for (unsigned i = 0; i < conflictingClause.size(); ++ i) {
-      const Literal& lit = conflictingClause[i];
+      Literal lit = conflictingClause[i];
       Variable var = lit.getVariable();
       // We resolve literals at the conflict level
       if (d_trail.decisionLevel(var) == conflictLevel) {
@@ -316,7 +317,7 @@ void Solver::analyzeConflicts() {
 
       // Update the info for the resolved literals
       for (unsigned i = 1; i < literalReasonClause.size(); ++ i) {
-        const Literal& lit = literalReasonClause[i];
+        Literal lit = literalReasonClause[i];
         Variable var = lit.getVariable();
         // We resolve literals at the conflict level
         if (d_trail.decisionLevel(var) == conflictLevel) {

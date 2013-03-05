@@ -15,6 +15,9 @@ SolverTrail::SolverTrail(context::Context* context)
   c_TRUE = VariableDatabase::getCurrentDB()->getVariable(trueNode);
   c_FALSE = VariableDatabase::getCurrentDB()->getVariable(falseNode);
 
+  Debug("mcsat::trail") << "true = " << c_TRUE << " (" << c_TRUE.index() << ")" << std::endl;
+  Debug("mcsat::trail") << "false = " << c_FALSE << " (" << c_FALSE.index() << ")" << std::endl;
+
   // Add true and (not false) to the trail
   PropagationToken prop(*this, PropagationToken::PROPAGATION_NORMAL);
   prop(Literal(c_TRUE, false));
@@ -154,6 +157,10 @@ void SolverTrail::PropagationToken::operator () (Literal l, CRef reason) {
       d_trail.d_trail.push_back(Element(CLAUSAL_PROPAGATION, var));
     }
   } 
+
+  Debug("mcsat::trail") << "PropagationToken::operator () (" << l << ", " << reason << "): value of " << l << " is " << d_trail.value(l) << std::endl;
+  Debug("mcsat::trail") << "PropagationToken::operator () (" << l << ", " << reason << "): value of " << ~l << " is " << d_trail.value(~l) << std::endl;
+
 }
 
 void SolverTrail::DecisionToken::operator () (Literal l) {

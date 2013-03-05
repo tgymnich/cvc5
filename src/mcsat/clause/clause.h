@@ -51,8 +51,8 @@ public:
   }
 
   /** Get the literal at position i */
-  const Literal& operator[] (size_t i) const {
-    return reinterpret_cast<const Literal&>(d_literals[i]);
+  Literal operator[] (size_t i) const {
+    return d_literals[i];
   }
 
   /** Swap the literals at given positions */
