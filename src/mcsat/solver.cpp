@@ -42,6 +42,7 @@ Solver::Solver(context::UserContext* userContext, context::Context* searchContex
 , d_rule_InputClause(d_problemClauses, d_trail)
 , d_backtrackRequested(false)
 , d_backtrackLevel(0)
+, d_restartRequested(false)
 {
   // Add the two clause database we'll be solving
   d_trail.addClauseDatabase(d_problemClauses);
@@ -104,10 +105,10 @@ void Solver::processBacktrackRequests() {
     d_trail.popToLevel(d_backtrackLevel, variablesUnset);
 
     // Notify the plugins about the unset variables
-    for (unsigned i = 0; i < d_plugins.size(); ++ i) {
-      d_plugins[i]->unsetVariables(variablesUnset);
+    if (variablesUnset.size() > 0) {
+      d_notifyDispatch.notifyVariableUnset(variablesUnset);
     }
-
+    
     // Propagate all the added clauses
     std::set<CRef>::iterator it = d_backtrackClauses.begin();
     for (; it != d_backtrackClauses.end(); ++ it) {
@@ -120,6 +121,16 @@ void Solver::processBacktrackRequests() {
     // Clear the requests
     d_backtrackRequested = false;
     d_backtrackClauses.clear();
+  }
+  
+  if (d_restartRequested) {
+    std::vector<Variable> variablesUnset;
+    // Restart to level 0
+    d_trail.popToLevel(0, variablesUnset);
+    // Notify of any unset variables
+    if (variablesUnset.size() > 0) {
+      d_notifyDispatch.notifyVariableUnset(variablesUnset);
+    }
   }
 }
 
@@ -182,6 +193,9 @@ bool Solver::check() {
 
       Debug("mcsat::solver::search") << "Solver::check(): Conflict" << std::endl;
 
+      // Notify of a new conflict situation
+      d_notifyDispatch.notifyConflict();
+      
       // If the conflict is at level 0, we're done
       if (d_trail.decisionLevel() == 0) {
         return false;
@@ -218,9 +232,11 @@ bool Solver::check() {
   return true;
 }
 
-void Solver::addPlugin(std::string plugin) {
+void Solver::addPlugin(std::string pluginId) {
   d_pluginRequests.push_back(new SolverPluginRequest(this));
-  d_plugins.push_back(SolverPluginFactory::create(plugin, d_trail, *d_pluginRequests.back()));
+  SolverPlugin* plugin = SolverPluginFactory::create(pluginId, d_trail, *d_pluginRequests.back()); 
+  d_plugins.push_back(plugin);
+  d_notifyDispatch.addPlugin(plugin);
 }
 
 void Solver::analyzeConflicts() {
@@ -250,7 +266,8 @@ void Solver::analyzeConflicts() {
 
     // The Boolean resolution rule
     rules::BooleanResolutionRule resolution(d_auxilaryClauses, conflictPropagation.reason);
-
+    d_notifyDispatch.notifyConflictResolution(conflictPropagation.reason);
+    
     // Set of variables in the current resolvent that have a reason
     VariableHashSet varsWithReason;
     // Set of variables in the from the current level that we have seen alrady
@@ -311,6 +328,7 @@ void Solver::analyzeConflicts() {
 
       // Resolve the literal (propagations should always have first literal propagating)
       resolution.resolve(literalReason, 0);
+      d_notifyDispatch.notifyConflictResolution(literalReason);
 
       // We removed one literal
       -- varsAtConflictLevel;

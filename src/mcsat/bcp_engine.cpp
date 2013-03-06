@@ -29,12 +29,16 @@ BCPEngine::BCPEngine(const SolverTrail& trail, SolverPluginRequest& request)
 , d_newClauseNotify(*this)
 , d_newVariableNotify(*this)
 , d_trailHead(d_trail.getSearchContext())
-, d_variableScoresMax(1.0)
 , d_variableScoreCmp(d_variableScores)
 , d_variableQueue(d_variableScoreCmp)
 {
   d_trail.addNewClauseListener(&d_newClauseNotify);
   VariableDatabase::getCurrentDB()->addNewVariableListener(&d_newVariableNotify);
+
+  // Notifications we care about 
+  addNotification(NOTIFY_CONFLICT);
+  addNotification(NOTIFY_CONFLICT_RESOLUTION);
+  addNotification(NOTIFY_VARIABLE_UNSET);  
 }
 
 ClauseDatabase::INewClauseNotify* BCPEngine::getNewClauseListener() {
@@ -109,11 +113,15 @@ void BCPEngine::newVariable(Variable var) {
   Debug("mcsat::bcp") << "BCPEngine::newVariable(" << var << ")" << std::endl;
 
   // Insert a new score (max of the current scores)
-  d_variableScores.resize(var.index() + 1, d_variableScoresMax);
+  d_variableScores.resize(var.index() + 1, 1.0);
   // Make sure that there is enough space for the pointer
   d_variableQueuePositions.resize(var.index() + 1);
   // Add to the queue
   enqueue(var);
+}
+
+bool BCPEngine::inQueue(Variable var) const {
+  return d_variableQueuePositions[var.index()] != variable_queue::point_iterator();
 }
 
 void BCPEngine::enqueue(Variable var) {
@@ -234,13 +242,48 @@ void BCPEngine::decide(SolverTrail::DecisionToken& out) {
   }
 }
 
-
-void BCPEngine::unsetVariables(const std::vector<Variable>& vars) {
+void BCPEngine::notifyVariableUnset(const std::vector<Variable>& vars) {
   // Just add the Boolean variables to the queue
   size_t boolIndex = d_trail.c_TRUE.typeIndex();
   for (unsigned i = 0; i < vars.size(); ++ i) {
     if (vars[i].typeIndex() == boolIndex) {
       enqueue(vars[i]);
+    }
+  }
+}
+
+void BCPEngine::notifyConflict() {
+}
+
+void BCPEngine::notifyConflictResolution(CRef cRef) {
+  
+  // Increase per conflict apperance
+  static double variableHeuristicIncrease = 1;
+  // The clause that is resolved
+  Clause& clause = cRef.getClause();
+  // Bump each variable that is resolved
+  for (unsigned i = 0; i < clause.size(); ++ i) {
+    Variable var = clause[i].getVariable();
+    // New heuristic value
+    double newValue = d_variableScores[var.index()] + variableHeuristicIncrease;
+    
+    if (inQueue(var)) {
+      // If the variable is in the queue, erase it first
+      d_variableQueue.erase(d_variableQueuePositions[var.index()]);
+      d_variableScores[var.index()] = newValue;
+      enqueue(var);
+    } else {
+      // Otherwise just udate the value
+      d_variableScores[var.index()] = newValue;
+    }
+    
+    // If the new value is too big, update all the values
+    if (newValue > 1e100) {
+      // This preserves the order, we're fine
+      for (unsigned i = 0, i_end = d_variableScores.size(); i < i_end; ++ i) {
+	d_variableScores[i] *= 1e-100;
+      }
+      variableHeuristicIncrease = 1;
     }
   }
 }

@@ -52,9 +52,6 @@ class BCPEngine : public SolverPlugin {
   /** Scores of variables */
   std::vector<double> d_variableScores;
 
-  /** Max of the variable scores */
-  double d_variableScoresMax;
-
   /** Compare variables according to their current score */
   class VariableScoreCmp {
     std::vector<double>& d_variableScores;
@@ -78,6 +75,9 @@ class BCPEngine : public SolverPlugin {
   /** Enqueues the variable for decision making */
   void enqueue(Variable var);
 
+  /** Is the variable in queue */
+  bool inQueue(Variable var) const;
+  
 public:
   
   /** New propagation engine */
@@ -92,9 +92,15 @@ public:
   /** Perform a decision */
   void decide(SolverTrail::DecisionToken& out);
 
-  /** Called to notify of unset variables */
-  void unsetVariables(const std::vector<Variable>& vars);
-
+  /** Notification of a new conflict */
+  void notifyConflict();
+  
+  /** Nofification of a new conflict resolution step */
+  void notifyConflictResolution(CRef clause);
+  
+  /** Notification of unset variables */
+  void notifyVariableUnset(const std::vector<Variable>& vars);
+    
   /** String representation */
   std::string toString() const { return "BCP Engine"; }
 

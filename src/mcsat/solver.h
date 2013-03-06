@@ -12,6 +12,7 @@
 #include "mcsat/solver_trail.h"
 #include "mcsat/bcp_engine.h"
 #include "mcsat/inner_class.h"
+#include "mcsat/plugin/solver_plugin_notify.h"
 
 namespace CVC4 {
 namespace mcsat {
@@ -80,6 +81,9 @@ private:
   /** All the plugins */
   std::vector<SolverPlugin*> d_plugins;
 
+  /** Notificatiun dispatch */
+  NotificationDispatch d_notifyDispatch;
+  
   /** The requests of the plugins */
   std::vector<SolverPluginRequest*> d_pluginRequests;
 
@@ -94,7 +98,7 @@ private:
 
   /** Analayze all the conflicts in the trail */
   void analyzeConflicts();
-
+  
   /** Has there been a backtrack request */
   bool d_backtrackRequested;
 
@@ -106,6 +110,14 @@ private:
 
   /** Will perfrom a backtrack in order to propagate/decide clause cRef at next apropriate time */
   void requestBacktrack(unsigned level, CRef cRef);
+  
+  /** Has a restart been requested */
+  bool d_restartRequested;
+  
+  /** Request a search restart */
+  void requestRestart() {
+    d_restartRequested = true;
+  }
   
   friend class SolverPluginRequest;
 };

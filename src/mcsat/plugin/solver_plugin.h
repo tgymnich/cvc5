@@ -9,6 +9,7 @@
 #include "context/cdlist.h"
 
 #include "mcsat/solver_trail.h"
+#include "mcsat/plugin/solver_plugin_notify.h"
 
 namespace CVC4 {
 namespace mcsat {
@@ -28,15 +29,21 @@ public:
 
   /**
    * Ask for a backtrack to given level. The level must be smaller than the current decision level. The clause
-   * must not be satisfied, and it should propagate at the given level.
+   * must not be satisfied, and it should propagate at the given level. If it doesn't propagate, a non-assigned
+   * literal from the clause will be selected as a decision.
    */
   void backtrack(unsigned level, CRef cRef);
+  
+  /**
+   * Ask for a search restart.
+   */
+  void restart();
 };
 
 /**
  * Base class for model based T-solvers.
  */
-class SolverPlugin {
+class SolverPlugin : public SolverPluginNotify {
 
 private:
 
@@ -53,7 +60,7 @@ protected:
   SolverPluginRequest& d_request;
 
   /** Construct the plugin. */
-  SolverPlugin(const SolverTrail& trail, SolverPluginRequest& request)
+  SolverPlugin(const SolverTrail& trail, SolverPluginRequest& request, unsigned n = 0, ...)
   : d_trail(trail)
   , d_request(request)
   {}
@@ -79,9 +86,6 @@ public:
 
   /** Return the listener for new clauses */
   virtual ClauseDatabase::INewClauseNotify* getNewClauseListener() = 0;
-
-  /** On backtracks the plugin is notified of the unset variables */
-  virtual void unsetVariables(const std::vector<Variable>& vars) {}
 
   /** String representation of the plugin (for debug purposes mainly) */
   virtual std::string toString() const = 0;
