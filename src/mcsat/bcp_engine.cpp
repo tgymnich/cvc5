@@ -40,6 +40,9 @@ BCPEngine::BCPEngine(const SolverTrail& trail, SolverPluginRequest& request)
   addNotification(NOTIFY_CONFLICT);
   addNotification(NOTIFY_CONFLICT_RESOLUTION);
   addNotification(NOTIFY_VARIABLE_UNSET);  
+
+  Notice() << "mcsat::BCPEngine: Variable selection: " << (options::use_mcsat_bcp_var_heuristic() ? "on" : "off") << std::endl;
+  
 }
 
 ClauseDatabase::INewClauseNotify* BCPEngine::getNewClauseListener() {
