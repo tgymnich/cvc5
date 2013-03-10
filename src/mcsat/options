@@ -1,0 +1,12 @@
+#
+# Option specification file for CVC4
+# See src/options/base_options for a description of this file format
+#
+
+module MCSAT "mcsat/options.h" MCSAT framework
+
+option use_mcsat_bcp_var_heuristic --enable-mcsat-bcp-var-heuristic/--disable-mcsat-bcp-var-heuristic bool :default true :read-write
+ turns on the variable selection heurisic for the mcsat bcp layer
+/turns off the variable selection heurisic for the mcsat bcp layer
+
+endmodule
