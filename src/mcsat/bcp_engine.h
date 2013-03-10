@@ -83,10 +83,22 @@ class BCPEngine : public SolverPlugin {
 
   /** Is the variable in queue */
   bool inQueue(Variable var) const;
-  
+    
   /** How many restarts have happened */
   unsigned d_restartsCount;
   
+  /** The base of the Luby sequence powers */
+  double d_restartBase;
+
+  /** The initial number of conflicts for the restart */
+  unsigned d_restartInit;
+  
+  /** How many conflicts have happened */
+  unsigned d_conflictsCount;
+  
+  /** How many conflicts until for a restart */
+  unsigned d_conflictsLimit;
+
 public:
   
   /** New propagation engine */

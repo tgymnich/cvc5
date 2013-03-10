@@ -124,6 +124,9 @@ void Solver::processBacktrackRequests() {
   }
   
   if (d_restartRequested) {
+    
+    Notice() << "mcsat::Solver: Restarting at " << d_stats.conflicts.getData() << " conflicts" << std::endl;
+    
     std::vector<Variable> variablesUnset;
     // Restart to level 0
     d_trail.popToLevel(0, variablesUnset);
@@ -133,6 +136,8 @@ void Solver::processBacktrackRequests() {
     }
     // Notify of the restart 
     d_notifyDispatch.notifyRestart();
+    d_restartRequested = false;
+    ++ d_stats.restarts;
   }
 }
 

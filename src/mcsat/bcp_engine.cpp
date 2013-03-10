@@ -34,6 +34,10 @@ BCPEngine::BCPEngine(const SolverTrail& trail, SolverPluginRequest& request)
 , d_variableScoreCmp(d_variableScores)
 , d_variableQueue(d_variableScoreCmp)
 , d_restartsCount(0)
+, d_restartBase(options::mcsat_bcp_restart_base())
+, d_restartInit(options::mcsat_bcp_restart_init())
+, d_conflictsCount(0)
+, d_conflictsLimit(d_restartInit)
 {
   d_trail.addNewClauseListener(&d_newClauseNotify);
   VariableDatabase::getCurrentDB()->addNewVariableListener(&d_newVariableNotify);
@@ -276,7 +280,34 @@ void BCPEngine::notifyVariableUnset(const std::vector<Variable>& vars) {
   }
 }
 
+static unsigned luby(unsigned index) {
+
+    unsigned size = 1;
+    unsigned maxPower = 0;
+
+    // Find the first full subsequence such that total size covers the index
+    while (size <= index) {
+        size = 2*size + 1;
+        ++ maxPower;
+    }
+
+    // Now get the exact value
+    while (size > index + 1) {
+        size = size / 2;
+        -- maxPower;
+        if (size <= index) {
+            index -= size;
+        }
+    }
+
+    return maxPower + 1;
+}
+
 void BCPEngine::notifyConflict() {
+  d_conflictsCount ++;
+  if (d_conflictsCount >= d_conflictsLimit) {
+    d_request.restart();
+  }
 }
 
 void BCPEngine::notifyConflictResolution(CRef cRef) {
@@ -327,5 +358,7 @@ void BCPEngine::bumpClause(CRef cRef) {
 }
 
 void BCPEngine::notifyRestart() {
-  ++ d_restartsCount;
+  d_restartsCount ++;
+  d_conflictsCount = 0;
+  d_conflictsLimit = d_restartInit * pow(d_restartBase, luby(d_restartsCount));
 }

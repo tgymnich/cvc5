@@ -13,4 +13,10 @@ option use_mcsat_bcp_value_phase_heuristic --enable-mcsat-bcp-value-phase-heuris
  turns on the variable value selection heurisic based on previous phase for the mcsat bcp layer
 /turns off the variable value selection heurisic based on previous phase for the mcsat bcp layer
 
+option mcsat_bcp_restart_base --mcsat-bcp-restart-base=N double :default 2.0
+ sets the base for the restart computation via the luby sequence
+ 
+option mcsat_bcp_restart_init --mcsat_bcp_restart_init=N unsigned :default 50 
+ sets the inital number of conflicts for the restart strategy 
+
 endmodule
