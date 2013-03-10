@@ -30,19 +30,22 @@ BCPEngine::BCPEngine(const SolverTrail& trail, SolverPluginRequest& request)
 , d_newClauseNotify(*this)
 , d_newVariableNotify(*this)
 , d_trailHead(d_trail.getSearchContext())
+, d_variableScoresMax(1.0)
 , d_variableScoreCmp(d_variableScores)
 , d_variableQueue(d_variableScoreCmp)
+, d_restartsCount(0)
 {
   d_trail.addNewClauseListener(&d_newClauseNotify);
   VariableDatabase::getCurrentDB()->addNewVariableListener(&d_newVariableNotify);
 
   // Notifications we care about 
+  addNotification(NOTIFY_RESTART);
   addNotification(NOTIFY_CONFLICT);
   addNotification(NOTIFY_CONFLICT_RESOLUTION);
   addNotification(NOTIFY_VARIABLE_UNSET);  
 
   Notice() << "mcsat::BCPEngine: Variable selection: " << (options::use_mcsat_bcp_var_heuristic() ? "on" : "off") << std::endl;
-  
+  Notice() << "mcsat::BCPEngine: Variable value by phase : " << (options::use_mcsat_bcp_value_phase_heuristic() ? "on" : "off") << std::endl;  
 }
 
 ClauseDatabase::INewClauseNotify* BCPEngine::getNewClauseListener() {
@@ -117,7 +120,9 @@ void BCPEngine::newVariable(Variable var) {
   Debug("mcsat::bcp") << "BCPEngine::newVariable(" << var << ")" << std::endl;
 
   // Insert a new score (max of the current scores)
-  d_variableScores.resize(var.index() + 1, 1.0);
+  d_variableScores.resize(var.index() + 1, d_variableScoresMax);
+  // Values of variables
+  d_variableValues.resize(var.index() + 1, false);
   // Make sure that there is enough space for the pointer
   d_variableQueuePositions.resize(var.index() + 1);
   // Add to the queue
@@ -156,7 +161,7 @@ void BCPEngine::propagate(SolverTrail::PropagationToken& out) {
   unsigned i = d_trailHead;
   for (; d_trail.consistent() && i < d_trail.size(); ++ i) {
     Variable var = d_trail[i].var;
-
+    
     if (var.typeIndex() == c_BOOLEAN) {
       
       // Variable that was propagated
@@ -167,7 +172,10 @@ void BCPEngine::propagate(SolverTrail::PropagationToken& out) {
       Literal lit(var, var_value == c_FALSE);
       // Negation of the literal (one that we're looking for in clauses)
       Literal lit_neg = ~lit;
-      
+    
+      // Remember the value
+      d_variableValues[var.index()] = (var_value == c_TRUE);
+    
       Debug("mcsat::bcp") << "BCPEngine::propagate(): propagating on " << lit << " with value " << d_trail.value(lit) << std::endl;
 
       // Get the watchlist of the literal to propagate
@@ -239,8 +247,20 @@ void BCPEngine::decide(SolverTrail::DecisionToken& out) {
     d_variableQueuePositions[var.index()] = variable_queue::point_iterator();
 
     if (d_trail.value(var).isNull()) {
-      // Decide !var first
+      
+      // Phase heuristic
+      if (options::use_mcsat_bcp_value_phase_heuristic()) {
+	if (d_variableValues[var.index()]) {
+	  out(Literal(var, false));
+	} else {
+	  out(Literal(var, true));
+	}
+	return;
+      } 
+      
+      // No heuristic, just decide !var first
       out(Literal(var, true));
+      
       return;
     }
   }
@@ -278,7 +298,10 @@ void BCPEngine::bumpVariable(Variable var) {
   
   // New heuristic value
   double newValue = d_variableScores[var.index()] + variableHeuristicIncrease;
-    
+  if (newValue > d_variableScoresMax) {
+    d_variableScoresMax = newValue;
+  }
+  
   if (inQueue(var)) {
     // If the variable is in the queue, erase it first
     d_variableQueue.erase(d_variableQueuePositions[var.index()]);
@@ -296,8 +319,13 @@ void BCPEngine::bumpVariable(Variable var) {
       d_variableScores[i] *= 1e-100;
     }
     variableHeuristicIncrease *= 1e-100;
+    d_variableScoresMax *= 1e-100;
   }
 }
   
 void BCPEngine::bumpClause(CRef cRef) {
+}
+
+void BCPEngine::notifyRestart() {
+  ++ d_restartsCount;
 }

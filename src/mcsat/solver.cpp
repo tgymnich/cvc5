@@ -131,6 +131,8 @@ void Solver::processBacktrackRequests() {
     if (variablesUnset.size() > 0) {
       d_notifyDispatch.notifyVariableUnset(variablesUnset);
     }
+    // Notify of the restart 
+    d_notifyDispatch.notifyRestart();
   }
 }
 

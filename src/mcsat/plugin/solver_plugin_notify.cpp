@@ -19,7 +19,13 @@ void NotificationDispatch::addPlugin(SolverPlugin* plugin) {
       d_toNotify[type].push_back(plugin);
     }
 }
-  
+
+void NotificationDispatch::notifyRestart() {
+  for(unsigned i = 0; i < d_toNotify[NOTIFY_RESTART].size(); ++ i) {
+    d_toNotify[NOTIFY_RESTART][i]->notifyRestart();
+  }  
+}
+
 void NotificationDispatch::notifyConflict() {
   for(unsigned i = 0; i < d_toNotify[NOTIFY_CONFLICT].size(); ++ i) {
     d_toNotify[NOTIFY_CONFLICT][i]->notifyConflict();

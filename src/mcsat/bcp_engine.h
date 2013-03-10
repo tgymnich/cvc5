@@ -52,6 +52,12 @@ class BCPEngine : public SolverPlugin {
   /** Scores of variables */
   std::vector<double> d_variableScores;
 
+  /** Max of all the variables */
+  double d_variableScoresMax;
+  
+  /** Values of variables */
+  std::vector<bool> d_variableValues;
+  
   /** Compare variables according to their current score */
   class VariableScoreCmp {
     std::vector<double>& d_variableScores;
@@ -77,6 +83,9 @@ class BCPEngine : public SolverPlugin {
 
   /** Is the variable in queue */
   bool inQueue(Variable var) const;
+  
+  /** How many restarts have happened */
+  unsigned d_restartsCount;
   
 public:
   
@@ -107,6 +116,9 @@ public:
   /** Notification of unset variables */
   void notifyVariableUnset(const std::vector<Variable>& vars);
     
+  /** Notification of restarts */
+  void notifyRestart();
+  
   /** String representation */
   std::string toString() const { return "BCP Engine"; }
 
