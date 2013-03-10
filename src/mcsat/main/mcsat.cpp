@@ -9,6 +9,9 @@
 #include "expr/expr_manager.h"
 #include "expr/command.h"
 
+#include "options/options.h"
+#include "main/options.h"
+
 using namespace CVC4;
 using namespace CVC4::parser;
 
@@ -16,14 +19,34 @@ using namespace CVC4::parser;
 
 using namespace std;
 
+void printUsage(Options& opts, bool full) {
+  stringstream ss;
+  ss << "usage: " << opts[options::binary_name] << " [options] [input-file]" << endl
+      << endl
+      << "Without an input file, or with `-', CVC4 reads from standard input." << endl
+      << endl 
+      << "CVC4 options:" << endl;
+  if(full) {
+    Options::printUsage( ss.str(), *opts[options::out] );
+  } else {
+    Options::printShortUsage( ss.str(), *opts[options::out] );
+  }
+}
+
 int main(int argc, char* argv[]) {
   
-  // Create the expression manager
-  Options options;
-  ExprManager exprManager(options);
-
   // Parse the options
+  Options options;
   vector<string> filenames = options.parseOptions(argc, argv); 
+
+  // Help?
+  if(options[options::help]) {
+    printUsage(options, true);  
+    exit(1);
+  }
+  
+  // Create the expression manager
+  ExprManager exprManager(options);
 
   // Output as SMT2
   Debug.getStream() << expr::ExprSetDepth(-1) << expr::ExprSetLanguage(language::output::LANG_SMTLIB_V2);
@@ -56,6 +79,12 @@ int main(int argc, char* argv[]) {
       bool result = mcSolver.check();
       cout << (result ? "sat" : "unsat") << endl;
       
+      // Dump the statistics if asked for 
+      if(options[options::statistics]) {
+	exprManager.getStatistics().flushInformation(std::cerr);
+	mcSolver.getStatistics().flushInformation(std::cerr);
+      }
+
       // Get rid of the parser
       delete parser;
 

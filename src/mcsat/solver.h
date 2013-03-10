@@ -5,6 +5,7 @@
 #include "expr/node.h"
 #include "context/cdo.h"
 #include "context/cdlist.h"
+#include "util/statistics_registry.h"
 
 #include "mcsat/cnf/tseitin_cnf_stream.h"
 #include "mcsat/clause/clause_db.h"
@@ -17,6 +18,33 @@
 namespace CVC4 {
 namespace mcsat {
 
+/** Statistics for the BCP engine */
+struct SolverStats {
+  /** Number of conflicts */
+  IntStat conflicts;
+  /** Number of decisions */
+  IntStat decisions;
+  /** Number of restarts */
+  IntStat restarts;
+  
+  SolverStats() 
+  : conflicts("mcsat::solver::conflicts", 0)
+  , decisions("mcsat::solver::decisions", 0)
+  , restarts("mcsat::solver::restarts", 0)  
+  {
+    StatisticsRegistry::registerStat(&conflicts);  
+    StatisticsRegistry::registerStat(&decisions);  
+    StatisticsRegistry::registerStat(&restarts);  
+  }
+  
+  ~SolverStats() {
+    StatisticsRegistry::unregisterStat(&conflicts);  
+    StatisticsRegistry::unregisterStat(&decisions);  
+    StatisticsRegistry::unregisterStat(&restarts);  
+  }
+};
+
+  
 class Solver {
 
 public:
@@ -43,6 +71,9 @@ public:
 
 private:
 
+  /** Solver statistics */
+  SolverStats d_stats;
+  
   /** The variable database of the solver */
   VariableDatabase d_variableDatabase;
 

@@ -1,4 +1,5 @@
 #include "mcsat/bcp_engine.h"
+#include "mcsat/options.h"
 
 using namespace CVC4;
 using namespace mcsat;
@@ -256,34 +257,44 @@ void BCPEngine::notifyConflict() {
 }
 
 void BCPEngine::notifyConflictResolution(CRef cRef) {
+  // The clause that is resolved
+  Clause& clause = cRef.getClause();
+  
+  if (options::use_mcsat_bcp_var_heuristic()) {
+    // Bump each variable that is resolved
+    for (unsigned i = 0; i < clause.size(); ++ i) {
+      bumpVariable(clause[i].getVariable());
+    }
+  }
+}
+
+void BCPEngine::bumpVariable(Variable var) {
   
   // Increase per conflict apperance
   static double variableHeuristicIncrease = 1;
-  // The clause that is resolved
-  Clause& clause = cRef.getClause();
-  // Bump each variable that is resolved
-  for (unsigned i = 0; i < clause.size(); ++ i) {
-    Variable var = clause[i].getVariable();
-    // New heuristic value
-    double newValue = d_variableScores[var.index()] + variableHeuristicIncrease;
+  
+  // New heuristic value
+  double newValue = d_variableScores[var.index()] + variableHeuristicIncrease;
     
-    if (inQueue(var)) {
-      // If the variable is in the queue, erase it first
-      d_variableQueue.erase(d_variableQueuePositions[var.index()]);
-      d_variableScores[var.index()] = newValue;
-      enqueue(var);
-    } else {
-      // Otherwise just udate the value
-      d_variableScores[var.index()] = newValue;
-    }
-    
-    // If the new value is too big, update all the values
-    if (newValue > 1e100) {
-      // This preserves the order, we're fine
-      for (unsigned i = 0, i_end = d_variableScores.size(); i < i_end; ++ i) {
-	d_variableScores[i] *= 1e-100;
-      }
-      variableHeuristicIncrease = 1;
-    }
+  if (inQueue(var)) {
+    // If the variable is in the queue, erase it first
+    d_variableQueue.erase(d_variableQueuePositions[var.index()]);
+    d_variableScores[var.index()] = newValue;
+    enqueue(var);
+  } else {
+    // Otherwise just udate the value
+    d_variableScores[var.index()] = newValue;
   }
+    
+  // If the new value is too big, update all the values
+  if (newValue > 1e100) {
+    // This preserves the order, we're fine
+    for (unsigned i = 0, i_end = d_variableScores.size(); i < i_end; ++ i) {
+      d_variableScores[i] *= 1e-100;
+    }
+    variableHeuristicIncrease *= 1e-100;
+  }
+}
+  
+void BCPEngine::bumpClause(CRef cRef) {
 }

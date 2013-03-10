@@ -134,7 +134,6 @@ void BooleanResolutionRule::resolve(CRef cRef, unsigned literalIndex) {
     d_literals.insert(Literal(falseVar, false));
   }
 
-
   Debug("mcsat::resolution_rule") << "BooleanResolutionRule(): got " << d_literals << std::endl;
 }
 

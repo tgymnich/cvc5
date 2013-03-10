@@ -95,6 +95,12 @@ public:
   /** Notification of a new conflict */
   void notifyConflict();
   
+  /** Bump the heuristic value of the vaiable */
+  void bumpVariable(Variable var);
+  
+  /** Bump the heuristic value of the clause */
+  void bumpClause(CRef cRef);
+  
   /** Nofification of a new conflict resolution step */
   void notifyConflictResolution(CRef clause);
   

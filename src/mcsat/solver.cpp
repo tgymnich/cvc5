@@ -192,7 +192,8 @@ bool Solver::check() {
     if (!d_trail.consistent()) {
 
       Debug("mcsat::solver::search") << "Solver::check(): Conflict" << std::endl;
-
+      ++ d_stats.conflicts;
+      
       // Notify of a new conflict situation
       d_notifyDispatch.notifyConflict();
       
@@ -226,7 +227,10 @@ bool Solver::check() {
       propagate(SolverTrail::PropagationToken::PROPAGATION_COMPLETE);
       // If no-one has anything to say, we're done
       break;
+    } else {
+      ++ d_stats.decisions;
     }
+    
   }
 
   return true;

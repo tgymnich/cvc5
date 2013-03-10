@@ -38,3 +38,7 @@ bool MCSatEngine::check() {
   smt::SmtScope scope(d_smtEngine);
   return d_mcSolver->check();
 }
+
+Statistics MCSatEngine::getStatistics() const throw() {
+  return d_smtEngine->getStatistics();  
+}

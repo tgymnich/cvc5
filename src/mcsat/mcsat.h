@@ -17,6 +17,7 @@
 #include "cvc4_public.h"
 
 #include "expr/expr.h"
+#include "util/statistics.h"
 
 namespace CVC4 {
 
@@ -71,6 +72,9 @@ public:
 
   /** Check if the current set of assertions is satisfiable */
   bool check();
+
+  /** Export statistics from this SmtEngine. */
+  Statistics getStatistics() const throw();
 
 };/* class MCSatEngine */
 
