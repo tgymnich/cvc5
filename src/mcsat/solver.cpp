@@ -40,6 +40,7 @@ Solver::Solver(context::UserContext* userContext, context::Context* searchContex
 , d_cnfStreamListener(*this)
 , d_trail(searchContext)
 , d_rule_InputClause(d_problemClauses, d_trail)
+, d_rule_Resolution(d_auxilaryClauses)
 , d_backtrackRequested(false)
 , d_backtrackLevel(0)
 , d_restartRequested(false)
@@ -95,7 +96,7 @@ void Solver::processNewClauses() {
   d_newClauses.clear();
 }
 
-void Solver::processBacktrackRequests() {
+void Solver::processRequests() {
 
   if (d_backtrackRequested) {
     Debug("mcsat::solver") << "Solver::processBacktrackRequests()" << std::endl;
@@ -190,7 +191,7 @@ bool Solver::check() {
     processNewClauses();
     
     // If a backtrack was requested then
-    processBacktrackRequests();
+    processRequests();
 
     // Normal propagate
     propagate(SolverTrail::PropagationToken::PROPAGATION_NORMAL);
@@ -276,7 +277,7 @@ void Solver::analyzeConflicts() {
     Debug("mcsat::solver::analyze") << "Solver::analyzeConflicts(): in conflict at level " << conflictLevel << std::endl;
 
     // The Boolean resolution rule
-    rules::BooleanResolutionRule resolution(d_auxilaryClauses, conflictPropagation.reason);
+    d_rule_Resolution.start(conflictPropagation.reason);
     d_notifyDispatch.notifyConflictResolution(conflictPropagation.reason);
     
     // Set of variables in the current resolvent that have a reason
@@ -286,6 +287,8 @@ void Solver::analyzeConflicts() {
 
     // Number of literals in the current resolvent
     unsigned varsAtConflictLevel = 0;
+
+    // TODO: Resolve out 0-level literals
 
     // Setup the initial variable info
     for (unsigned i = 0; i < conflictingClause.size(); ++ i) {
@@ -338,7 +341,7 @@ void Solver::analyzeConflicts() {
       Clause& literalReasonClause = literalReason.getClause();
 
       // Resolve the literal (propagations should always have first literal propagating)
-      resolution.resolve(literalReason, 0);
+      d_rule_Resolution.resolve(literalReason, 0);
       d_notifyDispatch.notifyConflictResolution(literalReason);
 
       // We removed one literal
@@ -365,7 +368,7 @@ void Solver::analyzeConflicts() {
     }
 
     // Finish the resolution
-    CRef resolvent = resolution.finish();
+    CRef resolvent = d_rule_Resolution.finish();
     Debug("mcsat::solver::analyze") << "Solver::analyzeConflicts(): resolvent: " << resolvent << std::endl;
   }
 }

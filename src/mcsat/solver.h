@@ -9,16 +9,19 @@
 
 #include "mcsat/cnf/tseitin_cnf_stream.h"
 #include "mcsat/clause/clause_db.h"
-#include "mcsat/rules/proof_rule.h"
 #include "mcsat/solver_trail.h"
 #include "mcsat/bcp_engine.h"
 #include "mcsat/inner_class.h"
 #include "mcsat/plugin/solver_plugin_notify.h"
 
+#include "mcsat/rules/input_clause_rule.h"
+#include "mcsat/rules/resolution_rule.h"
+
+
 namespace CVC4 {
 namespace mcsat {
 
-/** Statistics for the BCP engine */
+/** Statistics for the bas Solver */
 struct SolverStats {
   /** Number of conflicts */
   IntStat conflicts;
@@ -109,10 +112,13 @@ private:
   /** Rule for creating input clauses */
   rules::InputClauseRule d_rule_InputClause;
 
+  /** Resolution rule for conflict analysis */
+  rules::BooleanResolutionRule d_rule_Resolution;
+
   /** All the plugins */
   std::vector<SolverPlugin*> d_plugins;
 
-  /** Notificatiun dispatch */
+  /** Notification dispatch */
   NotificationDispatch d_notifyDispatch;
   
   /** The requests of the plugins */
@@ -121,13 +127,13 @@ private:
   /** Process any new clauses that were asserted */
   void processNewClauses();
   
-  /** Process any backtrack requests */
-  void processBacktrackRequests();
+  /** Process any requests from solvers */
+  void processRequests();
 
   /** Perform propagation */
   void propagate(SolverTrail::PropagationToken::Mode mode);
 
-  /** Analayze all the conflicts in the trail */
+  /** Analyze all the conflicts in the trail */
   void analyzeConflicts();
   
   /** Has there been a backtrack request */
@@ -139,7 +145,7 @@ private:
   /** The clauses to be processed on backtrack */
   std::set<CRef> d_backtrackClauses;
 
-  /** Will perfrom a backtrack in order to propagate/decide clause cRef at next apropriate time */
+  /** Will perform a backtrack in order to propagate/decide clause cRef at next appropriate time */
   void requestBacktrack(unsigned level, CRef cRef);
   
   /** Has a restart been requested */

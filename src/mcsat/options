@@ -16,7 +16,10 @@ option use_mcsat_bcp_value_phase_heuristic --enable-mcsat-bcp-value-phase-heuris
 option mcsat_bcp_restart_base --mcsat-bcp-restart-base=N double :default 2.0
  sets the base for the restart computation via the luby sequence
  
-option mcsat_bcp_restart_init --mcsat_bcp_restart_init=N unsigned :default 50 
+option mcsat_bcp_restart_init --mcsat-bcp-restart-init=N unsigned :default 50 
  sets the inital number of conflicts for the restart strategy 
 
+option mcsat_bcp_attach_limit --mcsat-bcp-attach-limit=N unsigned :default 0 
+ maximal number of literals that a learnt clause can have so that we use it in BCP (0 = inf)
+ 
 endmodule

@@ -104,9 +104,13 @@ void BCPEngine::newClause(CRef cRef) {
     Debug("mcsat::bcp") << "BCPEngine::newClause(): sorted: " << cRef << std::endl;
 
     // Attach the top two literals
-    d_watchManager.add(~clause[0], cRef);
-    d_watchManager.add(~clause[1], cRef);
-
+    // TODO: only for learnt clauses can we choose
+    bool attach = options::mcsat_bcp_attach_limit() == 0 || clause.size() <= options::mcsat_bcp_attach_limit();
+    if (attach) {
+      d_watchManager.add(~clause[0], cRef);
+      d_watchManager.add(~clause[1], cRef);
+    }
+      
     // If clause[1] is false, the clause propagates
     if (d_trail.isFalse(clause[1])) {
       unsigned propagationLevel = d_trail.decisionLevel(clause[1].getVariable());

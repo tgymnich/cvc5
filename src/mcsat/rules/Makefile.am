@@ -9,7 +9,11 @@ noinst_LTLIBRARIES = libmcsat_rules.la
 
 libmcsat_rules_la_SOURCES = \
 	proof_rule.h \
-	proof_rule.cpp 
+	proof_rule.cpp \
+	input_clause_rule.h \
+	input_clause_rule.cpp \
+	resolution_rule.h \
+	resolution_rule.cpp
 	
 EXTRA_DIST = 
 

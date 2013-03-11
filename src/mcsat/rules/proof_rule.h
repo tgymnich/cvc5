@@ -43,43 +43,6 @@ public:
   virtual ~ProofRule();
 };
 
-/**
- * Rule for adding input clauses preprocessed wrt the current trail. Can be applied
- * to many clauses.
- */
-class InputClauseRule : public ProofRule {
-  const SolverTrail& d_trail;
-public:
-  InputClauseRule(ClauseDatabase& clauseDB, const SolverTrail& trail)
-  : ProofRule("mcsat::input_clause_rule", clauseDB)
-  , d_trail(trail) {}
-
-  /** Simplify and add the clause to the database */
-  CRef apply(LiteralVector& literals);
-};
-
-/**
- * Boolean resolutino rule. To be used in sequence for one resolution proof.
- */
-class BooleanResolutionRule : public ProofRule {
-
-  /** The literals of the current clause */
-  LiteralHashSet d_literals;
-
-public:
-
-  /** Create a new Boolean resolution starting from the given initial clause */
-  BooleanResolutionRule(ClauseDatabase& clauseDB, CRef initialClause);
-
-  /**
-   * Resolve with given clause. Optionally, you can give the index of the literal to be resolved.
-   */
-  void resolve(CRef cRef, unsigned literalIndex);
-
-  /** Finish the derivation */
-  CRef finish();
-};
-
 }
 }
 }
