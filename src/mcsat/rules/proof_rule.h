@@ -30,7 +30,11 @@ private:
   /** Id of the rule with the clause database */
   size_t d_id;
 protected:
-  /** Construct the rule with the given name */
+  /**
+   * Construct the rule with the given name.
+   * @param name the name of the rule (for use in statistics)
+   * @param clauseDB the database the rule will output to
+   */
   ProofRule(std::string name, ClauseDatabase& clauseDB);
   /** Commit the result of the proof rule */
   CRef commit(LiteralVector& literals);
@@ -41,6 +45,10 @@ protected:
 public:
   /** Virtual destructor */
   virtual ~ProofRule();
+  /** Get the id of this rule */
+  size_t getRuleId() const {
+    return d_id;
+  }
 };
 
 }

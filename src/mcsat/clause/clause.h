@@ -66,6 +66,11 @@ public:
     return d_refCount > 0; 
   }
 
+  /** Get the id of the rule that produced this clause */
+  size_t getRuleId() const {
+    return d_ruleId;
+  }
+
   template <class Compare>
   void sort(Compare& cmp);
 

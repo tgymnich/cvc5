@@ -138,6 +138,11 @@ public:
   /** Print the clause to the stream */
   void toStream(std::ostream& out) const;
 
+  /** Hash the reference */
+  size_t hash() const {
+    return std::tr1::hash<size_t>()(d_ref);
+  }
+
   /** Compare two references */
   template<bool rc2>
   bool operator == (const ClauseRef<rc2>& other) const;
@@ -175,6 +180,13 @@ template<bool refCount>
 inline std::ostream& operator << (std::ostream& out, const ClauseRef<refCount>& cRef) {
   return out << cRef.getClause();
 }
+
+struct CRefHashFunction {
+  size_t operator () (const CRef& cRef) const {
+    return cRef.hash();
+  }
+};
+
 
 } /* namespace mcsat */
 } /* namespace CVC4 */

@@ -89,6 +89,12 @@ private:
   /** The clause database for input clauses */
   ClauseDatabase& d_auxilaryClauses;
 
+  /** List of problem clauses */
+  std::vector<CRef_Strong> d_problemClausesList;
+
+  /** List of learnt clauses */
+  std::vector<CRef_Strong> d_learntClausesList;
+
   /** CNF transform of the solver */
   TseitinCnfStream d_cnfStream;
 
@@ -114,6 +120,9 @@ private:
 
   /** Resolution rule for conflict analysis */
   rules::BooleanResolutionRule d_rule_Resolution;
+
+  /** Clauses learnt from conflicts */
+  std::vector<CRef_Strong> d_learntClauses;
 
   /** All the plugins */
   std::vector<SolverPlugin*> d_plugins;
@@ -157,6 +166,21 @@ private:
   }
   
   friend class SolverPluginRequest;
+
+  /** Scores of learnt clauses */
+  std::hash_map<CRef, double, CRefHashFunction> d_learntClausesScore;
+
+  /** Maximal score */
+  double d_learntClausesScoreMax;
+
+  /** Increase per bump */
+  double d_learntClausesScoreIncrease;
+
+  /** Increase the clause heuristic */
+  void bumpClause(CRef cRef);
+
+  /** Heuristically remove some learnt clauses */
+  void shrinkLearnts();
 };
 
 }

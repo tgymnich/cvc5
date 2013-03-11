@@ -44,6 +44,8 @@ Solver::Solver(context::UserContext* userContext, context::Context* searchContex
 , d_backtrackRequested(false)
 , d_backtrackLevel(0)
 , d_restartRequested(false)
+, d_learntClausesScoreMax(1.0)
+, d_learntClausesScoreIncrease(1.0)
 {
   // Add the two clause database we'll be solving
   d_trail.addClauseDatabase(d_problemClauses);
@@ -89,7 +91,8 @@ void Solver::processNewClauses() {
   // Add all the clauses
   for (unsigned clause_i = 0; clause_i < d_newClauses.size(); ++ clause_i) {
     // Apply the input clause rule
-    d_rule_InputClause.apply(d_newClauses[clause_i]);
+    CRef cRef = d_rule_InputClause.apply(d_newClauses[clause_i]);
+    d_problemClausesList.push_back(cRef);
   }
   
   // Done with the clauses, clear
@@ -245,10 +248,13 @@ bool Solver::check() {
 }
 
 void Solver::addPlugin(std::string pluginId) {
+
   d_pluginRequests.push_back(new SolverPluginRequest(this));
   SolverPlugin* plugin = SolverPluginFactory::create(pluginId, d_trail, *d_pluginRequests.back()); 
   d_plugins.push_back(plugin);
   d_notifyDispatch.addPlugin(plugin);
+
+  Notice() << "mcsat::Solver: added plugin " << *plugin << std::endl;
 }
 
 void Solver::analyzeConflicts() {
@@ -268,6 +274,11 @@ void Solver::analyzeConflicts() {
     // Clause in conflict
     Clause& conflictingClause = conflictPropagation.reason.getClause();
     Debug("mcsat::solver::analyze") << "Solver::analyzeConflicts(): analyzing " << conflictingClause << std::endl;
+
+    // If a learnt clause, bump it
+    if (conflictPropagation.reason.getDatabaseId() == d_auxilaryClauses.getDatabaseId()) {
+      bumpClause(conflictPropagation.reason);
+    }
 
     // The level at which the clause is in conflict
     unsigned conflictLevel = 0;
@@ -369,6 +380,47 @@ void Solver::analyzeConflicts() {
 
     // Finish the resolution
     CRef resolvent = d_rule_Resolution.finish();
+    d_learntClausesList.push_back(resolvent);
+    d_learntClausesScore[resolvent] = d_learntClausesScoreMax;
     Debug("mcsat::solver::analyze") << "Solver::analyzeConflicts(): resolvent: " << resolvent << std::endl;
   }
+}
+
+void Solver::bumpClause(CRef cRef) {
+  Assert(cRef.getDatabaseId() == d_auxilaryClauses.getDatabaseId());
+
+  std::hash_map<CRef, double, CRefHashFunction>::iterator find = d_learntClausesScore.find(cRef);
+  Assert(find != d_learntClausesScore.end());
+
+  find->second += d_learntClausesScoreIncrease;
+
+  if (find->second > 1e20) {
+    std::hash_map<CRef, double, CRefHashFunction>::iterator it = d_learntClausesScore.begin();
+    std::hash_map<CRef, double, CRefHashFunction>::iterator it_end = d_learntClausesScore.begin();
+    for (; it != it_end; ++ it)  {
+      it->second = it->second * 1e-20;
+    }
+    // TODO: decay clause activities
+    // d_learntClausesScoreIncrease *= 1e-20;
+  }
+}
+
+struct learnt_cmp_by_score {
+
+  const std::hash_map<CRef, double, CRefHashFunction>& d_scoreMap;
+
+  learnt_cmp_by_score(const std::hash_map<CRef, double, CRefHashFunction>& map)
+  : d_scoreMap(map)
+  {}
+
+  bool operator () (const CRef_Strong& c1, const CRef_Strong& c2) const {
+    return d_scoreMap.find((CRef)c1)->second < d_scoreMap.find((CRef)c2)->second;
+  }
+
+};
+
+void Solver::shrinkLearnts() {
+  learnt_cmp_by_score cmp(d_learntClausesScore);
+  std::sort(d_learntClausesList.begin(), d_learntClausesList.end(), cmp);
+  d_learntClausesList.resize(d_learntClauses.size() / 2);
 }

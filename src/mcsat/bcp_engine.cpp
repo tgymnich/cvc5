@@ -104,7 +104,6 @@ void BCPEngine::newClause(CRef cRef) {
     Debug("mcsat::bcp") << "BCPEngine::newClause(): sorted: " << cRef << std::endl;
 
     // Attach the top two literals
-    // TODO: only for learnt clauses can we choose
     bool attach = options::mcsat_bcp_attach_limit() == 0 || clause.size() <= options::mcsat_bcp_attach_limit();
     if (attach) {
       d_watchManager.add(~clause[0], cRef);
@@ -353,14 +352,12 @@ void BCPEngine::bumpVariable(Variable var) {
     for (unsigned i = 0, i_end = d_variableScores.size(); i < i_end; ++ i) {
       d_variableScores[i] *= 1e-100;
     }
-    variableHeuristicIncrease *= 1e-100;
+    // TODO: decay activities
+    // variableHeuristicIncrease *= 1e-100;
     d_variableScoresMax *= 1e-100;
   }
 }
   
-void BCPEngine::bumpClause(CRef cRef) {
-}
-
 void BCPEngine::notifyRestart() {
   d_restartsCount ++;
   d_conflictsCount = 0;

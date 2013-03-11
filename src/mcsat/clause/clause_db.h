@@ -155,6 +155,13 @@ public:
   }
 
   /**
+   * Get the id of this database.
+   */
+  size_t getDatabaseId() const {
+    return d_id;
+  }
+
+  /**
    * Add a listener for the creation of new clauses. A context independent listener will only be notified
    * once when the clause is created. If the listener is context dependent, it will be notified when the clause is
    * created, but it will be re-notified on every pop so that it can update it's internal state.

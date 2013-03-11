@@ -38,6 +38,13 @@ public:
    * Ask for a search restart.
    */
   void restart();
+
+  /**
+   * Ask for garbage collection. Garbage collection will be performed at next restart and the plugins will get notified
+   * pre and post garbage collection.
+   */
+  void gc();
+
 };
 
 /**
