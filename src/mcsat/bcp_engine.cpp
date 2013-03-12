@@ -196,6 +196,14 @@ void BCPEngine::propagate(SolverTrail::PropagationToken& out) {
         Debug("mcsat::bcp") << "BCPEngine::propagate(): propagating over " << cRef << std::endl;
 
 	Clause& clause = cRef.getClause();
+
+	// If clause is not in use anymore, just skip it
+	if (!clause.inUse()) {
+	  Debug("mcsat::bcp") << "BCPEngine::propagate(): clause " << clause << " not in use anymore";
+	  // Remove this watch and go to the next one 
+	  w.next_and_remove();
+	  continue;
+	}
 	
 	// Put the propagation literal to position [1]
 	if (clause[0] == lit_neg) {
@@ -204,7 +212,7 @@ void BCPEngine::propagate(SolverTrail::PropagationToken& out) {
         
         // If 0th literal is true, the clause is already satisfied.
 	if (d_trail.isTrue(clause[0])) {
-          Debug("mcsat::bcp") << "BCPEngine::propagate(): clause " << clause << "is true";
+          Debug("mcsat::bcp") << "BCPEngine::propagate(): clause " << clause << " is true";
 	  // Keep this watch and go to the next one 
 	  w.next_and_keep();
 	  continue;
