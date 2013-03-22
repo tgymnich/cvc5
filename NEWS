@@ -4,5 +4,11 @@ Changes since 1.0
 =================
 
 * tuple and record support in the compatibility library
+* user patterns are now supported in the SMT-LIBv1.2 parser
+* SMT-LIB get-model output now is easier to machine-parse: contains (model...)
+* Win32 support via mingw
+* for printing commands as they're invoked from the driver, you now need
+  verbosity of 3 or higher (e.g. -vvv) instead of verbosity 1 or higher (-v).
+  This allows tracing the solver's activities without having too much output.
 
--- Morgan Deters <mdeters@cs.nyu.edu>  Wed, 05 Dec 2012 11:34:18 -0500
+-- Morgan Deters <mdeters@cs.nyu.edu>  Mon, 04 Feb 2013 16:24:20 -0500

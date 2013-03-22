@@ -19,9 +19,14 @@
 #include <cerrno>
 #include <exception>
 #include <string.h>
+
+#ifndef __WIN32__
+
 #include <signal.h>
 #include <sys/resource.h>
 #include <unistd.h>
+
+#endif /* __WIN32__ */
 
 #include "util/exception.h"
 #include "options/options.h"
@@ -44,9 +49,6 @@ namespace CVC4 {
 
 namespace main {
 
-size_t cvc4StackSize;
-void* cvc4StackBase;
-
 /**
  * If true, will not spin on segfault even when CVC4_DEBUG is on.
  * Useful for nightly regressions, noninteractive performance runs
@@ -54,10 +56,16 @@ void* cvc4StackBase;
  */
 bool segvNoSpin = false;
 
+#ifndef __WIN32__
+
+size_t cvc4StackSize;
+void* cvc4StackBase;
+
 /** Handler for SIGXCPU, i.e., timeout. */
 void timeout_handler(int sig, siginfo_t* info, void*) {
   fprintf(stderr, "CVC4 interrupted by timeout.\n");
   if((*pOptions)[options::statistics] && pExecutor != NULL) {
+    pTotalTime->stop();
     pExecutor->flushStatistics(cerr);
   }
   abort();
@@ -67,6 +75,7 @@ void timeout_handler(int sig, siginfo_t* info, void*) {
 void sigint_handler(int sig, siginfo_t* info, void*) {
   fprintf(stderr, "CVC4 interrupted by user.\n");
   if((*pOptions)[options::statistics] && pExecutor != NULL) {
+    pTotalTime->stop();
     pExecutor->flushStatistics(cerr);
   }
   abort();
@@ -92,6 +101,7 @@ void segv_handler(int sig, siginfo_t* info, void* c) {
   if(segvNoSpin) {
     fprintf(stderr, "No-spin requested, aborting...\n");
     if((*pOptions)[options::statistics] && pExecutor != NULL) {
+      pTotalTime->stop();
       pExecutor->flushStatistics(cerr);
     }
     abort();
@@ -112,6 +122,7 @@ void segv_handler(int sig, siginfo_t* info, void* c) {
     cerr << "Looks like a NULL pointer was dereferenced." << endl;
   }
   if((*pOptions)[options::statistics] && pExecutor != NULL) {
+    pTotalTime->stop();
     pExecutor->flushStatistics(cerr);
   }
   abort();
@@ -125,6 +136,7 @@ void ill_handler(int sig, siginfo_t* info, void*) {
   if(segvNoSpin) {
     fprintf(stderr, "No-spin requested, aborting...\n");
     if((*pOptions)[options::statistics] && pExecutor != NULL) {
+      pTotalTime->stop();
       pExecutor->flushStatistics(cerr);
     }
     abort();
@@ -138,16 +150,19 @@ void ill_handler(int sig, siginfo_t* info, void*) {
 #else /* CVC4_DEBUG */
   fprintf(stderr, "CVC4 executed an illegal instruction.\n");
   if((*pOptions)[options::statistics] && pExecutor != NULL) {
+    pTotalTime->stop();
     pExecutor->flushStatistics(cerr);
   }
   abort();
 #endif /* CVC4_DEBUG */
 }
 
+#endif /* __WIN32__ */
+
 static terminate_handler default_terminator;
 
 void cvc4unexpected() {
-#ifdef CVC4_DEBUG
+#if defined(CVC4_DEBUG) && !defined(__WIN32__)
   fprintf(stderr, "\n"
           "CVC4 threw an \"unexpected\" exception (one that wasn't properly "
           "specified\nin the throws() specifier for the throwing function)."
@@ -162,6 +177,7 @@ void cvc4unexpected() {
   if(segvNoSpin) {
     fprintf(stderr, "No-spin requested.\n");
     if((*pOptions)[options::statistics] && pExecutor != NULL) {
+      pTotalTime->stop();
       pExecutor->flushStatistics(cerr);
     }
     set_terminate(default_terminator);
@@ -175,6 +191,7 @@ void cvc4unexpected() {
 #else /* CVC4_DEBUG */
   fprintf(stderr, "CVC4 threw an \"unexpected\" exception.\n");
   if((*pOptions)[options::statistics] && pExecutor != NULL) {
+    pTotalTime->stop();
     pExecutor->flushStatistics(cerr);
   }
   set_terminate(default_terminator);
@@ -188,6 +205,7 @@ void cvc4terminate() {
           "Perhaps an exception was thrown during stack unwinding.  "
           "(Don't do that.)\n");
   if((*pOptions)[options::statistics] && pExecutor != NULL) {
+    pTotalTime->stop();
     pExecutor->flushStatistics(cerr);
   }
   default_terminator();
@@ -196,6 +214,7 @@ void cvc4terminate() {
           "CVC4 was terminated by the C++ runtime.\n"
           "Perhaps an exception was thrown during stack unwinding.\n");
   if((*pOptions)[options::statistics] && pExecutor != NULL) {
+    pTotalTime->stop();
     pExecutor->flushStatistics(cerr);
   }
   default_terminator();
@@ -204,6 +223,7 @@ void cvc4terminate() {
 
 /** Initialize the driver.  Sets signal handlers for SIGINT and SIGSEGV. */
 void cvc4_init() throw(Exception) {
+#ifndef __WIN32__
   stack_t ss;
   ss.ss_sp = malloc(SIGSTKSZ);
   if(ss.ss_sp == NULL) {
@@ -261,6 +281,8 @@ void cvc4_init() throw(Exception) {
   if(sigaction(SIGILL, &act4, NULL)) {
     throw Exception(string("sigaction(SIGILL) failure: ") + strerror(errno));
   }
+
+#endif /* __WIN32__ */
 
   set_unexpected(cvc4unexpected);
   default_terminator = set_terminate(cvc4terminate);

@@ -104,12 +104,13 @@ private:
   std::vector< Node > d_quants;
   /** list of all lemmas produced */
   std::map< Node, bool > d_lemmas_produced;
+  BoolMap d_lemmas_produced_c;
   /** lemmas waiting */
   std::vector< Node > d_lemmas_waiting;
   /** has added lemma this round */
   bool d_hasAddedLemma;
   /** list of all instantiations produced for each quantifier */
-  std::map< Node, inst::InstMatchTrie > d_inst_match_trie;
+  std::map< Node, inst::CDInstMatchTrie* > d_inst_match_trie;
   /** term database */
   quantifiers::TermDb* d_term_db;
   /** all triggers will be stored in this trie */
@@ -118,10 +119,14 @@ private:
   rrinst::TriggerTrie* d_rr_tr_trie;
   /** extended model object */
   quantifiers::FirstOrderModel* d_model;
+  /** statistics for debugging */
+  std::map< Node, int > d_total_inst_debug;
+  std::map< Node, int > d_temp_inst_debug;
+  int d_total_inst_count_debug;
 private:
   KEEP_STATISTIC(TimerStat, d_time, "theory::QuantifiersEngine::time");
 public:
-  QuantifiersEngine(context::Context* c, TheoryEngine* te);
+  QuantifiersEngine(context::Context* c, context::UserContext* u, TheoryEngine* te);
   ~QuantifiersEngine();
   /** get instantiator for id */
   //Instantiator* getInstantiator( theory::TheoryId id );
@@ -136,6 +141,8 @@ public:
   quantifiers::ModelEngine* getModelEngine() { return d_model_engine; }
   /** get default sat context for quantifiers engine */
   context::Context* getSatContext();
+  /** get default sat context for quantifiers engine */
+  context::Context* getUserContext();
   /** get default output channel for the quantifiers engine */
   OutputChannel& getOutputChannel();
   /** get default valuation for the quantifiers engine */
