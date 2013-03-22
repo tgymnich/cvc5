@@ -214,6 +214,7 @@ public:
   rrinst::TriggerTrie* getRRTriggerDatabase() { return d_rr_tr_trie; }
   /** add term to database */
   void addTermToDatabase( Node n, bool withinQuant = false );
+  /** get the master equality engine */
   eq::EqualityEngine* getMasterEqualityEngine() ;
 public:
   /** statistics class */
@@ -266,18 +267,22 @@ private:
   /** pointer to theory engine */
   QuantifiersEngine* d_qe;
   /** internal representatives */
-  std::map< Node, Node > d_int_rep;
+  std::map< int, std::map< Node, Node > > d_int_rep;
   /** rep score */
   std::map< Node, int > d_rep_score;
   /** reset count */
   int d_reset_count;
+
+  bool d_liberal;
 private:
   /** node contains */
   Node getInstance( Node n, std::vector< Node >& eqc );
   /** get score */
-  int getRepScore( Node n );
+  int getRepScore( Node n, Node f, int index );
+  /** choose rep based on sort inference */
+  bool optInternalRepSortInference();
 public:
-  EqualityQueryQuantifiersEngine( QuantifiersEngine* qe ) : d_qe( qe ), d_reset_count( 0 ){}
+  EqualityQueryQuantifiersEngine( QuantifiersEngine* qe ) : d_qe( qe ), d_reset_count( 0 ), d_liberal( false ){}
   ~EqualityQueryQuantifiersEngine(){}
   /** reset */
   void reset();
@@ -292,7 +297,9 @@ public:
       If cbqi is active, this will return a term in the equivalence class of "a" that does
       not contain instantiation constants, if such a term exists.
    */
-  Node getInternalRepresentative( Node a );
+  Node getInternalRepresentative( Node a, Node f, int index );
+
+  void setLiberal( bool l ) { d_liberal = l; }
 }; /* EqualityQueryQuantifiersEngine */
 
 }/* CVC4::theory namespace */

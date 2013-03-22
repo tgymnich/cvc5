@@ -26,14 +26,24 @@ inline void showConfiguration(std::string option, SmtEngine* smt) {
   fputs(Configuration::about().c_str(), stdout);
   printf("\n");
   printf("version    : %s\n", Configuration::getVersionString().c_str());
-  if(Configuration::isSubversionBuild()) {
-    printf("subversion : yes [%s r%u%s]\n",
+  if(Configuration::isGitBuild()) {
+    const char* branchName = Configuration::getGitBranchName();
+    if(*branchName == '\0') {
+      branchName = "-";
+    }
+    printf("scm        : git [%s %s%s]\n",
+           branchName,
+           std::string(Configuration::getGitCommit()).substr(0, 8).c_str(),
+           Configuration::hasGitModifications() ?
+             " (with modifications)" : "");
+  } else if(Configuration::isSubversionBuild()) {
+    printf("scm        : svn [%s r%u%s]\n",
            Configuration::getSubversionBranchName(),
            Configuration::getSubversionRevision(),
            Configuration::hasSubversionModifications() ?
              " (with modifications)" : "");
   } else {
-    printf("subversion : %s\n", Configuration::isSubversionBuild() ? "yes" : "no");
+    printf("scm        : no\n");
   }
   printf("\n");
   printf("library    : %u.%u.%u\n",

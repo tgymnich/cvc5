@@ -103,12 +103,12 @@ void InstMatch::makeComplete( Node f, QuantifiersEngine* qe ){
   }
 }
 
-void InstMatch::makeInternalRepresentative( QuantifiersEngine* qe ){
-  EqualityQueryQuantifiersEngine* eqqe = (EqualityQueryQuantifiersEngine*)qe->getEqualityQuery();
-  for( std::map< Node, Node >::iterator it = d_map.begin(); it != d_map.end(); ++it ){
-    d_map[ it->first ] = eqqe->getInternalRepresentative( it->second );
-  }
-}
+//void InstMatch::makeInternalRepresentative( QuantifiersEngine* qe ){
+//  EqualityQueryQuantifiersEngine* eqqe = (EqualityQueryQuantifiersEngine*)qe->getEqualityQuery();
+//  for( std::map< Node, Node >::iterator it = d_map.begin(); it != d_map.end(); ++it ){
+//    d_map[ it->first ] = eqqe->getInternalRepresentative( it->second );
+//  }
+//}
 
 void InstMatch::makeRepresentative( QuantifiersEngine* qe ){
   for( std::map< Node, Node >::iterator it = d_map.begin(); it != d_map.end(); ++it ){
@@ -140,7 +140,7 @@ void InstMatch::set(TNode var, TNode n){
   	//var.getType() == n.getType()
   	!n.getType().isSubtypeOf( var.getType() ) ){
     Trace("inst-match-warn") << var.getAttribute(InstConstantAttribute()) << std::endl;
-    Trace("inst-match-warn") << var << " " << var.getType() << n << " " << n.getType() << std::endl ;
+    Trace("inst-match-warn") << var << " " << var.getType() << " " << n << " " << n.getType() << std::endl ;
     Assert(false);
   }
   d_map[var] = n;

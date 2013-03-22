@@ -122,7 +122,7 @@ bool Configuration::isBuiltWithCln() {
 }
 
 bool Configuration::isBuiltWithCudd() {
-  return IS_CUDD_BUILD;
+  return false;
 }
 
 bool Configuration::isBuiltWithTlsSupport() {
@@ -195,6 +195,38 @@ bool Configuration::isTraceTag(char const * tag){
   return false;
 }
 
+bool Configuration::isGitBuild() {
+  return IS_GIT_BUILD;
+}
+
+const char* Configuration::getGitBranchName() {
+  return GIT_BRANCH_NAME;
+}
+
+const char* Configuration::getGitCommit() {
+  return GIT_COMMIT;
+}
+
+bool Configuration::hasGitModifications() {
+  return GIT_HAS_MODIFICATIONS;
+}
+
+std::string Configuration::getGitId() {
+  if(! isGitBuild()) {
+    return "";
+  }
+
+  const char* branchName = getGitBranchName();
+  if(*branchName == '\0') {
+    branchName = "-";
+  }
+
+  stringstream ss;
+  ss << "git " << branchName << " " << string(getGitCommit()).substr(0, 8)
+     << ( ::CVC4::Configuration::hasGitModifications() ? " (with modifications)" : "" );
+  return ss.str();
+}
+
 bool Configuration::isSubversionBuild() {
   return IS_SUBVERSION_BUILD;
 }
@@ -211,7 +243,7 @@ bool Configuration::hasSubversionModifications() {
   return SUBVERSION_HAS_MODIFICATIONS;
 }
 
-string Configuration::getSubversionId() {
+std::string Configuration::getSubversionId() {
   if(! isSubversionBuild()) {
     return "";
   }

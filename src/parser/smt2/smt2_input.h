@@ -41,7 +41,7 @@ class Smt2Input : public AntlrInput {
   /** The ANTLR3 SMT2 lexer for the input. */
   pSmt2Lexer d_pSmt2Lexer;
 
-  /** The ANTLR3 CVC parser for the input. */
+  /** The ANTLR3 SMT2 parser for the input. */
   pSmt2Parser d_pSmt2Parser;
 
   /**
@@ -75,8 +75,7 @@ protected:
    *
    * @throws ParserException if an error is encountered during parsing.
    */
-  Command* parseCommand()
-    throw(ParserException, TypeCheckingException);
+  Command* parseCommand();
 
   /**
    * Parse an expression from the input. Returns a null
@@ -84,8 +83,7 @@ protected:
    *
    * @throws ParserException if an error is encountered during parsing.
    */
-  Expr parseExpr()
-    throw(ParserException, TypeCheckingException);
+  Expr parseExpr();
 
 };/* class Smt2Input */
 

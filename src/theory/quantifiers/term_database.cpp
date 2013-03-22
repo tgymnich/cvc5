@@ -75,7 +75,7 @@ void TermDb::addTerm( Node n, std::set< Node >& added, bool withinQuant ){
     //Call the children?
     if( inst::Trigger::isAtomicTrigger( n ) ){
       if( !n.hasAttribute(InstConstantAttribute()) ){
-        Debug("term-db") << "register trigger term " << n << std::endl;
+        Trace("term-db") << "register term in db " << n << std::endl;
         //std::cout << "register trigger term " << n << std::endl;
         Node op = n.getOperator();
         d_op_map[op].push_back( n );
@@ -194,7 +194,7 @@ void TermDb::addTerm( Node n, std::set< Node >& added, bool withinQuant ){
 Node TermDb::getModelBasisTerm( TypeNode tn, int i ){
   if( d_model_basis_term.find( tn )==d_model_basis_term.end() ){
     Node mbt;
-    if( d_type_map[ tn ].empty() ){
+    if( options::fmfFreshDistConst() || d_type_map[ tn ].empty() ){
       std::stringstream ss;
       ss << Expr::setlanguage(options::outputLanguage());
       ss << "e_" << tn;
@@ -338,6 +338,14 @@ Node TermDb::getInstConstantBody( Node f ){
 Node TermDb::getCounterexampleLiteral( Node f ){
   if( d_ce_lit.find( f )==d_ce_lit.end() ){
     Node ceBody = getInstConstantBody( f );
+    //check if any variable are of bad types, and fail if so
+    for( size_t i=0; i<d_inst_constants[f].size(); i++ ){
+      if( d_inst_constants[f][i].getType().isBoolean() ){
+        d_ce_lit[ f ] = Node::null();
+        return Node::null();
+      }
+    }
+    //otherwise, ensure literal
     Node ceLit = d_quantEngine->getValuation().ensureLiteral( ceBody.notNode() );
     d_ce_lit[ f ] = ceLit;
     setInstantiationConstantAttr( ceLit, f );

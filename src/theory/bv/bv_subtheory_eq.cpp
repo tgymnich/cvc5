@@ -35,7 +35,7 @@ EqualitySolver::EqualitySolver(context::Context* c, TheoryBV* bv)
   if (d_useEqualityEngine) {
 
     // The kinds we are treating as function application in congruence
-    d_equalityEngine.addFunctionKind(kind::BITVECTOR_CONCAT);
+    d_equalityEngine.addFunctionKind(kind::BITVECTOR_CONCAT, true);
     //    d_equalityEngine.addFunctionKind(kind::BITVECTOR_AND);
     //    d_equalityEngine.addFunctionKind(kind::BITVECTOR_OR);
     //    d_equalityEngine.addFunctionKind(kind::BITVECTOR_XOR);
@@ -44,8 +44,8 @@ EqualitySolver::EqualitySolver(context::Context* c, TheoryBV* bv)
     //    d_equalityEngine.addFunctionKind(kind::BITVECTOR_NOR);
     //    d_equalityEngine.addFunctionKind(kind::BITVECTOR_XNOR);
     //    d_equalityEngine.addFunctionKind(kind::BITVECTOR_COMP);
-    d_equalityEngine.addFunctionKind(kind::BITVECTOR_MULT);
-    d_equalityEngine.addFunctionKind(kind::BITVECTOR_PLUS);
+    d_equalityEngine.addFunctionKind(kind::BITVECTOR_MULT, true);
+    d_equalityEngine.addFunctionKind(kind::BITVECTOR_PLUS, true);
     //    d_equalityEngine.addFunctionKind(kind::BITVECTOR_SUB);
     //    d_equalityEngine.addFunctionKind(kind::BITVECTOR_NEG);
     //    d_equalityEngine.addFunctionKind(kind::BITVECTOR_UDIV);
@@ -131,7 +131,7 @@ bool EqualitySolver::addAssertions(const std::vector<TNode>& assertions, Theory:
 }
 
 bool EqualitySolver::NotifyClass::eqNotifyTriggerEquality(TNode equality, bool value) {
-  BVDebug("bitvector::equality") << "NotifyClass::eqNotifyTriggerEquality(" << equality << ", " << (value ? "true" : "false" )<< ")" << std::endl;
+  Debug("bitvector::equality") << "NotifyClass::eqNotifyTriggerEquality(" << equality << ", " << (value ? "true" : "false" )<< ")" << std::endl;
   if (value) {
     return d_solver.storePropagation(equality);
   } else {
@@ -140,7 +140,7 @@ bool EqualitySolver::NotifyClass::eqNotifyTriggerEquality(TNode equality, bool v
 }
 
 bool EqualitySolver::NotifyClass::eqNotifyTriggerPredicate(TNode predicate, bool value) {
-  BVDebug("bitvector::equality") << "NotifyClass::eqNotifyTriggerPredicate(" << predicate << ", " << (value ? "true" : "false" ) << ")" << std::endl;
+  Debug("bitvector::equality") << "NotifyClass::eqNotifyTriggerPredicate(" << predicate << ", " << (value ? "true" : "false" ) << ")" << std::endl;
   if (value) {
     return d_solver.storePropagation(predicate);
   } else {
