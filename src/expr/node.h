@@ -276,6 +276,9 @@ public:
    */
   NodeTemplate(const NodeTemplate& node);
 
+  /** Mode constructor */
+  NodeTemplate(NodeTemplate&& node);
+
   /**
    * Allow Exprs to become Nodes.  This permits flexible translation of
    * Exprs -> Nodes inside the CVC4 library without exposing a toNode()
@@ -291,6 +294,9 @@ public:
    * @return reference to this node
    */
   NodeTemplate& operator=(const NodeTemplate& node);
+
+  /** Move assignment */
+  NodeTemplate& operator=(NodeTemplate&& node);
 
   /**
    * Assignment operator for nodes, copies the relevant information from node
@@ -1058,6 +1064,13 @@ NodeTemplate<ref_count>::NodeTemplate(const NodeTemplate& e) {
 }
 
 template <bool ref_count>
+NodeTemplate<ref_count>::NodeTemplate(NodeTemplate&& e)
+: d_nv(e.d_nv) {
+  Assert(e.d_nv != NULL, "Expecting a non-NULL expression value!");
+  e.d_nv = &expr::NodeValue::s_null;
+}
+
+template <bool ref_count>
 NodeTemplate<ref_count>::NodeTemplate(const Expr& e) {
   Assert(e.d_node != NULL, "Expecting a non-NULL expression value!");
   Assert(e.d_node->d_nv != NULL, "Expecting a non-NULL expression value!");
@@ -1112,6 +1125,15 @@ operator=(const NodeTemplate& e) {
   }
   return *this;
 }
+
+template <bool ref_count>
+NodeTemplate<ref_count>& NodeTemplate<ref_count>::
+operator=(NodeTemplate&& e) {
+  d_nv = e.d_nv;
+  e.d_nv = &expr::NodeValue::s_null;
+  return *this;
+}
+
 
 template <bool ref_count>
 NodeTemplate<ref_count>& NodeTemplate<ref_count>::
