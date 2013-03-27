@@ -34,6 +34,7 @@ Solver::Solver(context::UserContext* userContext, context::Context* searchContex
 , d_clauseDatabase(d_clauseFarm.newClauseDB("problem_clauses"))
 , d_trail(searchContext)
 , d_rule_Resolution(d_clauseDatabase)
+, d_featuresDispatch(d_trail)
 , d_request(false)
 , d_backtrackRequested(false)
 , d_backtrackLevel(0)
@@ -193,10 +194,7 @@ void Solver::propagate(SolverTrail::PropagationToken::Mode mode) {
     // Token for the plugins to propagate at
     SolverTrail::PropagationToken propagationOut(d_trail, mode);
     // Let all plugins propagate
-    for (unsigned i = 0; d_trail.consistent() && i < d_plugins.size(); ++ i) {
-      Debug("mcsat::solver") << "propagate(" << mode << "): propagating with " << *d_plugins[i] << std::endl;
-      d_plugins[i]->propagate(propagationOut);
-    }
+    d_featuresDispatch.propagate(propagationOut);
     // If the token wasn't used, we're done
     propagationDone = !propagationOut.used();
   }
@@ -243,10 +241,7 @@ bool Solver::check() {
 
     // Clauses processed, propagators done, we're ready for a decision
     SolverTrail::DecisionToken decisionOut(d_trail);
-    for (unsigned i = 0; !decisionOut.used() && i < d_plugins.size(); ++ i) {
-      Debug("mcsat::solver") << "deciding with " << *d_plugins[i] << std::endl;
-      d_plugins[i]->decide(decisionOut);
-    }
+    d_featuresDispatch.decide(decisionOut);
 
     // If no decisions were made we are done, do a completeness check
     if (!decisionOut.used()) {
@@ -269,6 +264,7 @@ void Solver::addPlugin(std::string pluginId) {
   SolverPlugin* plugin = SolverPluginFactory::create(pluginId, d_clauseDatabase, d_trail, *d_pluginRequests.back());
   d_plugins.push_back(plugin);
   d_notifyDispatch.addPlugin(plugin);
+  d_featuresDispatch.addPlugin(plugin);
 
   Notice() << "mcsat::Solver: added plugin " << *plugin << std::endl;
 }

@@ -104,9 +104,6 @@ public:
   /** New propagation engine */
   BCPEngine(ClauseDatabase& clauseDb, const SolverTrail& trail, SolverPluginRequest& request);
   
-  /** BCP does nothing in checks */
-  void check() {}
-
   /** Perform a propagation */
   void propagate(SolverTrail::PropagationToken& out);
 

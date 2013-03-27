@@ -38,22 +38,9 @@ public:
   /** Notified by the solver of new assertions */
   void notifyAssertion(TNode assertion);
 
-  // Other plugin stuff is no-op
-
-  /** Check the current assertions for consistency. */
-  void check() {}
-
-  /** Perform propagation */
-  void propagate(SolverTrail::PropagationToken& out) {};
-
-  /** Perform a decision */
-  void decide(SolverTrail::DecisionToken& out) {};
-
-  /** Return the listener for new clauses */
-  ClauseDatabase::INewClauseNotify* getNewClauseListener() { return 0; };
-
-  /** String representation of the plugin (for debug purposes mainly) */
+  /** String represtentation */
   std::string toString() const;
+
 };
 
 template class SolverPluginConstructor<CNFPlugin>;

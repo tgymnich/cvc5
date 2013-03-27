@@ -98,6 +98,9 @@ private:
   /** Notification dispatch */
   NotificationDispatch d_notifyDispatch;
   
+  /** Features dispatch (propagate, decide) */
+  FeatureDispatch d_featuresDispatch;
+
   /** The requests of the plugins */
   std::vector<SolverPluginRequest*> d_pluginRequests;
   

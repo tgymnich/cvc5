@@ -160,4 +160,7 @@ ClauseFarm::~ClauseFarm() {
   for (unsigned i = 0; i < d_databases.size(); ++ i) {
     delete d_databases[i];
   }  
+  if (s_current == this) {
+    s_current = 0;
+  }
 }

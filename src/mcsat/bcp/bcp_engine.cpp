@@ -45,6 +45,10 @@ BCPEngine::BCPEngine(ClauseDatabase& clauseDb, const SolverTrail& trail, SolverP
   // Listen to new variables
   VariableDatabase::getCurrentDB()->addNewVariableListener(&d_newVariableNotify);
 
+  // Features we provide
+  addFeature(CAN_PROPAGATE);
+  addFeature(CAN_DECIDE);
+
   // Notifications we care about 
   addNotification(NOTIFY_RESTART);
   addNotification(NOTIFY_CONFLICT);

@@ -12,6 +12,8 @@ libmcsat_solver_plugin_la_SOURCES = \
   solver_plugin.cpp \
   solver_plugin_notify.h \
   solver_plugin_notify.cpp \
+  solver_plugin_features.h \
+  solver_plugin_features.cpp \
   solver_plugin_registry.h \
   solver_plugin_registry.cpp \
   solver_plugin_factory.h \

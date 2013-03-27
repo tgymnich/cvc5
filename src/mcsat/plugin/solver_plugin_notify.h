@@ -48,8 +48,10 @@ protected:
 
 public:
   
+  virtual ~SolverPluginNotify() {}
+
   /** Get all notification types */
-  const notification_set& getNotificationTypes() {
+  const notification_set& getNotificationTypes() const {
     return d_notifications;
   }
 

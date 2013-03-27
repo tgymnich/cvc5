@@ -9,8 +9,8 @@
 #include "context/cdlist.h"
 
 #include "mcsat/clause/clause_db.h"
-#include "mcsat/solver_trail.h"
 #include "mcsat/plugin/solver_plugin_notify.h"
+#include "mcsat/plugin/solver_plugin_features.h"
 
 namespace CVC4 {
 namespace mcsat {
@@ -51,7 +51,7 @@ public:
 /**
  * Base class for model based T-solvers.
  */
-class SolverPlugin : public SolverPluginNotify {
+class SolverPlugin : public SolverPluginNotify, public SolverPluginFeatures {
 
 private:
 
@@ -86,15 +86,6 @@ public:
 
   /** Destructor */
   virtual ~SolverPlugin() {}
-
-  /** Check the current assertions for consistency. */
-  virtual void check() = 0;
-
-  /** Perform propagation */
-  virtual void propagate(SolverTrail::PropagationToken& out) = 0;
-
-  /** Perform a decision */
-  virtual void decide(SolverTrail::DecisionToken& out) = 0;
 
   /** String representation of the plugin (for debug purposes mainly) */
   virtual std::string toString() const = 0;

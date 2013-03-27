@@ -12,7 +12,6 @@ libmcsat_la_SOURCES = \
 	solver_trail.cpp \
 	solver.h \
 	solver.cpp \
-	inner_class.h \
 	mcsat.h \
 	mcsat.cpp
 
@@ -22,9 +21,10 @@ libmcsat_la_LIBADD = \
 	@builddir@/plugin/libmcsat_solver_plugin.la \
 	@builddir@/variable/libmcsat_variable.la \
 	@builddir@/cnf/libmcsat_cnf.la \
-	@builddir@/bcp/libmcsat_bcp.la
+	@builddir@/bcp/libmcsat_bcp.la \
+	@builddir@/fm/libmcsat_fm.la
 
 EXTRA_DIST = 
 
-SUBDIRS = variable clause rules cnf plugin bcp . 
+SUBDIRS = variable clause rules plugin cnf bcp fm . 
 
