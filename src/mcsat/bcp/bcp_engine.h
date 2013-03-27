@@ -1,7 +1,7 @@
 #pragma once
 
 #include "mcsat/plugin/solver_plugin.h"
-#include "mcsat/watch_list_manager.h"
+#include "mcsat/bcp/watch_list_manager.h"
 
 #include <ext/pb_ds/priority_queue.hpp>
 
@@ -102,7 +102,7 @@ class BCPEngine : public SolverPlugin {
 public:
   
   /** New propagation engine */
-  BCPEngine(const SolverTrail& trail, SolverPluginRequest& request);
+  BCPEngine(ClauseDatabase& clauseDb, const SolverTrail& trail, SolverPluginRequest& request);
   
   /** BCP does nothing in checks */
   void check() {}
@@ -130,9 +130,6 @@ public:
   
   /** String representation */
   std::string toString() const { return "BCP Engine"; }
-
-  /** Return the listener for new clauses */
-  ClauseDatabase::INewClauseNotify* getNewClauseListener();
 };
 
 template class SolverPluginConstructor<BCPEngine>;

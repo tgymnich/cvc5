@@ -7,16 +7,10 @@
 #include "context/cdlist.h"
 #include "util/statistics_registry.h"
 
-#include "mcsat/cnf/tseitin_cnf_stream.h"
-#include "mcsat/clause/clause_db.h"
 #include "mcsat/solver_trail.h"
-#include "mcsat/bcp_engine.h"
-#include "mcsat/inner_class.h"
-#include "mcsat/plugin/solver_plugin_notify.h"
-
-#include "mcsat/rules/input_clause_rule.h"
+#include "mcsat/clause/clause_db.h"
+#include "mcsat/plugin/solver_plugin.h"
 #include "mcsat/rules/resolution_rule.h"
-
 
 namespace CVC4 {
 namespace mcsat {
@@ -84,39 +78,13 @@ private:
   ClauseFarm d_clauseFarm;
 
   /** The clause database for input clauses */
-  ClauseDatabase& d_problemClauses;
+  ClauseDatabase& d_clauseDatabase;
 
-  /** The clause database for input clauses */
-  ClauseDatabase& d_auxilaryClauses;
-
-  /** List of problem clauses */
-  std::vector<CRef_Strong> d_problemClausesList;
-
-  /** List of learnt clauses */
-  std::vector<CRef_Strong> d_learntClausesList;
-
-  /** CNF transform of the solver */
-  TseitinCnfStream d_cnfStream;
-
-  /** Listener for the output of the cnf stream */
-  class CnfListener : public CnfOutputListener, public InnerClass<Solver> {
-    public:
-      CnfListener(Solver& solver) : InnerClass(solver) {}
-      void newClause(LiteralVector& clause);
-  } d_cnfStreamListener; 
-
-
-  /** Main method to add a clause */ 
-  void addClause(LiteralVector& clause);
-  
-  /** List of problem assertions */
-  std::vector<LiteralVector> d_newClauses;
- 
   /** Main solver trail */
   SolverTrail d_trail;
 
-  /** Rule for creating input clauses */
-  rules::InputClauseRule d_rule_InputClause;
+  /** Rewritten Assertions */
+  std::vector<Node> d_assertions;
 
   /** Resolution rule for conflict analysis */
   rules::BooleanResolutionRule d_rule_Resolution;
@@ -132,9 +100,6 @@ private:
   
   /** The requests of the plugins */
   std::vector<SolverPluginRequest*> d_pluginRequests;
-
-  /** Process any new clauses that were asserted */
-  void processNewClauses();
   
   /** Process any requests from solvers */
   void processRequests();
@@ -144,6 +109,9 @@ private:
 
   /** Analyze all the conflicts in the trail */
   void analyzeConflicts();
+
+  /** Has there been any requests */
+  bool d_request;
   
   /** Has there been a backtrack request */
   bool d_backtrackRequested;
@@ -161,9 +129,7 @@ private:
   bool d_restartRequested;
   
   /** Request a search restart */
-  void requestRestart() {
-    d_restartRequested = true;
-  }
+  void requestRestart();
   
   friend class SolverPluginRequest;
 

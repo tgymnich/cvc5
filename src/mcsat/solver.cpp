@@ -3,6 +3,7 @@
 #include "theory/rewriter.h"
 #include "plugin/solver_plugin_factory.h"
 #include "rules/proof_rule.h"
+#include "util/node_visitor.h"
 
 #include <algorithm>
 
@@ -27,34 +28,21 @@ public:
   } 
 };
 
-void Solver::CnfListener::newClause(LiteralVector& clause) {
-  outerClass().addClause(clause);
-}
-
 Solver::Solver(context::UserContext* userContext, context::Context* searchContext) 
 : d_variableDatabase(searchContext)
 , d_clauseFarm(searchContext)
-, d_problemClauses(d_clauseFarm.newClauseDB("problem_clauses"))
-, d_auxilaryClauses(d_clauseFarm.newClauseDB("conflict_analysis_clauses"))
-, d_cnfStream(searchContext)
-, d_cnfStreamListener(*this)
+, d_clauseDatabase(d_clauseFarm.newClauseDB("problem_clauses"))
 , d_trail(searchContext)
-, d_rule_InputClause(d_problemClauses, d_trail)
-, d_rule_Resolution(d_auxilaryClauses)
+, d_rule_Resolution(d_clauseDatabase)
+, d_request(false)
 , d_backtrackRequested(false)
 , d_backtrackLevel(0)
 , d_restartRequested(false)
 , d_learntClausesScoreMax(1.0)
 , d_learntClausesScoreIncrease(1.0)
 {
-  // Add the two clause database we'll be solving
-  d_trail.addClauseDatabase(d_problemClauses);
-  d_trail.addClauseDatabase(d_auxilaryClauses);
-
-  // Add the listener for the CNF converter
-  d_cnfStream.addOutputListener(&d_cnfStreamListener);
-
   // Add some engines
+  addPlugin("CVC4::mcsat::CNFPlugin");
   addPlugin("CVC4::mcsat::BCPEngine");
 }
 
@@ -65,38 +53,60 @@ Solver::~Solver() {
   }
 }
 
+/**
+ * Class responsible for traversing the input formulas and registering variables
+ * with the plugins and the variable database.
+ */
+class VariableRegister {
+
+  /** Variable database we're using */
+  VariableDatabase& d_varDb;
+
+  /** The plugins to consult */
+  std::vector<SolverPlugin*> d_plugins;
+
+public:
+
+  typedef void return_type;
+
+  VariableRegister(VariableDatabase& varDb, std::vector<SolverPlugin*>& plugins)
+  : d_varDb(varDb), d_plugins(plugins) {}
+
+  bool alreadyVisited(TNode current, TNode parent) const {
+    return true;
+  }
+
+  void visit(TNode current, TNode parent) {
+  }
+
+  void start(TNode node) {}
+
+  void done(TNode node) {}
+
+  void clear() {}
+
+};
+
 void Solver::addAssertion(TNode assertion, bool process) {
   VariableDatabase::SetCurrent scoped(&d_variableDatabase);
   Debug("mcsat::solver") << "Solver::addAssertion(" << assertion << ")" << endl; 
 
-  // Convert to CNF
-  d_cnfStream.convert(theory::Rewriter::rewrite(assertion), false);
+  // Normalize the assertion
+  Node rewritten = theory::Rewriter::rewrite(assertion);
+  d_assertions.push_back(rewritten);
+
+  // Register the variables
+  VariableRegister visitor(d_variableDatabase, d_plugins);
+  NodeVisitor<VariableRegister>::run(visitor, rewritten);
+
+  // Assert to plugins
+  d_notifyDispatch.notifyAssertion(rewritten);
 
   // Process the clause immediately if requested
   if (process) {
-    // Add the new clauses
-    processNewClauses();
     // Propagate the added clauses
     propagate(SolverTrail::PropagationToken::PROPAGATION_INIT);
   }
-}
-
-void Solver::addClause(LiteralVector& clause) {
-  // Add to the list of new clauses to process 
-  d_newClauses.push_back(clause);
-}
-
-void Solver::processNewClauses() {
- 
-  // Add all the clauses
-  for (unsigned clause_i = 0; clause_i < d_newClauses.size(); ++ clause_i) {
-    // Apply the input clause rule
-    CRef cRef = d_rule_InputClause.apply(d_newClauses[clause_i]);
-    d_problemClausesList.push_back(cRef);
-  }
-  
-  // Done with the clauses, clear
-  d_newClauses.clear();
 }
 
 void Solver::processRequests() {
@@ -143,6 +153,14 @@ void Solver::processRequests() {
     d_restartRequested = false;
     ++ d_stats.restarts;
   }
+
+  // Requests have been processed
+  d_request = false;
+}
+
+void Solver::requestRestart() {
+  d_request = true;
+  d_restartRequested = true;
 }
 
 void Solver::requestBacktrack(unsigned level, CRef cRef) {
@@ -161,6 +179,7 @@ void Solver::requestBacktrack(unsigned level, CRef cRef) {
     }
   }
 
+  d_request = true;
   d_backtrackRequested = true;
   d_backtrackClauses.insert(cRef);
 }
@@ -189,9 +208,6 @@ bool Solver::check() {
 
   // Search while not all variables assigned 
   while (true) {
-
-    // Process any new clauses 
-    processNewClauses();
     
     // If a backtrack was requested then
     processRequests();
@@ -220,8 +236,8 @@ bool Solver::check() {
       continue;
     }
     
-    // If new clauses were added, we need to process them
-    if (!d_newClauses.empty()) {
+    // Process any requests
+    if (d_request) {
       continue;
     }
 
@@ -250,7 +266,7 @@ bool Solver::check() {
 void Solver::addPlugin(std::string pluginId) {
 
   d_pluginRequests.push_back(new SolverPluginRequest(this));
-  SolverPlugin* plugin = SolverPluginFactory::create(pluginId, d_trail, *d_pluginRequests.back()); 
+  SolverPlugin* plugin = SolverPluginFactory::create(pluginId, d_clauseDatabase, d_trail, *d_pluginRequests.back());
   d_plugins.push_back(plugin);
   d_notifyDispatch.addPlugin(plugin);
 
@@ -275,8 +291,8 @@ void Solver::analyzeConflicts() {
     Clause& conflictingClause = conflictPropagation.reason.getClause();
     Debug("mcsat::solver::analyze") << "Solver::analyzeConflicts(): analyzing " << conflictingClause << std::endl;
 
-    // If a learnt clause, bump it
-    if (conflictPropagation.reason.getDatabaseId() == d_auxilaryClauses.getDatabaseId()) {
+    // This is a useful clause
+    if (conflictingClause.getRuleId() == d_rule_Resolution.getRuleId()) {
       bumpClause(conflictPropagation.reason);
     }
 
@@ -380,15 +396,12 @@ void Solver::analyzeConflicts() {
 
     // Finish the resolution
     CRef resolvent = d_rule_Resolution.finish();
-    d_learntClausesList.push_back(resolvent);
     d_learntClausesScore[resolvent] = d_learntClausesScoreMax;
     Debug("mcsat::solver::analyze") << "Solver::analyzeConflicts(): resolvent: " << resolvent << std::endl;
   }
 }
 
 void Solver::bumpClause(CRef cRef) {
-  Assert(cRef.getDatabaseId() == d_auxilaryClauses.getDatabaseId());
-
   std::hash_map<CRef, double, CRefHashFunction>::iterator find = d_learntClausesScore.find(cRef);
   Assert(find != d_learntClausesScore.end());
 
@@ -421,6 +434,6 @@ struct learnt_cmp_by_score {
 
 void Solver::shrinkLearnts() {
   learnt_cmp_by_score cmp(d_learntClausesScore);
-  std::sort(d_learntClausesList.begin(), d_learntClausesList.end(), cmp);
-  d_learntClausesList.resize(d_learntClauses.size() / 2);
+  std::sort(d_learntClauses.begin(), d_learntClauses.end(), cmp);
+  d_learntClauses.resize(d_learntClauses.size() / 2);
 }

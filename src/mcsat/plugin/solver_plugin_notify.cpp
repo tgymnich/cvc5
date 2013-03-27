@@ -20,6 +20,12 @@ void NotificationDispatch::addPlugin(SolverPlugin* plugin) {
     }
 }
 
+void NotificationDispatch::notifyAssertion(TNode assertion) {
+  for(unsigned i = 0; i < d_toNotify[NOTIFY_ASSERTION].size(); ++ i) {
+    d_toNotify[NOTIFY_ASSERTION][i]->notifyAssertion(assertion);
+  }  
+}
+
 void NotificationDispatch::notifyRestart() {
   for(unsigned i = 0; i < d_toNotify[NOTIFY_RESTART].size(); ++ i) {
     d_toNotify[NOTIFY_RESTART][i]->notifyRestart();

@@ -167,11 +167,6 @@ public:
   /** Destructor */
   ~SolverTrail();
 
-  /** Add a clause database that we are solving (should be done initially) */
-  void addClauseDatabase(ClauseDatabase& db) {
-    d_clauses.push_back(&db);
-  }
-
   /** Get the i-th element of the trail */
   const Element& operator [] (size_t i) const { 
     return d_trail[i]; 

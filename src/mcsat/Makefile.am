@@ -13,10 +13,6 @@ libmcsat_la_SOURCES = \
 	solver.h \
 	solver.cpp \
 	inner_class.h \
-	watch_list_manager.h \
-	watch_list_manager.cpp \
-	bcp_engine.h \
-	bcp_engine.cpp \
 	mcsat.h \
 	mcsat.cpp
 
@@ -25,9 +21,10 @@ libmcsat_la_LIBADD = \
 	@builddir@/rules/libmcsat_rules.la \
 	@builddir@/plugin/libmcsat_solver_plugin.la \
 	@builddir@/variable/libmcsat_variable.la \
-	@builddir@/cnf/libmcsat_cnf.la
+	@builddir@/cnf/libmcsat_cnf.la \
+	@builddir@/bcp/libmcsat_bcp.la
 
 EXTRA_DIST = 
 
-SUBDIRS = variable clause rules cnf plugin . 
+SUBDIRS = variable clause rules cnf plugin bcp . 
 

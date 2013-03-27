@@ -15,6 +15,8 @@ class SolverPlugin;
  * Kinds of notification a solver can get
  */
 enum NotificationType {
+  /** Nofity of a new assertion */
+  NOTIFY_ASSERTION,
   /** Notify of a restart */
   NOTIFY_RESTART,
   /** Notify of a conflict */
@@ -51,6 +53,11 @@ public:
     return d_notifications;
   }
 
+  /** Nofification of a new assertion */
+  virtual void notifyAssertion(TNode assertion) {
+    Unreachable("If you subscribe, then reimplement");
+  }
+  
   /** Notification of a restart */
   virtual void notifyRestart() {
     Unreachable("If you subscribe, then reimplement");
@@ -85,6 +92,9 @@ public:
   
   /** Add a plugin to notify */
   void addPlugin(SolverPlugin* plugin);
+  
+  /** Nofification of a new assertion */
+  void notifyAssertion(TNode assertion);
   
   /** Notification of a new conflict */
   void notifyRestart();

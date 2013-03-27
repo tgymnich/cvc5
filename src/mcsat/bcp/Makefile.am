@@ -5,17 +5,14 @@ AM_CPPFLAGS = \
 	-I@srcdir@/../../include -I@srcdir@/../.. -I@builddir@/../.. 
 AM_CXXFLAGS = -Wall -Wno-parentheses -Wno-unknown-pragmas $(FLAG_VISIBILITY_HIDDEN)
 
-noinst_LTLIBRARIES = libmcsat_cnf.la
+noinst_LTLIBRARIES = libmcsat_bcp.la
 
-libmcsat_cnf_la_SOURCES = \
-	cnf_stream.h \
-	cnf_stream.cpp \
-	tseitin_cnf_stream.h \
-	tseitin_cnf_stream.cpp \
-	cnf_plugin.h \
-	cnf_plugin.cpp
+libmcsat_bcp_la_SOURCES = \
+	bcp_engin.h \
+	bcp_engine.cpp \
+	watch_list_manager.h \
+	watch_list_manager.cpp
 	
 EXTRA_DIST = 
 
 SUBDIRS = 
-

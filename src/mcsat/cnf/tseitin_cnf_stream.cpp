@@ -6,8 +6,14 @@ using namespace CVC4;
 using namespace mcsat;
 
 TseitinCnfStream::TseitinCnfStream(context::Context* cnfContext)
-: d_alreadyTranslated(cnfContext)
+: d_cnfContext(new context::Context())
+, d_alreadyTranslated(d_cnfContext)
 {
+
+}
+
+TseitinCnfStream::~TseitinCnfStream() {
+  delete d_cnfContext;
 }
 
 Literal TseitinCnfStream::handleXor(TNode xorNode) {

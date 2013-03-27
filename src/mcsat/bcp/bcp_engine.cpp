@@ -1,4 +1,4 @@
-#include "mcsat/bcp_engine.h"
+#include "mcsat/bcp/bcp_engine.h"
 #include "mcsat/options.h"
 
 using namespace CVC4;
@@ -25,8 +25,8 @@ void BCPEngine::NewVariableNotify::newVariable(Variable var) {
   }
 }
 
-BCPEngine::BCPEngine(const SolverTrail& trail, SolverPluginRequest& request)
-: SolverPlugin(trail, request)
+BCPEngine::BCPEngine(ClauseDatabase& clauseDb, const SolverTrail& trail, SolverPluginRequest& request)
+: SolverPlugin(clauseDb, trail, request)
 , d_newClauseNotify(*this)
 , d_newVariableNotify(*this)
 , d_trailHead(d_trail.getSearchContext())
@@ -39,7 +39,10 @@ BCPEngine::BCPEngine(const SolverTrail& trail, SolverPluginRequest& request)
 , d_conflictsCount(0)
 , d_conflictsLimit(d_restartInit)
 {
-  d_trail.addNewClauseListener(&d_newClauseNotify);
+  // Listen to new clauses
+  clauseDb.addNewClauseListener(&d_newClauseNotify);
+
+  // Listen to new variables
   VariableDatabase::getCurrentDB()->addNewVariableListener(&d_newVariableNotify);
 
   // Notifications we care about 
@@ -50,10 +53,6 @@ BCPEngine::BCPEngine(const SolverTrail& trail, SolverPluginRequest& request)
 
   Notice() << "mcsat::BCPEngine: Variable selection: " << (options::use_mcsat_bcp_var_heuristic() ? "on" : "off") << std::endl;
   Notice() << "mcsat::BCPEngine: Variable value by phase : " << (options::use_mcsat_bcp_value_phase_heuristic() ? "on" : "off") << std::endl;  
-}
-
-ClauseDatabase::INewClauseNotify* BCPEngine::getNewClauseListener() {
-  return &d_newClauseNotify;
 }
 
 class BCPNewClauseCmp {

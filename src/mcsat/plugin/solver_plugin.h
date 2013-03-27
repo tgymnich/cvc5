@@ -8,6 +8,7 @@
 #include "context/cdo.h"
 #include "context/cdlist.h"
 
+#include "mcsat/clause/clause_db.h"
 #include "mcsat/solver_trail.h"
 #include "mcsat/plugin/solver_plugin_notify.h"
 
@@ -60,6 +61,9 @@ private:
 
 protected:
 
+  /** Clause database we're using */
+  ClauseDatabase& d_clauseDb;
+
   /** The trail that the plugin should use */
   const SolverTrail& d_trail;
 
@@ -67,8 +71,9 @@ protected:
   SolverPluginRequest& d_request;
 
   /** Construct the plugin. */
-  SolverPlugin(const SolverTrail& trail, SolverPluginRequest& request, unsigned n = 0, ...)
-  : d_trail(trail)
+  SolverPlugin(ClauseDatabase& clauseDb, const SolverTrail& trail, SolverPluginRequest& request)
+  : d_clauseDb(clauseDb)
+  , d_trail(trail)
   , d_request(request)
   {}
 
@@ -90,9 +95,6 @@ public:
 
   /** Perform a decision */
   virtual void decide(SolverTrail::DecisionToken& out) = 0;
-
-  /** Return the listener for new clauses */
-  virtual ClauseDatabase::INewClauseNotify* getNewClauseListener() = 0;
 
   /** String representation of the plugin (for debug purposes mainly) */
   virtual std::string toString() const = 0;

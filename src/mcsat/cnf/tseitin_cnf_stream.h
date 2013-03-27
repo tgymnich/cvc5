@@ -21,10 +21,13 @@ public:
 
   /**
    * Constructs the stream to use the given sat solver. All information
-   * is kept with accordance to the given context.
+   * is kept with accordance to the given context. If the given context is 
+   * null single context is assumed.
    */
-  TseitinCnfStream(context::Context* cnfContext);
+  TseitinCnfStream(context::Context* cnfContext = 0);
 
+  ~TseitinCnfStream();
+  
   /**
    * Same as above, except that removable is remembered.
    */
@@ -32,6 +35,9 @@ public:
 
 private:
 
+  /** CNf context */
+  context::Context* d_cnfContext;
+  
   typedef context::CDHashSet<Node, NodeHashFunction> NodeSet;
 
   /** Set of nodes that have already been translated */

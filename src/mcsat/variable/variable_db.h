@@ -111,6 +111,9 @@ public:
   /** Constructor with the context to obey */
   VariableDatabase(context::Context* context);
 
+  /** Check if the node has a variable */
+  bool hasVariable(TNode node) const;
+
   /** Create a new variable or reuse an existing one */
   Variable getVariable(TNode node);
 
