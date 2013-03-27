@@ -24,6 +24,8 @@
 #include "smt/options.h"
 #include "theory/model.h"
 #include "theory/arrays/theory_arrays_rewriter.h"
+#include "printer/dagification_visitor.h"
+#include "util/node_visitor.h"
 
 #include <iostream>
 #include <vector>
@@ -817,7 +819,7 @@ void CvcPrinter::toStream(std::ostream& out, Model& m, const Command* c) const t
     TypeNode tn = TypeNode::fromType( ((const DeclareTypeCommand*)c)->getType() );
     if( options::modelUninterpDtEnum() && tn.isSort() &&
         tm.d_rep_set.d_type_reps.find( tn )!=tm.d_rep_set.d_type_reps.end() ){
-      out << "DATATYPE " << std::endl;
+      out << "DATATYPE" << std::endl;
       out << "  " << dynamic_cast<const DeclareTypeCommand*>(c)->getSymbol() << " = ";
       for( size_t i=0; i<(*tm.d_rep_set.d_type_reps.find(tn)).second.size(); i++ ){
         if (i>0) {
@@ -1068,7 +1070,18 @@ static void toStream(std::ostream& out, const DatatypeDeclarationCommand* c) thr
       out << ',' << endl;
     }
     const Datatype& dt = (*i).getDatatype();
-    out << "  " << dt.getName() << " = ";
+    out << "  " << dt.getName();
+    if(dt.isParametric()) {
+      out << '[';
+      for(size_t j = 0; j < dt.getNumParameters(); ++j) {
+        if(j > 0) {
+          out << ',';
+        }
+        out << dt.getParameter(j);
+      }
+      out << ']';
+    }
+    out << " = ";
     bool firstConstructor = true;
     for(Datatype::const_iterator j = dt.begin(); j != dt.end(); ++j) {
       if(! firstConstructor) {
