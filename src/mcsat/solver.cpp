@@ -41,10 +41,12 @@ Solver::Solver(context::UserContext* userContext, context::Context* searchContex
 , d_restartRequested(false)
 , d_learntClausesScoreMax(1.0)
 , d_learntClausesScoreIncrease(1.0)
+, d_variableRegister(d_variableDatabase)
 {
   // Add some engines
   addPlugin("CVC4::mcsat::CNFPlugin");
   addPlugin("CVC4::mcsat::BCPEngine");
+  addPlugin("CVC4::mcsat::FMPlugin");
 }
 
 Solver::~Solver() {
@@ -54,40 +56,6 @@ Solver::~Solver() {
   }
 }
 
-/**
- * Class responsible for traversing the input formulas and registering variables
- * with the plugins and the variable database.
- */
-class VariableRegister {
-
-  /** Variable database we're using */
-  VariableDatabase& d_varDb;
-
-  /** The plugins to consult */
-  std::vector<SolverPlugin*> d_plugins;
-
-public:
-
-  typedef void return_type;
-
-  VariableRegister(VariableDatabase& varDb, std::vector<SolverPlugin*>& plugins)
-  : d_varDb(varDb), d_plugins(plugins) {}
-
-  bool alreadyVisited(TNode current, TNode parent) const {
-    return true;
-  }
-
-  void visit(TNode current, TNode parent) {
-  }
-
-  void start(TNode node) {}
-
-  void done(TNode node) {}
-
-  void clear() {}
-
-};
-
 void Solver::addAssertion(TNode assertion, bool process) {
   VariableDatabase::SetCurrent scoped(&d_variableDatabase);
   Debug("mcsat::solver") << "Solver::addAssertion(" << assertion << ")" << endl; 
@@ -96,14 +64,13 @@ void Solver::addAssertion(TNode assertion, bool process) {
   Node rewritten = theory::Rewriter::rewrite(assertion);
   d_assertions.push_back(rewritten);
 
-  // Register the variables
-  VariableRegister visitor(d_variableDatabase, d_plugins);
-  NodeVisitor<VariableRegister>::run(visitor, rewritten);
+  // Register all the variables wit the database
+  NodeVisitor<VariableRegister>::run(d_variableRegister, rewritten);
 
-  // Assert to plugins
+  // Notify the plugins about the new assertion
   d_notifyDispatch.notifyAssertion(rewritten);
 
-  // Process the clause immediately if requested
+  // Run propagation immediately if requested
   if (process) {
     // Propagate the added clauses
     propagate(SolverTrail::PropagationToken::PROPAGATION_INIT);
@@ -241,15 +208,20 @@ bool Solver::check() {
 
     // Clauses processed, propagators done, we're ready for a decision
     SolverTrail::DecisionToken decisionOut(d_trail);
+    Debug("mcsat::solver::search") << "Solver::check(): trying decision" << std::endl;
     d_featuresDispatch.decide(decisionOut);
 
     // If no decisions were made we are done, do a completeness check
     if (!decisionOut.used()) {
+      Debug("mcsat::solver::search") << "Solver::check(): no decisions, doing fullcheck" << std::endl;
       // Do complete propagation
       propagate(SolverTrail::PropagationToken::PROPAGATION_COMPLETE);
       // If no-one has anything to say, we're done
-      break;
+      if (!d_request) {
+	break;
+      }
     } else {
+      // We made a new decision
       ++ d_stats.decisions;
     }
     

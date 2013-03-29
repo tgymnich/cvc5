@@ -2,6 +2,7 @@
 
 #include <set>
 #include <vector>
+#include <iostream>
 
 #include "mcsat/variable/variable.h"
 #include "mcsat/clause/clause_ref.h"
@@ -22,6 +23,15 @@ enum PluginFeature {
   CAN_DECIDE
 };
 
+inline std::ostream& operator << (std::ostream& out, PluginFeature feature) {
+  switch (feature) {
+    case CAN_PROPAGATE:
+      out << "CAN_PROPAGATE"; break;
+    case CAN_DECIDE:
+      out << "CAN_DECIDE"; break;    
+  }
+  return out;
+}
 
 /** Interface for plugin notificaiton */
 class SolverPluginFeatures {

@@ -150,6 +150,41 @@ private:
 
   /** Heuristically remove some learnt clauses */
   void shrinkLearnts();
+
+  /**
+   * Class responsible for traversing the input formulas and registering variables
+   * with the variable database.
+   */
+  class VariableRegister {
+
+    /** Variable database we're using */
+    VariableDatabase& d_varDb;
+
+    /** Set of already visited nodes */
+    std::hash_set<TNode, TNodeHashFunction> d_visited;
+
+  public:
+
+    typedef void return_type;
+
+    VariableRegister(VariableDatabase& varDb)
+    : d_varDb(varDb) {}
+
+    bool alreadyVisited(TNode current, TNode parent) const {
+      return d_visited.find(current) != d_visited.end();
+    }
+
+    void visit(TNode current, TNode parent) {
+      if (current.isVar()) {
+        d_varDb.getVariable(current);
+      }
+      d_visited.insert(current);
+    }
+
+    void start(TNode node) {}
+    void done(TNode node) {}
+  } d_variableRegister;
+
 };
 
 }

@@ -10,6 +10,25 @@ namespace mcsat {
  */
 class FMPlugin : public SolverPlugin {
 
+  class NewVariableNotify : public VariableDatabase::INewVariableNotify {
+    FMPlugin& d_plugin;
+  public:
+    NewVariableNotify(FMPlugin& d_plugin);
+    void newVariable(Variable var);
+  } d_newVariableNotify;
+
+  /** Integer type index */
+  size_t d_int_type_index;
+
+  /** Real type index */
+  size_t d_real_type_index;
+
+  /** Called on new real variables */
+  void newVariable(Variable var);
+
+  /** Called on arithmetic constraints */
+  void newConstraint(Variable constraint);
+  
 public:
 
   /** Constructor */
