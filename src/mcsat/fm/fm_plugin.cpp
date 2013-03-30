@@ -66,7 +66,7 @@ void FMPlugin::newVariable(Variable var) {
 }
 
 /** Returns true if the term is linear, false otherwise */
-bool parseLinearTerm(TNode term, Rational mult, fm::coefficient_map& coefficientMap) {
+bool parseLinearTerm(TNode term, Rational mult, fm::var_to_rational_map& coefficientMap) {
   
   Debug("mcsat::fm") << "parseLinearTerm(" << term << ")" << std::endl;
   
@@ -193,6 +193,8 @@ void FMPlugin::newConstraint(Variable constraint) {
 
   // Remember the constraint
   d_constraints[constraint].swap(linearConstraint);
+  // Also remember that the list reference corresponds to this constraint
+  d_varlistToVar[listRef] = constraint;
 }
 
 void FMPlugin::propagate(SolverTrail::PropagationToken& out) {
@@ -203,17 +205,183 @@ void FMPlugin::propagate(SolverTrail::PropagationToken& out) {
     Variable var = d_trail[i].var;
 
     if (isArithmeticVariable(var)) {
-      // Do assignment propagation
 
+      Debug("mcsat::fm") << "FMPlugin::propagate(): " << var << " assigned" << std::endl;
+
+      // Go through all the variable lists (constraints) where we're watching var
+      AssignedWatchManager::remove_iterator w = d_assignedWatchManager.begin(var);
+      while (d_trail.consistent() && !w.done()) {
+
+        // Get the current list where var appears
+        VariableListReference variableListRef = *w;
+        VariableList variableList = d_assignedWatchManager.get(variableListRef);
+        Debug("mcsat::fm") << "FMPlugin::propagate(): watchlist  " << variableList << " assigned" << std::endl;
+
+        // More than one vars, put the just assigned var to position [1]
+        if (variableList.size() > 1 && variableList[0] == var) {
+          variableList.swap(0, 1);
+        }
+
+        // Try to find a new watch
+        bool watchFound = false;
+        for (unsigned j = 2; j < variableList.size(); j++) {
+          if (!d_trail.hasValue(variableList[j])) {
+            // Put the new watch in place
+            variableList.swap(1, j);
+            d_assignedWatchManager.watch(variableList[1], variableListRef);
+            w.next_and_remove();
+            // We found a watch
+            watchFound = true;
+            break;
+          }
+        }
+
+        Debug("mcsat::fm") << "FMPlugin::propagate(): new watch " << (watchFound ? "found" : "not found") << std::endl;
+
+        if (!watchFound) {
+          // We did not find a new watch so vars[1], ..., vars[n] are assigned, except maybe vars[0]
+          if (d_trail.hasValue(variableList[0])) {
+            // Even the first one is assigned, so we have a semantic propagation
+          } else {
+            // The first one is not assigned, so we have a new unit constraint
+          }
+        }
+      }
     } else if (isLinearConstraint(var)) {
-      // If unit assert the bound
-
+      // If the constraint is unit we propagate a new bound
+      if (isUnitConstraint(var)) {
+        processUnitConstraint(var);
+      }
     }
   }
 
   // Remember where we stopped
   d_trailHead = i;
 }
+
+bool FMPlugin::isUnitConstraint(Variable constraint) {
+  return true;
+}
+
+static Kind negateKind(Kind kind) {
+
+  switch (kind) {
+  case kind::LT:
+    // not (a < b) = (a >= b)
+    return kind::GEQ;
+  case kind::LEQ:
+    // not (a <= b) = (a > b)
+    return kind::GT;
+  case kind::GT:
+    // not (a > b) = (a <= b)
+    return kind::LEQ;
+  case kind::GEQ:
+    // not (a >= b) = (a < b)
+    return kind::LT;
+  case kind::EQUAL:
+    // not (a = b) = (a != b)
+    return kind::DISTINCT;
+  default:
+    Unreachable();
+    break;
+  }
+
+  return kind::LAST_KIND;
+}
+
+/** Multiplying constraint with -1 */
+static Kind flipKind(Kind kind) {
+
+  switch (kind) {
+  case kind::LT:
+    return kind::GT;
+  case kind::LEQ:
+    return kind::GEQ;
+  case kind::GT:
+    return kind::GT;
+  case kind::GEQ:
+    return kind::LEQ;
+  default:
+    return kind;
+  }
+
+}
+
+
+void FMPlugin::processUnitConstraint(Variable constraint) {
+  Assert(isLinearConstraint(constraint));
+  Assert(isUnitConstraint(constraint));
+
+  // Get the constraint
+  const LinearConstraint& c = getLinearConstraint(constraint);
+
+  // Compute ax + sum:
+  // * the sum of the linear term that evaluates
+  // * the single variable that is unassigned
+  // * coefficient of the variable
+  Rational sum;
+  Rational a;
+  Variable x;
+
+  fm::var_to_rational_map::const_iterator it = c.coefficients.begin();
+  fm::var_to_rational_map::const_iterator it_end = c.coefficients.begin();
+  for (; it != it_end; ++ it) {
+    Variable var = it->first;
+    // Constant term
+    if (var.isNull()) {
+      sum += it->second;
+      continue;
+    }
+    // Assigned variable
+    if (d_trail.hasValue(var)) {
+      Rational varValue = d_trail.value(var).getNode().getConst<Rational>();
+      sum += it->second * varValue;
+    } else {
+      Assert(x.isNull());
+      x = var;
+      a = it->second;
+    }
+  }
+
+  // The constraint kind
+  Kind kind = c.kind;
+  if (d_trail.isFalse(constraint)) {
+    // If the constraint is negated, negate the kind
+    kind = negateKind(kind);
+  }
+  if (a < 0) {
+    // If a is negative flip the kind
+    kind = flipKind(kind);
+    a = -a;
+    sum = -sum;
+  }
+
+  // Do the work (assuming a > 0)
+  switch (kind) {
+  case kind::GT:
+  case kind::GEQ:
+    // (ax + sum >= 0) <=> (x >= sum/a)
+    d_bounds.updateLowerBound(x, BoundInfo(sum/a, kind == kind::GT, constraint));
+    break;
+  case kind::LT:
+  case kind::LEQ:
+    // (ax + sum <= 0) <=> (x <= sum/a)
+    d_bounds.updateUpperBound(x, BoundInfo(sum/a, kind == kind::LT, constraint));
+    break;
+  case kind::EQUAL:
+    // (ax + sum == 0) <=> (x == sum/a)
+    d_bounds.updateLowerBound(x, BoundInfo(sum/a, false, constraint));
+    d_bounds.updateUpperBound(x, BoundInfo(sum/a, false, constraint));
+    break;
+  case kind::DISTINCT:
+    // TODO: add to list
+    break;
+  default:
+    Unreachable();
+  }
+
+}
+
 
 void FMPlugin::decide(SolverTrail::DecisionToken& out) {
   Debug("mcsat::fm") << "FMPlugin::decide()" << std::endl;

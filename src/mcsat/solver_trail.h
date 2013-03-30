@@ -228,6 +228,16 @@ public:
     return value(l) == c_FALSE;
   }
 
+  /** Returns true if the variable is true in the current model */
+  bool isTrue(Variable var) const {
+    return value(var) == c_TRUE;
+  }
+
+  /** Returns true if the variable is false in the current model */
+  bool isFalse(Variable var) const {
+    return value(var) == c_FALSE;
+  }
+
   /** Get the decision level where the variable was assigned */
   unsigned decisionLevel(Variable var) const;
   /** Get the trail index where the variable was assigned */

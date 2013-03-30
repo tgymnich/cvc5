@@ -1,7 +1,5 @@
 #pragma once
 
-#include "mcsat/fm/fm_plugin_types.h"
-
 #include <vector>
 #include <boost/integer_traits.hpp>
 
@@ -10,17 +8,19 @@ namespace mcsat {
 
 class VariableListReference {
 
-  /** Index of the reference */
-  size_t d_index;
-
-  /** Size of the list */
-  size_t d_size;
+protected:
 
   /** Number of bits kept for the reference */
   static const size_t BITS_FOR_REFERENCE = 32;
 
   /** NUmber of bits kept for the size */
   static const size_t BITS_FOR_SIZE = 32;
+
+  /** Index of the reference */
+  size_t d_index : BITS_FOR_REFERENCE;
+
+  /** Size of the list */
+  size_t d_size  : BITS_FOR_SIZE;
 
   /** Null reference */
   static const size_t nullRef = boost::low_bits_mask_t<BITS_FOR_REFERENCE>::sig_bits;
@@ -56,11 +56,53 @@ public:
   size_t size() const {
     return d_size;
   }
+
+  bool operator == (const VariableListReference& other) const {
+    return d_index == other.d_index;
+  }
+
 };
 
-/**
- * Maintains lists of variables.
- */
+class VariableList : public VariableListReference {
+
+  std::vector<Variable>& d_memory;
+
+public:
+
+  VariableList(std::vector<Variable>& memory, VariableListReference ref)
+  : VariableListReference(ref)
+  , d_memory(memory)
+  {}
+
+  VariableList(const VariableList& other)
+  : VariableListReference(other)
+  , d_memory(other.d_memory)
+  {}
+
+  const Variable& operator [] (size_t i) const {
+    return d_memory[d_index + i];
+  }
+
+  void swap(size_t i, size_t j) {
+    std::swap(d_memory[d_index + i], d_memory[d_index + j]);
+  }
+
+  void toStream(std::ostream& out) const {
+    out << "VariableList[";
+    for (unsigned i = 0; i < d_size; ++ i) {
+      if (i > 0) out << ",";
+      out << d_memory[d_index + i];
+    }
+    out << "]";
+  }
+
+};
+
+inline std::ostream& operator << (std::ostream& out, const VariableList& list) {
+  list.toStream(out);
+  return out;
+}
+
 class AssignedWatchManager {
 
   /** The list memory */
@@ -147,7 +189,25 @@ public:
   remove_iterator begin(Variable var) {
     return remove_iterator(d_watchLists, var);
   }
+
+  /** Get the actual variable list */
+  VariableList get(VariableListReference ref) {
+    return VariableList(d_memory, ref);
+  }
 };
+
+/**
+ * This hash function is only apropriate for lists coming from the same memory.
+ */
+class VariableListReferenceHasFunction {
+public:
+  size_t operator () (const VariableListReference& varList) const {
+    return varList.index();
+  }
+};
+
+
+typedef std::hash_map<VariableListReference, Variable, VariableListReferenceHasFunction> varlist_to_var_map;
 
 }
 }

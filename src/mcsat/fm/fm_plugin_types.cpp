@@ -96,8 +96,8 @@ const BoundInfo& CDBoundsModel::getUpperBoundInfo(Variable var) const {
 }
 
 void LinearConstraint::getVariables(std::vector<Variable>& vars) {
-  coefficient_map::const_iterator it = coefficients.begin();
-  coefficient_map::const_iterator it_end = coefficients.end();
+  var_to_rational_map::const_iterator it = coefficients.begin();
+  var_to_rational_map::const_iterator it_end = coefficients.end();
   while (it != it_end) {
     Variable var = it->first;
     if (!var.isNull()) {

@@ -34,11 +34,19 @@ class FMPlugin : public SolverPlugin {
   void newConstraint(Variable constraint);
   
   /** Map from variables to constraints */
-  fm::constraints_map d_constraints;
+  fm::var_to_constraint_map d_constraints;
+
+  /** Map from lists to constraint variables */
+  varlist_to_var_map d_varlistToVar;
 
   /** Returns true if variable is a registered linear arith constraint */
   bool isLinearConstraint(Variable var) const {
     return d_constraints.find(var) != d_constraints.end();
+  }
+
+  const fm::LinearConstraint& getLinearConstraint(Variable var) const {
+    Assert(isLinearConstraint(var));
+    return d_constraints.find(var)->second;
   }
 
   /** Is this variable an arithmetic variable */
@@ -54,6 +62,15 @@ class FMPlugin : public SolverPlugin {
   
   /** Watch manager for assigned variables */
   AssignedWatchManager d_assignedWatchManager;
+
+  /** Checks whether the constraint is unit */
+  bool isUnitConstraint(Variable constraint);
+
+  /**
+   * Takes a unit constraint and asserts the apropriate bound (if inequalities), or
+   * adds to the list of dis-equalities for the free variable.
+   */
+  void processUnitConstraint(Variable constraint);
 
 public:
 

@@ -12,7 +12,7 @@ namespace mcsat {
 namespace fm {
   
 /** Map from variables to coefficients, null is the constant term */
-typedef std::hash_map<Variable, Rational, VariableHashFunction> coefficient_map;
+typedef std::hash_map<Variable, Rational, VariableHashFunction> var_to_rational_map;
 
 /** Bound information */
 struct BoundInfo {
@@ -22,6 +22,12 @@ struct BoundInfo {
   bool strict;
   /** What is the reason for this bound */
   Variable reason;
+
+  BoundInfo()
+  : strict(false) {}
+
+  BoundInfo(Rational value, bool strict, Variable reason)
+  : value(value), strict(strict), reason(reason) {}
 };
 
 /** Context-dependent bounds model */
@@ -54,7 +60,8 @@ class CDBoundsModel : public context::ContextNotifyObj {
     /** Is it a lower bound */
     bool isLower;
     
-    UndoInfo() {}
+    UndoInfo()
+    : prev(null), isLower(false) {}
     
     UndoInfo(Variable var, BoundIndex prev, bool isLower)
     : prev(prev), isLower(isLower) {}      
@@ -66,7 +73,7 @@ class CDBoundsModel : public context::ContextNotifyObj {
   /** Count of lower bound updates */
   context::CDO<unsigned> d_boundTrailSize;
   
-  /** Update to the apropriate context state */
+  /** Update to the appropriate context state */
   void contextNotifyPop();
   
 public:
@@ -103,7 +110,7 @@ public:
 struct LinearConstraint {
   
   /** Map from variables to coefficients */
-  coefficient_map coefficients;
+  var_to_rational_map coefficients;
   /** The kind of constraint >=, ... */
   Kind kind;
 
@@ -117,14 +124,15 @@ struct LinearConstraint {
 
   /** Swap with the given constraint */
   void swap(LinearConstraint& c);
+
 };
 
 /** Map froom variables to constraints */
-typedef std::hash_map<Variable, LinearConstraint, VariableHashFunction> constraints_map;
+typedef std::hash_map<Variable, LinearConstraint, VariableHashFunction> var_to_constraint_map;
 
 inline std::ostream& operator << (std::ostream& out, const LinearConstraint& c) {
-  fm::coefficient_map::const_iterator it = c.coefficients.begin();
-  fm::coefficient_map::const_iterator it_end = c.coefficients.end();
+  fm::var_to_rational_map::const_iterator it = c.coefficients.begin();
+  fm::var_to_rational_map::const_iterator it_end = c.coefficients.end();
   bool first = true;
   while (it != it_end) {
     out << (first ? "" : "+");
