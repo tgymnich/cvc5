@@ -1,6 +1,10 @@
 #pragma once
 
 #include "mcsat/plugin/solver_plugin.h"
+#include "mcsat/variable/variable_table.h"
+
+#include "mcsat/fm/fm_plugin_types.h"
+#include "mcsat/fm/assigned_watch_manager.h"
 
 namespace CVC4 {
 namespace mcsat {
@@ -18,10 +22,10 @@ class FMPlugin : public SolverPlugin {
   } d_newVariableNotify;
 
   /** Integer type index */
-  size_t d_int_type_index;
+  size_t d_intTypeIndex;
 
   /** Real type index */
-  size_t d_real_type_index;
+  size_t d_realTypeIndex;
 
   /** Called on new real variables */
   void newVariable(Variable var);
@@ -29,6 +33,28 @@ class FMPlugin : public SolverPlugin {
   /** Called on arithmetic constraints */
   void newConstraint(Variable constraint);
   
+  /** Map from variables to constraints */
+  fm::constraints_map d_constraints;
+
+  /** Returns true if variable is a registered linear arith constraint */
+  bool isLinearConstraint(Variable var) const {
+    return d_constraints.find(var) != d_constraints.end();
+  }
+
+  /** Is this variable an arithmetic variable */
+  bool isArithmeticVariable(Variable var) const {
+    return var.typeIndex() == d_realTypeIndex || var.typeIndex() == d_intTypeIndex;
+  }
+
+  /** Head pointer into the trail */
+  context::CDO<size_t> d_trailHead;
+
+  /** Bounds in the current context */
+  fm::CDBoundsModel d_bounds;
+  
+  /** Watch manager for assigned variables */
+  AssignedWatchManager d_assignedWatchManager;
+
 public:
 
   /** Constructor */
@@ -48,7 +74,6 @@ template class SolverPluginConstructor<FMPlugin>;
 
 }
 }
-
 
 
 

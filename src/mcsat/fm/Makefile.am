@@ -9,7 +9,10 @@ noinst_LTLIBRARIES = libmcsat_fm.la
 
 libmcsat_fm_la_SOURCES = \
 	fm_plugin.h \
-	fm_plugin.cpp
+	fm_plugin.cpp \
+	fm_plugin_types.h \
+	fm_plugin_types.cpp \
+	assigned_watch_manager.h 
 	
 EXTRA_DIST = 
 

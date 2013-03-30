@@ -246,9 +246,14 @@ public:
   /** Get the false constant */
   Variable getFalse() const { return c_FALSE; }
 
-  /** Return the value of a Boolean value in the current trail */
+  /** Return the assigned value in the current trail */
   Variable value(Variable var) const {
     return d_model[var];
+  }
+
+  /** Does this variable have an assigned value */
+  bool hasValue(Variable var) const {
+    return d_model[var].isNull();
   }
 
   /**
