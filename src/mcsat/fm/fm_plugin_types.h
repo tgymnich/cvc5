@@ -28,6 +28,30 @@ struct BoundInfo {
 
   BoundInfo(Rational value, bool strict, Variable reason)
   : value(value), strict(strict), reason(reason) {}
+
+  bool improvesLowerBound(const BoundInfo& other) const {
+    // x > value is better than x > other.value
+    // if value > other.value or they are equal but this one
+    // is strict    
+    int cmp = value.cmp(other.value);
+    return (cmp > 0 || (cmp == 0 && strict));
+  }
+  
+  bool improvesUpperBound(const BoundInfo& other) const {
+    // x < value is better than x < other.value
+    // if value < other.value or they are equal but this one 
+    // is strict
+    int cmp = value.cmp(other.value);
+    return (cmp < 0 || (cmp == 0 && strict));    
+  }
+  
+  static bool inConflict(const BoundInfo& lower, const BoundInfo& upper) {
+    // x > a and x < b are in conflict 
+    // if a > b or they are equal but one is strict
+    int cmp = lower.value.cmp(upper.value);
+    return (cmp > 0 || (cmp == 0 && (lower.strict || upper.strict)));
+  }
+  
 };
 
 /** Context-dependent bounds model */
@@ -72,6 +96,9 @@ class CDBoundsModel : public context::ContextNotifyObj {
   
   /** Count of lower bound updates */
   context::CDO<unsigned> d_boundTrailSize;
+
+  /** Variables that are in conflict */
+  std::set<Variable> d_variablesInConflict;
   
   /** Update to the appropriate context state */
   void contextNotifyPop();
@@ -101,6 +128,15 @@ public:
   /** Get the current upper bound info */
   const BoundInfo& getUpperBoundInfo(Variable var) const;
   
+  /** Is the state of bounds in conflict */
+  bool inConflict() const {
+    return d_variablesInConflict.size() > 0;
+  }
+  
+  /** Get the variables with conflicting bound */
+  void getVariablesInConflict(std::set<Variable>& out) {
+    out.swap(d_variablesInConflict);
+  }
 };
 
 /**
