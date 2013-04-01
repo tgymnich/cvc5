@@ -16,7 +16,8 @@ typedef std::hash_map<Variable, Rational, VariableHashFunction> var_to_rational_
 
 /**
  * A generic linear constraint (t op 0) is just a map from variables to coefficients
- * representing a term t, and a kind of constraint op.
+ * representing a term t, and a kind of constraint op. The resulting constraint will
+ * be of kind either >=, >, ==, or !=.
  */
 class LinearConstraint {
 

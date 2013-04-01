@@ -4,7 +4,7 @@
 #include "mcsat/variable/variable_table.h"
 
 #include "mcsat/fm/fm_plugin_types.h"
-#include "mcsat/fm/assigned_watch_manager.h"
+#include "mcsat/util/assigned_watch_manager.h"
 
 #include "mcsat/rules/fourier_motzkin_rule.h"
 
@@ -39,7 +39,7 @@ class FMPlugin : public SolverPlugin {
   fm::var_to_constraint_map d_constraints;
 
   /** Map from lists to constraint variables */
-  varlist_to_var_map d_varlistToVar;
+  util::varlist_to_var_map d_varlistToVar;
 
   /** Returns true if variable is a registered linear arith constraint */
   bool isLinearConstraint(Variable var) const {
@@ -63,7 +63,7 @@ class FMPlugin : public SolverPlugin {
   fm::CDBoundsModel d_bounds;
   
   /** Watch manager for assigned variables */
-  AssignedWatchManager d_assignedWatchManager;
+  util::AssignedWatchManager d_assignedWatchManager;
 
   /** Checks whether the constraint is unit */
   bool isUnitConstraint(Variable constraint);

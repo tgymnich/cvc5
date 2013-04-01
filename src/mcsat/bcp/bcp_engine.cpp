@@ -30,9 +30,6 @@ BCPEngine::BCPEngine(ClauseDatabase& clauseDb, const SolverTrail& trail, SolverP
 , d_newClauseNotify(*this)
 , d_newVariableNotify(*this)
 , d_trailHead(d_trail.getSearchContext())
-, d_variableScoresMax(1.0)
-, d_variableScoreCmp(d_variableScores)
-, d_variableQueue(d_variableScoreCmp)
 , d_restartsCount(0)
 , d_restartBase(options::mcsat_bcp_restart_base())
 , d_restartInit(options::mcsat_bcp_restart_init())
@@ -129,23 +126,11 @@ void BCPEngine::newVariable(Variable var) {
 
   Debug("mcsat::bcp") << "BCPEngine::newVariable(" << var << ")" << std::endl;
 
-  // Insert a new score (max of the current scores)
-  d_variableScores.resize(var.index() + 1, d_variableScoresMax);
-  // Values of variables
+  // New variable
   d_variableValues.resize(var.index() + 1, false);
-  // Make sure that there is enough space for the pointer
-  d_variableQueuePositions.resize(var.index() + 1);
+
   // Add to the queue
-  enqueue(var);
-}
-
-bool BCPEngine::inQueue(Variable var) const {
-  return d_variableQueuePositions[var.index()] != variable_queue::point_iterator();
-}
-
-void BCPEngine::enqueue(Variable var) {
-  variable_queue::point_iterator it = d_variableQueue.push(var);
-  d_variableQueuePositions[var.index()] = it;
+  d_variableQueue.newVariable(var);
 }
 
 void BCPEngine::propagate(SolverTrail::PropagationToken& out) {
@@ -260,9 +245,7 @@ void BCPEngine::decide(SolverTrail::DecisionToken& out) {
   Debug("mcsat::bcp") << "BCPEngine::decide()" << std::endl;
   Assert(d_delayedPropagations.size() == 0 && d_trailHead == d_trail.size());
   while (!d_variableQueue.empty()) {
-    Variable var = d_variableQueue.top();
-    d_variableQueue.pop();
-    d_variableQueuePositions[var.index()] = variable_queue::point_iterator();
+    Variable var = d_variableQueue.pop();
 
     if (d_trail.value(var).isNull()) {
       
@@ -289,7 +272,7 @@ void BCPEngine::notifyVariableUnset(const std::vector<Variable>& vars) {
   size_t boolIndex = d_trail.c_TRUE.typeIndex();
   for (unsigned i = 0; i < vars.size(); ++ i) {
     if (vars[i].typeIndex() == boolIndex) {
-      enqueue(vars[i]);
+      d_variableQueue.enqueue(vars[i]);
     }
   }
 }
@@ -331,41 +314,8 @@ void BCPEngine::notifyConflictResolution(CRef cRef) {
   if (options::use_mcsat_bcp_var_heuristic()) {
     // Bump each variable that is resolved
     for (unsigned i = 0; i < clause.size(); ++ i) {
-      bumpVariable(clause[i].getVariable());
+      d_variableQueue.bumpVariable(clause[i].getVariable());
     }
-  }
-}
-
-void BCPEngine::bumpVariable(Variable var) {
-  
-  // Increase per conflict apperance
-  static double variableHeuristicIncrease = 1;
-  
-  // New heuristic value
-  double newValue = d_variableScores[var.index()] + variableHeuristicIncrease;
-  if (newValue > d_variableScoresMax) {
-    d_variableScoresMax = newValue;
-  }
-  
-  if (inQueue(var)) {
-    // If the variable is in the queue, erase it first
-    d_variableQueue.erase(d_variableQueuePositions[var.index()]);
-    d_variableScores[var.index()] = newValue;
-    enqueue(var);
-  } else {
-    // Otherwise just udate the value
-    d_variableScores[var.index()] = newValue;
-  }
-    
-  // If the new value is too big, update all the values
-  if (newValue > 1e100) {
-    // This preserves the order, we're fine
-    for (unsigned i = 0, i_end = d_variableScores.size(); i < i_end; ++ i) {
-      d_variableScores[i] *= 1e-100;
-    }
-    // TODO: decay activities
-    // variableHeuristicIncrease *= 1e-100;
-    d_variableScoresMax *= 1e-100;
   }
 }
   

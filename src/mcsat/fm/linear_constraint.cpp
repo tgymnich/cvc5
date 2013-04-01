@@ -1,6 +1,8 @@
 #include "mcsat/fm/linear_constraint.h"
 #include "mcsat/variable/variable_db.h"
 
+#include "theory/rewriter.h"
+
 using namespace CVC4;
 using namespace mcsat;
 using namespace fm;
@@ -112,9 +114,7 @@ bool LinearConstraint::parse(TNode term, Rational mult, var_to_rational_map& coe
 }
 
 void LinearConstraint::toStream(std::ostream& out) const {
-
   out << "LinearConstraint[" << d_kind << ", ";
-
   fm::var_to_rational_map::const_iterator it = d_coefficients.begin();
   fm::var_to_rational_map::const_iterator it_end = d_coefficients.end();
   bool first = true;
@@ -128,13 +128,10 @@ void LinearConstraint::toStream(std::ostream& out) const {
     first = false;
     ++ it;
   }
-
   out << "]";
-
 }
 
 Kind LinearConstraint::negateKind(Kind kind) {
-
   switch (kind) {
   case kind::LT:
     // not (a < b) = (a >= b)
@@ -155,12 +152,10 @@ Kind LinearConstraint::negateKind(Kind kind) {
     Unreachable();
     break;
   }
-
   return kind::LAST_KIND;
 }
 
 Kind LinearConstraint::flipKind(Kind kind) {
-
   switch (kind) {
   case kind::LT:
     return kind::GT;
@@ -173,7 +168,6 @@ Kind LinearConstraint::flipKind(Kind kind) {
   default:
     return kind;
   }
-
 }
 
 Rational LinearConstraint::getCoefficient(Variable var) const {
@@ -195,6 +189,29 @@ void LinearConstraint::multiply(Rational c) {
 }
   
 void LinearConstraint::add(const LinearConstraint& other, Rational c) {
+
+  // Figure out the resulting kind
+  switch (d_kind) {
+  case kind::EQUAL:
+    // The result is whatever the other one is
+    d_kind = other.d_kind;
+    break;
+  case kind::GT:
+    // GT + any other constraint is GT, so we stay the same
+    break;
+  case kind::GEQ:
+    // GEQ + EQ  = GEQ
+    // GEQ + GEQ = GEQ
+    // GEQ + GT  = GT
+    if (other.d_kind == kind::GT) {
+      d_kind = kind::GT;
+    }
+    break;
+  default:
+    Unreachable();
+  }
+
+  // Add up the terms
   const_iterator it = other.begin();
   const_iterator it_end = other.end();
   for (; it != it_end; ++ it) {
@@ -206,5 +223,45 @@ void LinearConstraint::add(const LinearConstraint& other, Rational c) {
 }
 
 Literal LinearConstraint::getLiteral() const {
-  return Literal::null;
+  
+  Assert(d_coefficients.size() >= 1);
+  
+  NodeManager* nm = NodeManager::currentNM();
+  VariableDatabase* db = VariableDatabase::getCurrentDB();
+
+  // Construct the sum
+  Node sum;
+  if (d_coefficients.size() > 1) {
+    NodeBuilder<> sumBuilder(kind::PLUS);
+    const_iterator it = begin();
+    const_iterator it_end = end();
+    for (; it != it_end; ++ it) {
+      Variable x = it->first;
+      Rational a = it->second;
+      Node xNode = x.getNode();
+      Node aNode = nm->mkConst<Rational>(a);
+      sumBuilder << nm->mkNode(kind::MULT, aNode, xNode);
+    }
+    sum = sumBuilder;
+  } else {
+    // We only have the constant
+    Assert(d_coefficients.begin()->first.isNull());
+    sum = nm->mkConst<Rational>(d_coefficients.begin()->second);
+  }
+
+  // Construct the constraint 
+  Node node = nm->mkNode(d_kind, sum, nm->mkConst<Rational>(0));
+
+  // Normalize the constraint
+  Node normalized = theory::Rewriter::rewrite(node);
+
+  // Is the normalized constraint negated 
+  bool negated = normalized.getKind() == kind::NOT;
+  // Get the atom of the literal
+  TNode atom = negated ? normalized[0] : normalized;
+  // Construct the variable (this spawns notifications)
+  Variable variable = db->getVariable(atom);
+
+  // Return the literal
+  return Literal(variable, negated);
 }

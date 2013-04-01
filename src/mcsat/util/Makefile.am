@@ -5,15 +5,12 @@ AM_CPPFLAGS = \
 	-I@srcdir@/../../include -I@srcdir@/../.. -I@builddir@/../.. 
 AM_CXXFLAGS = -Wall -Wno-parentheses -Wno-unknown-pragmas $(FLAG_VISIBILITY_HIDDEN)
 
-noinst_LTLIBRARIES = libmcsat_fm.la
+noinst_LTLIBRARIES = libmcsat_util.la
 
-libmcsat_fm_la_SOURCES = \
-	fm_plugin.h \
-	fm_plugin.cpp \
-	fm_plugin_types.h \
-	fm_plugin_types.cpp \
-	linear_constraint.h \
-	linear_constraint.cpp 
+libmcsat_util_la_SOURCES = \
+	var_priority_queue.h \
+	var_priority_queue.cpp \
+	assigned_watch_manager.h
 	
 EXTRA_DIST = 
 

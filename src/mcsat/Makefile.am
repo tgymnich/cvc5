@@ -18,6 +18,7 @@ libmcsat_la_SOURCES = \
 libmcsat_la_LIBADD = \
 	@builddir@/clause/libmcsat_clause.la \
 	@builddir@/rules/libmcsat_rules.la \
+	@builddir@/util/libmcsat_util.la \
 	@builddir@/plugin/libmcsat_solver_plugin.la \
 	@builddir@/variable/libmcsat_variable.la \
 	@builddir@/cnf/libmcsat_cnf.la \
@@ -26,5 +27,5 @@ libmcsat_la_LIBADD = \
 
 EXTRA_DIST = 
 
-SUBDIRS = variable clause rules plugin cnf bcp fm . 
+SUBDIRS = variable clause util rules plugin cnf bcp fm . 
 

@@ -2,6 +2,7 @@
 
 #include "mcsat/plugin/solver_plugin.h"
 #include "mcsat/bcp/watch_list_manager.h"
+#include "mcsat/util/var_priority_queue.h"
 
 #include <ext/pb_ds/priority_queue.hpp>
 
@@ -49,40 +50,11 @@ class BCPEngine : public SolverPlugin {
   /** Head pointer into the trail */
   context::CDO<size_t> d_trailHead;
 
-  /** Scores of variables */
-  std::vector<double> d_variableScores;
+  /** Priority queue for variable selection */
+  util::VariablePriorityQueue d_variableQueue;
 
-  /** Max of all the variables */
-  double d_variableScoresMax;
-  
   /** Values of variables */
   std::vector<bool> d_variableValues;
-  
-  /** Compare variables according to their current score */
-  class VariableScoreCmp {
-    std::vector<double>& d_variableScores;
-  public:
-    VariableScoreCmp(std::vector<double>& variableScores)
-    : d_variableScores(variableScores) {}
-    bool operator() (const Variable& v1, const Variable& v2) const {
-      return d_variableScores[v1.index()] < d_variableScores[v2.index()];
-    }
-  } d_variableScoreCmp;
-
-  /** Priority queue type we'll be using to keep the variables to pick */
-  typedef __gnu_pbds::priority_queue<Variable, VariableScoreCmp> variable_queue;
-
-  /** Priority queue for the variables */
-  variable_queue d_variableQueue;
-
-  /** Position in the variable queue */
-  std::vector<variable_queue::point_iterator> d_variableQueuePositions;
-
-  /** Enqueues the variable for decision making */
-  void enqueue(Variable var);
-
-  /** Is the variable in queue */
-  bool inQueue(Variable var) const;
     
   /** How many restarts have happened */
   unsigned d_restartsCount;
@@ -113,9 +85,6 @@ public:
   /** Notification of a new conflict */
   void notifyConflict();
   
-  /** Bump the heuristic value of the vaiable */
-  void bumpVariable(Variable var);
-
   /** Nofification of a new conflict resolution step */
   void notifyConflictResolution(CRef clause);
   

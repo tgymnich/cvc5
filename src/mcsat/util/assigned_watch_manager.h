@@ -2,9 +2,11 @@
 
 #include <vector>
 #include <boost/integer_traits.hpp>
+#include <ext/hash_map>
 
 namespace CVC4 {
 namespace mcsat {
+namespace util {
 
 class VariableListReference {
 
@@ -206,8 +208,8 @@ public:
   }
 };
 
+typedef __gnu_cxx::hash_map<VariableListReference, Variable, VariableListReferenceHasFunction> varlist_to_var_map;
 
-typedef std::hash_map<VariableListReference, Variable, VariableListReferenceHasFunction> varlist_to_var_map;
-
+}
 }
 }

@@ -20,8 +20,6 @@ void FourierMotzkinRule::start(Literal lit) {
   Assert(linear);
 }
 
-
-
 /** Resolve with given inequality over the given variable. */
 void FourierMotzkinRule::resolve(Variable var, Literal ineq) {
 
@@ -35,7 +33,7 @@ void FourierMotzkinRule::resolve(Variable var, Literal ineq) {
   Assert(d_resolventC*toResolveC < 0);
 
   // Compute the new resolvent
-  toResolve.multiply(toResolveC.abs());
+  d_resolvent.multiply(toResolveC.abs());
   d_resolvent.add(toResolve, d_resolventC.abs());
 }
 

@@ -3,6 +3,7 @@
 using namespace CVC4;
 using namespace mcsat;
 using namespace fm;
+using namespace util;
 
 FMPlugin::NewVariableNotify::NewVariableNotify(FMPlugin& plugin)
 : INewVariableNotify(false)
