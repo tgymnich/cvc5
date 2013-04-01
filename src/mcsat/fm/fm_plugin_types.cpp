@@ -113,20 +113,3 @@ const BoundInfo& CDBoundsModel::getUpperBoundInfo(Variable var) const {
   Assert(hasUpperBound(var));
   return d_boundTrail[d_upperBounds.find(var)->second];
 }
-
-void LinearConstraint::getVariables(std::vector<Variable>& vars) {
-  var_to_rational_map::const_iterator it = coefficients.begin();
-  var_to_rational_map::const_iterator it_end = coefficients.end();
-  while (it != it_end) {
-    Variable var = it->first;
-    if (!var.isNull()) {
-      vars.push_back(var);
-    }
-    ++ it;
-  }
-}
-
-void LinearConstraint::swap(LinearConstraint& c) {
-  coefficients.swap(c.coefficients);
-  std::swap(kind, c.kind);
-}

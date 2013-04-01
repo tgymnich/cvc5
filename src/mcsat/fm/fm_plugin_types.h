@@ -3,6 +3,7 @@
 #include "expr/node.h"
 #include "context/cdo.h"
 #include "mcsat/variable/variable.h"
+#include "mcsat/fm/linear_constraint.h"
 
 #include <iostream>
 #include <boost/integer_traits.hpp>
@@ -10,9 +11,9 @@
 namespace CVC4 {
 namespace mcsat {
 namespace fm {
-  
-/** Map from variables to coefficients, null is the constant term */
-typedef std::hash_map<Variable, Rational, VariableHashFunction> var_to_rational_map;
+
+/** Map from variables to constraints */
+typedef std::hash_map<Variable, LinearConstraint, VariableHashFunction> var_to_constraint_map;
 
 /** Bound information */
 struct BoundInfo {
@@ -138,50 +139,6 @@ public:
     out.swap(d_variablesInConflict);
   }
 };
-
-/**
- * A generic linear constraint (t op 0) is just a map from variables to coefficients
- * representing a term t, and a kind of constraint op.
- */ 
-struct LinearConstraint {
-  
-  /** Map from variables to coefficients */
-  var_to_rational_map coefficients;
-  /** The kind of constraint >=, ... */
-  Kind kind;
-
-  /** Default constructor */
-  LinearConstraint(): kind(kind::LAST_KIND) {
-    coefficients[Variable::null] = 0;
-  }
-
-  /** Get the variables of this constraint */
-  void getVariables(std::vector<Variable>& vars);
-
-  /** Swap with the given constraint */
-  void swap(LinearConstraint& c);
-
-};
-
-/** Map froom variables to constraints */
-typedef std::hash_map<Variable, LinearConstraint, VariableHashFunction> var_to_constraint_map;
-
-inline std::ostream& operator << (std::ostream& out, const LinearConstraint& c) {
-  fm::var_to_rational_map::const_iterator it = c.coefficients.begin();
-  fm::var_to_rational_map::const_iterator it_end = c.coefficients.end();
-  bool first = true;
-  while (it != it_end) {
-    out << (first ? "" : "+");
-    if (it->first.isNull()) {
-      out << it->second;
-    } else {
-      out << "(" << it->second << "*" << it->first << ")";
-    }
-    first = false;
-    ++ it;
-  }
-  return out;
-}
 
 } // fm namespace
 }

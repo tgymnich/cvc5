@@ -12,6 +12,8 @@ libmcsat_fm_la_SOURCES = \
 	fm_plugin.cpp \
 	fm_plugin_types.h \
 	fm_plugin_types.cpp \
+	linear_constraint.h \
+	linear_constraint.cpp \
 	assigned_watch_manager.h 
 	
 EXTRA_DIST = 

@@ -13,7 +13,9 @@ libmcsat_rules_la_SOURCES = \
 	input_clause_rule.h \
 	input_clause_rule.cpp \
 	resolution_rule.h \
-	resolution_rule.cpp
+	resolution_rule.cpp \
+	fourier_motzkin_rule.h \
+	fourier_motzkin_rule.cpp 
 	
 EXTRA_DIST = 
 

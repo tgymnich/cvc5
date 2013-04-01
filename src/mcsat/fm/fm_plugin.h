@@ -6,6 +6,8 @@
 #include "mcsat/fm/fm_plugin_types.h"
 #include "mcsat/fm/assigned_watch_manager.h"
 
+#include "mcsat/rules/fourier_motzkin_rule.h"
+
 namespace CVC4 {
 namespace mcsat {
 
@@ -71,6 +73,14 @@ class FMPlugin : public SolverPlugin {
    * adds to the list of dis-equalities for the free variable.
    */
   void processUnitConstraint(Variable constraint);
+
+  /** The Fourier-Motzkin rule we use for derivation */
+  rules::FourierMotzkinRule d_fmRule;
+
+  /**
+   * Processes any conflicts.
+   */
+  void processConflicts();
 
 public:
 

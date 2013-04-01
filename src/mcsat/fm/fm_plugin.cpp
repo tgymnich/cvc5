@@ -41,6 +41,7 @@ FMPlugin::FMPlugin(ClauseDatabase& database, const SolverTrail& trail, SolverPlu
 , d_newVariableNotify(*this)
 , d_trailHead(trail.getSearchContext(), 0)
 , d_bounds(trail.getSearchContext())
+, d_fmRule(database)
 {
   Debug("mcsat::fm") << "FMPlugin::FMPlugin()" << std::endl;
 
@@ -63,58 +64,6 @@ std::string FMPlugin::toString() const  {
 
 void FMPlugin::newVariable(Variable var) {
   Debug("mcsat::fm") << "FMPlugin::newVariable(" << var << ")" << std::endl;
-}
-
-/** Returns true if the term is linear, false otherwise */
-bool parseLinearTerm(TNode term, Rational mult, fm::var_to_rational_map& coefficientMap) {
-  
-  Debug("mcsat::fm") << "parseLinearTerm(" << term << ")" << std::endl;
-  
-  VariableDatabase& db = *VariableDatabase::getCurrentDB();
-
-  switch (term.getKind()) {
-    case kind::CONST_RATIONAL: 
-      coefficientMap[Variable::null] += mult*term.getConst<Rational>();
-      break;
-    case kind::VARIABLE: {
-      Assert(db.hasVariable(term));
-      Variable var = db.getVariable(term);
-      coefficientMap[var] += mult;
-      break;
-    }    
-    case kind::MULT: {
-      if (term.getNumChildren() == 2 && term[0].isConst()) {
-        return parseLinearTerm(term[1], mult*term[0].getConst<Rational>(), coefficientMap);
-      } else {
-        return false;
-      }
-      break;
-    }
-    case kind::PLUS:
-      for (unsigned i = 0; i < term.getNumChildren(); ++ i) {
-	bool linear = parseLinearTerm(term[i], mult, coefficientMap);
-	if (!linear) {
-	  return false;
-	}
-      }
-      break;
-    case kind::MINUS: {
-      bool linear;
-      linear = parseLinearTerm(term[0],  mult, coefficientMap);
-      if (!linear) {
-        return false;
-      }
-      return parseLinearTerm(term[1], -mult, coefficientMap);
-      break;
-    }
-    case kind::UMINUS:
-      return parseLinearTerm(term[0], -mult, coefficientMap);
-      break; 
-    default:
-      Unreachable();
-  }
-
-  return true;
 }
 
 class var_assign_compare {
@@ -145,21 +94,12 @@ void FMPlugin::newConstraint(Variable constraint) {
   Debug("mcsat::fm") << "FMPlugin::newConstraint(" << constraint << ")" << std::endl;
   Assert(!isLinearConstraint(constraint), "Already registered");
 
-  // Get the node of the constrain
-  TNode node = constraint.getNode();
-
   // The linear constraint we're creating 
   LinearConstraint linearConstraint;
 
   // Parse the coefficients into the constraint
-  bool linear = parseLinearTerm(node[0],  1, linearConstraint.coefficients);
-  if (linear) {
-    linear = parseLinearTerm(node[1], -1, linearConstraint.coefficients);
-  }
+  bool linear = LinearConstraint::parse(Literal(constraint, false), linearConstraint);
   
-  // Set the kind of the constraint
-  linearConstraint.kind = node.getKind();
-
   // The plugin doesn't handle non-linear constraints
   if (!linear) {
     Debug("mcsat::fm") << "FMPlugin::newConstraint(" << constraint << "): non-linear" << std::endl;
@@ -257,56 +197,16 @@ void FMPlugin::propagate(SolverTrail::PropagationToken& out) {
 
   // Remember where we stopped
   d_trailHead = i;
+
+  // Process any conflicts
+  if (d_bounds.inConflict()) {
+    processConflicts();
+  }
 }
 
 bool FMPlugin::isUnitConstraint(Variable constraint) {
   return true;
 }
-
-static Kind negateKind(Kind kind) {
-
-  switch (kind) {
-  case kind::LT:
-    // not (a < b) = (a >= b)
-    return kind::GEQ;
-  case kind::LEQ:
-    // not (a <= b) = (a > b)
-    return kind::GT;
-  case kind::GT:
-    // not (a > b) = (a <= b)
-    return kind::LEQ;
-  case kind::GEQ:
-    // not (a >= b) = (a < b)
-    return kind::LT;
-  case kind::EQUAL:
-    // not (a = b) = (a != b)
-    return kind::DISTINCT;
-  default:
-    Unreachable();
-    break;
-  }
-
-  return kind::LAST_KIND;
-}
-
-/** Multiplying constraint with -1 */
-static Kind flipKind(Kind kind) {
-
-  switch (kind) {
-  case kind::LT:
-    return kind::GT;
-  case kind::LEQ:
-    return kind::GEQ;
-  case kind::GT:
-    return kind::GT;
-  case kind::GEQ:
-    return kind::LEQ;
-  default:
-    return kind;
-  }
-
-}
-
 
 void FMPlugin::processUnitConstraint(Variable constraint) {
   Assert(isLinearConstraint(constraint));
@@ -323,8 +223,8 @@ void FMPlugin::processUnitConstraint(Variable constraint) {
   Rational a;
   Variable x;
 
-  fm::var_to_rational_map::const_iterator it = c.coefficients.begin();
-  fm::var_to_rational_map::const_iterator it_end = c.coefficients.begin();
+  LinearConstraint::const_iterator it = c.begin();
+  LinearConstraint::const_iterator it_end = c.end();
   for (; it != it_end; ++ it) {
     Variable var = it->first;
     // Constant term
@@ -344,14 +244,14 @@ void FMPlugin::processUnitConstraint(Variable constraint) {
   }
 
   // The constraint kind
-  Kind kind = c.kind;
+  Kind kind = c.getKind();
   if (d_trail.isFalse(constraint)) {
     // If the constraint is negated, negate the kind
-    kind = negateKind(kind);
+    kind = LinearConstraint::negateKind(kind);
   }
   if (a < 0) {
     // If a is negative flip the kind
-    kind = flipKind(kind);
+    kind = LinearConstraint::flipKind(kind);
     a = -a;
     sum = -sum;
   }
@@ -382,6 +282,31 @@ void FMPlugin::processUnitConstraint(Variable constraint) {
 
 }
 
+void FMPlugin::processConflicts() {
+  std::set<Variable> variablesInConflict;
+  d_bounds.getVariablesInConflict(variablesInConflict);
+
+  std::set<Variable>::const_iterator it = variablesInConflict.begin();
+  std::set<Variable>::const_iterator it_end = variablesInConflict.end();
+  for (; it != it_end; ++ it) {
+    Variable var = *it;
+
+    const BoundInfo& lowerBound = d_bounds.getLowerBoundInfo(var);
+    const BoundInfo& upperBound = d_bounds.getLowerBoundInfo(var);
+
+    Variable lowerBoundVariable = lowerBound.reason;
+    Literal lowerBoundLiteral(lowerBoundVariable, d_trail.isFalse(lowerBoundVariable));
+
+    Variable upperBoundVariable = upperBound.reason;
+    Literal upperBoundLiteral(upperBoundVariable, d_trail.isFalse(upperBoundVariable));
+
+    d_fmRule.start(lowerBoundLiteral);
+    d_fmRule.resolve(var, upperBoundLiteral);
+    d_fmRule.finish();
+
+  }
+
+}
 
 void FMPlugin::decide(SolverTrail::DecisionToken& out) {
   Debug("mcsat::fm") << "FMPlugin::decide()" << std::endl;
