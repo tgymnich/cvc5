@@ -163,6 +163,9 @@ private:
     /** Set of already visited nodes */
     std::hash_set<TNode, TNodeHashFunction> d_visited;
 
+    /** The list of all variables */
+    std::vector<Variable> d_variables;
+    
   public:
 
     typedef void return_type;
@@ -176,13 +179,18 @@ private:
 
     void visit(TNode current, TNode parent) {
       if (current.isVar()) {
-        d_varDb.getVariable(current);
+	Variable var = d_varDb.getVariable(current);
+	d_variables.push_back(var);
       }
-      d_visited.insert(current);
+      d_visited.insert(current);      
     }
 
     void start(TNode node) {}
     void done(TNode node) {}
+    
+    const std::vector<Variable>& getVariables() const {
+      return d_variables;
+    }
   } d_variableRegister;
 
 };

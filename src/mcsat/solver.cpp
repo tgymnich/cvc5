@@ -227,6 +227,14 @@ bool Solver::check() {
     
   }
 
+  // Since we're here, we're satisfiable
+  if (Debug.isOn("mcsat::model")) {
+    const std::vector<Variable>& vars = d_variableRegister.getVariables();
+    for (unsigned i = 0; i < vars.size(); ++ i) {
+      Debug("mcsat::model") << vars[i] << "\t->\t" << d_trail.value(vars[i]) << std::endl; 
+    }
+  }
+  
   return true;
 }
 
