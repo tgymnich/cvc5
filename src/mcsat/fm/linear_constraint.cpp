@@ -64,7 +64,7 @@ bool LinearConstraint::evaluate(const SolverTrail& trail) const {
 
 bool LinearConstraint::parse(Literal constraint, LinearConstraint& out) {
 
-  Debug("mcsat::fm") << "LinearConstraint::parse(" << constraint << ")" << std::endl;
+  Debug("mcsat::linear") << "LinearConstraint::parse(" << constraint << ")" << std::endl;
 
   out.clear();
 
@@ -94,14 +94,14 @@ bool LinearConstraint::parse(Literal constraint, LinearConstraint& out) {
     linear = parse(node[1], -m, out.d_coefficients);
   }
 
-  Debug("mcsat::fm") << "LinearConstraint::parse(" << constraint << ") => " << out << std::endl;
+  Debug("mcsat::linear") << "LinearConstraint::parse(" << constraint << ") => " << out << std::endl;
 
   return linear;
 }
 
 bool LinearConstraint::parse(TNode term, Rational mult, var_to_rational_map& coefficientMap) {
 
-  Debug("mcsat::fm") << "LinearConstraint::parse(" << term << ")" << std::endl;
+  Debug("mcsat::linear") << "LinearConstraint::parse(" << term << ")" << std::endl;
 
   VariableDatabase& db = *VariableDatabase::getCurrentDB();
 

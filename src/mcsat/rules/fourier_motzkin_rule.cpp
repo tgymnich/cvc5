@@ -17,6 +17,9 @@ void FourierMotzkinRule::start(Literal lit) {
 
   d_assumptions.insert(lit);
   bool linear = LinearConstraint::parse(lit, d_resolvent);
+
+  Debug("mcsat::fm") << "ForuierMotzkinRule: starting with " << d_resolvent << std::endl;
+
   Assert(linear);
 }
 
@@ -27,6 +30,8 @@ void FourierMotzkinRule::resolve(Variable var, Literal ineq) {
   bool linear = LinearConstraint::parse(ineq, toResolve);
   Assert(linear);
 
+  Debug("mcsat::fm") << "ForuierMotzkinRule: resolving " << d_resolvent << std::endl;
+
   // We know that both are one of >, >= so coeficients with var must be opposite
   Rational d_resolventC = d_resolvent.getCoefficient(var);
   Rational toResolveC = toResolve.getCoefficient(var);
@@ -35,6 +40,11 @@ void FourierMotzkinRule::resolve(Variable var, Literal ineq) {
   // Compute the new resolvent
   d_resolvent.multiply(toResolveC.abs());
   d_resolvent.add(toResolve, d_resolventC.abs());
+
+  // Add to assumptions
+  d_assumptions.insert(ineq);
+
+  Debug("mcsat::fm") << "ForuierMotzkinRule: got " << d_resolvent << std::endl;
 }
 
 /** Finish the derivation */
