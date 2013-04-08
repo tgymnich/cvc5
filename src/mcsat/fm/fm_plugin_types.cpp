@@ -44,6 +44,8 @@ void CDBoundsModel::updateLowerBound(Variable var, const BoundInfo& info) {
   // Update if better than the current one
   if (!hasLowerBound(var) || info.improvesLowerBound(getLowerBoundInfo(var))) {  
     
+    Debug("mcsat::fm") << "CDBoundsModel::updateLowerBound(" << var << ", " << info << ")" << std::endl;
+
     // Add the new info to the trail
     BoundIndex index = d_boundTrail.size();
     d_boundTrail.push_back(info);
@@ -71,6 +73,9 @@ void CDBoundsModel::updateLowerBound(Variable var, const BoundInfo& info) {
 
 void CDBoundsModel::updateUpperBound(Variable var, const BoundInfo& info) {
   if (!hasUpperBound(var) || info.improvesUpperBound(getUpperBoundInfo(var))) {
+
+    Debug("mcsat::fm") << "CDBoundsModel::updateUpperBound(" << var << ", " << info << ")" << std::endl;
+
     // Add the new info to the trail
     BoundIndex index = d_boundTrail.size();
     d_boundTrail.push_back(info);

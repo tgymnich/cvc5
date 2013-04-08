@@ -270,7 +270,7 @@ public:
 
   /** Does this variable have an assigned value */
   bool hasValue(Variable var) const {
-    return d_model[var].isNull();
+    return !d_model[var].isNull();
   }
 
   /**

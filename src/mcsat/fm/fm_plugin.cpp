@@ -78,6 +78,7 @@ public:
   : d_trail(trail) {}
 
   bool operator () (const Variable& v1, const Variable& v2) {
+
     bool v1_hasValue = d_trail.hasValue(v1);
     bool v2_hasValue = d_trail.hasValue(v2);
 
@@ -123,6 +124,9 @@ void FMPlugin::newConstraint(Variable constraint) {
 
   // Add the variable list to the watch manager and watch the first two constraints
   VariableListReference listRef = d_assignedWatchManager.newListToWatch(vars);
+  VariableList list = d_assignedWatchManager.get(listRef);
+  Debug("mcsat::fm") << "FMPlugin::newConstraint(" << constraint << "): new list " << list << std::endl;
+
   d_assignedWatchManager.watch(vars[0], listRef);
   if (vars.size() > 1) {
     d_assignedWatchManager.watch(vars[1], listRef);
@@ -154,7 +158,7 @@ void FMPlugin::propagate(SolverTrail::PropagationToken& out) {
   Debug("mcsat::fm") << "FMPlugin::propagate()" << std::endl;
 
   unsigned i = d_trailHead;
-  for (unsigned i = 0; i < d_trail.size(); ++ i) {
+  for (; i < d_trail.size(); ++ i) {
     Variable var = d_trail[i].var;
 
     if (isArithmeticVariable(var)) {
@@ -205,7 +209,13 @@ void FMPlugin::propagate(SolverTrail::PropagationToken& out) {
             // The first one is not assigned, so we have a new unit constraint
             Variable constraintVar = getLinearConstraint(variableListRef);
             d_constraintUnassignedStatus[constraintVar.index()] = UNASSIGNED_UNIT;
+            // If the constraint was already asserted, then process it
+            if (d_trail.hasValue(constraintVar)) {
+              processUnitConstraint(constraintVar);
+            }
           }
+          // Keep the watch, and continue
+          w.next_and_keep();
         }
       }
     } else if (isLinearConstraint(var)) {
@@ -230,11 +240,13 @@ bool FMPlugin::isUnitConstraint(Variable constraint) {
 }
 
 void FMPlugin::processUnitConstraint(Variable constraint) {
+  Debug("mcsat::fm") << "FMPlugin::processUnitConstraint(" << constraint << ")" << std::endl;
   Assert(isLinearConstraint(constraint));
   Assert(isUnitConstraint(constraint));
 
   // Get the constraint
   const LinearConstraint& c = getLinearConstraint(constraint);
+  Debug("mcsat::fm") << "FMPlugin::processUnitConstraint(): " << c << std::endl;
 
   // Compute ax + sum:
   // * the sum of the linear term that evaluates
@@ -281,18 +293,18 @@ void FMPlugin::processUnitConstraint(Variable constraint) {
   switch (kind) {
   case kind::GT:
   case kind::GEQ:
-    // (ax + sum >= 0) <=> (x >= sum/a)
-    d_bounds.updateLowerBound(x, BoundInfo(sum/a, kind == kind::GT, constraint));
+    // (ax + sum >= 0) <=> (x >= -sum/a)
+    d_bounds.updateLowerBound(x, BoundInfo(-sum/a, kind == kind::GT, constraint));
     break;
   case kind::LT:
   case kind::LEQ:
-    // (ax + sum <= 0) <=> (x <= sum/a)
-    d_bounds.updateUpperBound(x, BoundInfo(sum/a, kind == kind::LT, constraint));
+    // (ax + sum <= 0) <=> (x <= -sum/a)
+    d_bounds.updateUpperBound(x, BoundInfo(-sum/a, kind == kind::LT, constraint));
     break;
   case kind::EQUAL:
-    // (ax + sum == 0) <=> (x == sum/a)
-    d_bounds.updateLowerBound(x, BoundInfo(sum/a, false, constraint));
-    d_bounds.updateUpperBound(x, BoundInfo(sum/a, false, constraint));
+    // (ax + sum == 0) <=> (x == -sum/a)
+    d_bounds.updateLowerBound(x, BoundInfo(-sum/a, false, constraint));
+    d_bounds.updateUpperBound(x, BoundInfo(-sum/a, false, constraint));
     break;
   case kind::DISTINCT:
     // TODO: add to list

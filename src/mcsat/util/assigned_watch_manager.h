@@ -27,9 +27,9 @@ protected:
   /** Null reference */
   static const size_t nullRef = boost::low_bits_mask_t<BITS_FOR_REFERENCE>::sig_bits;
 
-  VariableListReference(size_t ref, size_t d_size)
+  VariableListReference(size_t ref, size_t size)
   : d_index(ref)
-  , d_size(0)
+  , d_size(size)
   {}
 
   friend class AssignedWatchManager;
@@ -48,6 +48,7 @@ public:
 
   VariableListReference& operator = (const VariableListReference& other) {
     d_index = other.d_index;
+    d_size = other.d_size;
     return *this;
   }
 

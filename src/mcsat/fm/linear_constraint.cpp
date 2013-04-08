@@ -87,11 +87,11 @@ bool LinearConstraint::parse(Literal constraint, LinearConstraint& out) {
   }
   
   // Parse the LHS
-  bool linear = parse(node,  m, out.d_coefficients);
+  bool linear = parse(node[0],  m, out.d_coefficients);
 
   // If linear parse the RHS
   if (linear) {
-    linear = parse(node, -m, out.d_coefficients);
+    linear = parse(node[1], -m, out.d_coefficients);
   }
 
   Debug("mcsat::fm") << "LinearConstraint::parse(" << constraint << ") => " << out << std::endl;

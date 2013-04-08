@@ -52,8 +52,16 @@ struct BoundInfo {
     int cmp = lower.value.cmp(upper.value);
     return (cmp > 0 || (cmp == 0 && (lower.strict || upper.strict)));
   }
-  
+
+  void toStream(std::ostream& out) const {
+    out << "[" << value << (strict ? "" : "=") << "]";
+  }
 };
+
+inline std::ostream& operator << (std::ostream& out, const BoundInfo& info) {
+  info.toStream(out);
+  return out;
+}
 
 /** Context-dependent bounds model */
 class CDBoundsModel : public context::ContextNotifyObj {

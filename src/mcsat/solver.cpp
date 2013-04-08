@@ -46,7 +46,7 @@ Solver::Solver(context::UserContext* userContext, context::Context* searchContex
   // Add some engines
   addPlugin("CVC4::mcsat::CNFPlugin");
   addPlugin("CVC4::mcsat::BCPEngine");
-//  addPlugin("CVC4::mcsat::FMPlugin");
+  addPlugin("CVC4::mcsat::FMPlugin");
 }
 
 Solver::~Solver() {
