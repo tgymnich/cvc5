@@ -50,6 +50,9 @@ FMPlugin::FMPlugin(ClauseDatabase& database, const SolverTrail& trail, SolverPlu
   addFeature(CAN_PROPAGATE);
   addFeature(CAN_DECIDE);
 
+  // Notifications we need
+  addNotification(NOTIFY_VARIABLE_UNSET);
+
   // Types we care about
   VariableDatabase& db = *VariableDatabase::getCurrentDB();
   d_intTypeIndex = db.getTypeIndex(NodeManager::currentNM()->integerType());
@@ -101,9 +104,8 @@ void FMPlugin::newConstraint(Variable constraint) {
 
   // Parse the coefficients into the constraint
   bool linear = LinearConstraint::parse(Literal(constraint, false), linearConstraint);
-  
-  // The plugin doesn't handle non-linear constraints
   if (!linear) {
+    // The plugin doesn't handle non-linear constraints
     Debug("mcsat::fm") << "FMPlugin::newConstraint(" << constraint << "): non-linear" << std::endl;
     return;
   }
@@ -126,17 +128,26 @@ void FMPlugin::newConstraint(Variable constraint) {
     d_assignedWatchManager.watch(vars[1], listRef);
   }
   
-  // Check if anything to do immediately
-  if (!d_trail.hasValue(vars[0])) {
-    if (vars.size() > 1 && !d_trail.hasValue(vars[1])) {
-
-    }
-  }
-
   // Remember the constraint
   d_constraints[constraint].swap(linearConstraint);
   // Also remember that the list reference corresponds to this constraint
   d_varlistToVar[listRef] = constraint;
+  // Status of the constraint
+  d_constraintUnassignedStatus.resize(constraint.index() + 1, UNASSIGNED_UNKNOWN);
+
+
+  // Check if anything to do immediately
+  if (!d_trail.hasValue(vars[0])) {
+    if (vars.size() == 1 || d_trail.hasValue(vars[1])) {
+      // Single variable is unassigned
+      d_constraintUnassignedStatus[constraint.index()] = UNASSIGNED_UNIT;
+    }
+  } else {
+    // All variables are unassigned
+    d_constraintUnassignedStatus[constraint.index()] = UNASSIGNED_NONE;
+    // Propagate later
+    d_delayedPropagations.push_back(constraint);
+  }
 }
 
 void FMPlugin::propagate(SolverTrail::PropagationToken& out) {
@@ -184,8 +195,16 @@ void FMPlugin::propagate(SolverTrail::PropagationToken& out) {
           // We did not find a new watch so vars[1], ..., vars[n] are assigned, except maybe vars[0]
           if (d_trail.hasValue(variableList[0])) {
             // Even the first one is assigned, so we have a semantic propagation
+            Variable constraintVar = getLinearConstraint(variableListRef);
+            const LinearConstraint& constraint = getLinearConstraint(constraintVar);
+            bool value = constraint.evaluate(d_trail);
+            out(Literal(constraintVar, !value));
+            // Mark the assignment
+            d_constraintUnassignedStatus[constraintVar.index()] = UNASSIGNED_NONE;
           } else {
             // The first one is not assigned, so we have a new unit constraint
+            Variable constraintVar = getLinearConstraint(variableListRef);
+            d_constraintUnassignedStatus[constraintVar.index()] = UNASSIGNED_UNIT;
           }
         }
       }
@@ -207,7 +226,7 @@ void FMPlugin::propagate(SolverTrail::PropagationToken& out) {
 }
 
 bool FMPlugin::isUnitConstraint(Variable constraint) {
-  return true;
+  return d_constraintUnassignedStatus[constraint.index()] == UNASSIGNED_UNIT;
 }
 
 void FMPlugin::processUnitConstraint(Variable constraint) {
@@ -318,13 +337,55 @@ void FMPlugin::decide(SolverTrail::DecisionToken& out) {
 
     if (d_trail.value(var).isNull()) {
 
-      const BoundInfo& lowerBound = d_bounds.getLowerBoundInfo(var);
-      const BoundInfo& upperBound = d_bounds.getUpperBoundInfo(var);
+      Rational value;
 
-      Rational value = (lowerBound.value + upperBound.value)/2;
-      out(var, NodeManager::currentNM()->mkConst(value));
+      if (d_bounds.hasLowerBound(var)) {
+        const BoundInfo& lowerBound = d_bounds.getLowerBoundInfo(var);
+        if (d_bounds.hasUpperBound(var)) {
+          const BoundInfo& upperBound = d_bounds.getUpperBoundInfo(var);
+          // Both bounds present, go for middle
+          value = (lowerBound.value + upperBound.value)/2;
+        } else {
+          // No upper bound, just round the lower bound up
+          value = (lowerBound.value + 1).floor();
+        }
+      } else {
+        // No lower bound
+        if (d_bounds.hasUpperBound(var)) {
+          const BoundInfo& upperBound = d_bounds.getUpperBoundInfo(var);
+          // No lower bound, just round the upper bound down
+          value = (upperBound.value - 1).ceiling();
+        } else {
+          // No bounds at all, just use 0
+          value = 0;
+        }
+      }
 
+      out(var, NodeManager::currentNM()->mkConst(value), true);
+
+      // Done
       return;
+    }
+  }
+}
+
+void FMPlugin::notifyVariableUnset(const std::vector<Variable>& vars) {
+  for (unsigned i = 0; i < vars.size(); ++ i) {
+    if (isLinearConstraint(vars[i])) {
+      // Go through the watch and mark the constraints
+      // UNASSIGNED_UNKNOWN -> UNASSIGNED_UNKNOWN
+      // UNASSIGNED_UNIT    -> UNASSIGNED_UNKNOWN
+      // UNASSIGNED_NONE    -> UNASSIGNED_UNIT
+      AssignedWatchManager::remove_iterator w = d_assignedWatchManager.begin(vars[i]);
+      while (!w.done()) {
+        // Get the current list where var appears
+        Variable constraintVar = getLinearConstraint(*w);
+        if (d_constraintUnassignedStatus[constraintVar.index()] == UNASSIGNED_NONE) {
+          d_constraintUnassignedStatus[constraintVar.index()] = UNASSIGNED_UNIT;
+        } else {
+          d_constraintUnassignedStatus[constraintVar.index()] = UNASSIGNED_UNKNOWN;
+        }
+      }
     }
   }
 }

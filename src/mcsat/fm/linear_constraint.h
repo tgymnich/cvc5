@@ -9,6 +9,9 @@
 
 namespace CVC4 {
 namespace mcsat {
+
+class SolverTrail;
+
 namespace fm {
 
 /** Map from variables to coefficients, null is the constant term */
@@ -55,6 +58,9 @@ public:
 
   /** Output to stream */
   void toStream(std::ostream& out) const;
+
+  /** Evaluate the constraint in the trail (true, false) */
+  bool evaluate(const SolverTrail& trail) const;
 
   typedef var_to_rational_map::const_iterator const_iterator;
 

@@ -201,14 +201,14 @@ public:
 /**
  * This hash function is only apropriate for lists coming from the same memory.
  */
-class VariableListReferenceHasFunction {
+class VariableListReferenceHashFunction {
 public:
   size_t operator () (const VariableListReference& varList) const {
     return varList.index();
   }
 };
 
-typedef __gnu_cxx::hash_map<VariableListReference, Variable, VariableListReferenceHasFunction> varlist_to_var_map;
+typedef __gnu_cxx::hash_map<VariableListReference, Variable, VariableListReferenceHashFunction> varlist_to_var_map;
 
 }
 }

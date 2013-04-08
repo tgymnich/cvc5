@@ -7,6 +7,7 @@ using namespace CVC4::mcsat;
 
 SolverTrail::SolverTrail(context::Context* context)
 : d_decisionLevel(0)
+, d_modelValues(context)
 , d_context(context)
 {
   c_TRUE = NodeManager::currentNM()->mkConst<bool>(true);
@@ -15,7 +16,7 @@ SolverTrail::SolverTrail(context::Context* context)
   Variable varTrue = VariableDatabase::getCurrentDB()->getVariable(c_TRUE);
   Variable varFalse = VariableDatabase::getCurrentDB()->getVariable(c_FALSE);
 
-
+  // Propagate out TRUE and !FALSE
   PropagationToken out(*this, PropagationToken::PROPAGATION_INIT);
   Literal l1(varTrue, false);
   Literal l2(varFalse, true);
@@ -108,9 +109,9 @@ void SolverTrail::PropagationToken::operator () (Literal l) {
 
   if (!d_trail.isTrue(l)) {
     if (l.isNegated()) {
-      d_trail.setValue(l.getVariable(), d_trail.c_FALSE);
+      d_trail.setValue(l.getVariable(), d_trail.c_FALSE, false);
     } else {
-      d_trail.setValue(l.getVariable(), d_trail.c_TRUE);
+      d_trail.setValue(l.getVariable(), d_trail.c_TRUE, false);
     }
     Variable var = l.getVariable();
     d_trail.d_modelInfo[var].decisionLevel = d_trail.decisionLevel();
@@ -137,9 +138,9 @@ void SolverTrail::PropagationToken::operator () (Literal l, CRef reason) {
     } else {
       // No conflict, remember the l value in the model
       if (l.isNegated()) {
-	d_trail.setValue(l.getVariable(), d_trail.c_FALSE);
+	d_trail.setValue(l.getVariable(), d_trail.c_FALSE, false);
       } else {
-	d_trail.setValue(l.getVariable(), d_trail.c_TRUE);
+	d_trail.setValue(l.getVariable(), d_trail.c_TRUE, false);
       }
       // Set the model information
       Variable var = l.getVariable();
@@ -166,9 +167,9 @@ void SolverTrail::DecisionToken::operator () (Literal l) {
   d_used = true;
 
   if (l.isNegated()) {
-    d_trail.setValue(l.getVariable(), d_trail.c_FALSE);
+    d_trail.setValue(l.getVariable(), d_trail.c_FALSE, false);
   } else {
-    d_trail.setValue(l.getVariable(), d_trail.c_TRUE);
+    d_trail.setValue(l.getVariable(), d_trail.c_TRUE, false);
   }
   // Set the model information
   Variable var = l.getVariable();
@@ -178,7 +179,7 @@ void SolverTrail::DecisionToken::operator () (Literal l) {
   d_trail.d_trail.push_back(Element(BOOLEAN_DECISION, l.getVariable()));
 }
 
-void SolverTrail::DecisionToken::operator () (Variable var, TNode val) {
+void SolverTrail::DecisionToken::operator () (Variable var, TNode val, bool track) {
   Assert(!d_used);
   Assert(d_trail.consistent());
   Assert(d_trail.d_model[var].isNull());
@@ -188,7 +189,7 @@ void SolverTrail::DecisionToken::operator () (Variable var, TNode val) {
   d_trail.newDecision();
   d_used = true;
 
-  d_trail.setValue(var, val);
+  d_trail.setValue(var, val, track);
 
   d_trail.d_trail.push_back(Element(SEMANTIC_DECISION, var));
 }

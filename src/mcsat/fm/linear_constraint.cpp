@@ -1,5 +1,6 @@
 #include "mcsat/fm/linear_constraint.h"
 #include "mcsat/variable/variable_db.h"
+#include "mcsat/solver_trail.h"
 
 #include "theory/rewriter.h"
 
@@ -22,6 +23,42 @@ void LinearConstraint::getVariables(std::vector<Variable>& vars) {
 void LinearConstraint::swap(LinearConstraint& c) {
   d_coefficients.swap(c.d_coefficients);
   std::swap(d_kind, c.d_kind);
+}
+
+bool LinearConstraint::evaluate(const SolverTrail& trail) const {
+
+  Rational lhsValue;
+  const_iterator it = begin();
+  const_iterator it_end = end();
+  for (; it != it_end; ++ it) {
+    Variable var = it->first;
+    if (var.isNull()) {
+      lhsValue += it->second;
+    } else {
+      Assert(trail.hasValue(var));
+      lhsValue += trail.value(var).getConst<Rational>() * it->second;
+    }
+  }
+
+  switch (d_kind) {
+  case kind::LT:
+      return lhsValue < 0;
+    case kind::LEQ:
+      return lhsValue <= 0;
+    case kind::GT:
+      return lhsValue > 0;
+    case kind::GEQ:
+      return lhsValue >= 0;
+    case kind::EQUAL:
+      return lhsValue == 0;
+    case kind::DISTINCT:
+      return lhsValue != 0;
+    default:
+      Unreachable();
+      break;
+    }
+
+  return true;
 }
 
 

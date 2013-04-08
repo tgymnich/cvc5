@@ -10,6 +10,7 @@
 #include "mcsat/clause/clause_db.h"
 #include "mcsat/clause/literal_table.h"
 
+#include "context/cdlist.h"
 #include "context/cdinsert_hashmap.h"
 
 namespace CVC4 {
@@ -135,7 +136,10 @@ private:
   void newDecision();
   
   /** Model indexed by variables */
-  variable_table<Node> d_model;
+  variable_table<TNode> d_model;
+
+  /** Values that the trail tracks */
+  context::CDList<Node> d_modelValues;
 
   struct VariableInfo {
     unsigned decisionLevel;
@@ -145,9 +149,12 @@ private:
   /** Information on the model variables */
   variable_table<VariableInfo> d_modelInfo;
 
-  void setValue(Variable var, TNode value) {
+  void setValue(Variable var, TNode value, bool track) {
     Assert(d_model[var].isNull());
     d_model[var] = value;
+    if (track) {
+      d_modelValues.push_back(value);
+    }
   }
 
   /** The context of the search */
@@ -351,8 +358,10 @@ public:
 
     /** Decide a Boolean typed variable to a value */
     void operator () (Literal lit);
-    /** Decide a non-Boolean typed variable to a value */
-    void operator () (Variable variable, TNode value);
+    /**
+     * Decide a non-Boolean typed variable to a value. If track is true, the trail will keep the value as a Node.
+     */
+    void operator () (Variable variable, TNode value, bool track);
   };
 
   friend class PropagationToken;

@@ -31,12 +31,25 @@ class FMPlugin : public SolverPlugin {
   /** Real type index */
   size_t d_realTypeIndex;
 
+  /** Delayed constraints to propagate by value (value is propagated) */
+  std::vector<Variable> d_delayedPropagations;
+
   /** Called on new real variables */
   void newVariable(Variable var);
 
   /** Called on arithmetic constraints */
   void newConstraint(Variable constraint);
   
+  /** Number of unassigned variables in a constraint */
+  enum UnassignedStatus {
+    UNASSIGNED_UNKNOWN,
+    UNASSIGNED_UNIT,
+    UNASSIGNED_NONE,
+  };
+
+  /** Map from constraints to their status */
+  std::vector<UnassignedStatus> d_constraintUnassignedStatus;
+
   /** Map from variables to constraints */
   fm::var_to_constraint_map d_constraints;
 
@@ -51,6 +64,11 @@ class FMPlugin : public SolverPlugin {
   const fm::LinearConstraint& getLinearConstraint(Variable var) const {
     Assert(isLinearConstraint(var));
     return d_constraints.find(var)->second;
+  }
+
+  Variable getLinearConstraint(util::VariableListReference list) const {
+    Assert(d_varlistToVar.find(list) != d_varlistToVar.end());
+    return d_varlistToVar.find(list)->second;
   }
 
   /** Is this variable an arithmetic variable */
@@ -100,6 +118,10 @@ public:
 
   /** String representation of the plugin (for debug purposes mainly) */
   std::string toString() const;
+
+  /** Notification of unset variables */
+  void notifyVariableUnset(const std::vector<Variable>& vars);
+
 };
 
 template class SolverPluginConstructor<FMPlugin>;
