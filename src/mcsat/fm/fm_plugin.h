@@ -4,7 +4,9 @@
 #include "mcsat/variable/variable_table.h"
 
 #include "mcsat/fm/fm_plugin_types.h"
+
 #include "mcsat/util/assigned_watch_manager.h"
+#include "mcsat/util/var_priority_queue.h"
 
 #include "mcsat/rules/fourier_motzkin_rule.h"
 
@@ -76,6 +78,9 @@ class FMPlugin : public SolverPlugin {
 
   /** The Fourier-Motzkin rule we use for derivation */
   rules::FourierMotzkinRule d_fmRule;
+
+  /** Priority queue for variable selection */
+  util::VariablePriorityQueue d_variableQueue;
 
   /**
    * Processes any conflicts.

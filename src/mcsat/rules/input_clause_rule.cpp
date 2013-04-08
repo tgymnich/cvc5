@@ -7,8 +7,8 @@ using namespace rules;
 CRef InputClauseRule::apply(LiteralVector& literals) {
 
   // Get the true/false constants
-  Variable c_True = d_trail.getTrue();
-  Variable c_False = d_trail.getFalse();
+  TNode c_True = d_trail.getTrue();
+  TNode c_False = d_trail.getFalse();
 
   // Sort the literals to check for duplicates and tautologies
   std::sort(literals.begin(), literals.end());
@@ -28,11 +28,11 @@ CRef InputClauseRule::apply(LiteralVector& literals) {
     }
 
     // Check if the literal is assigned already
-    Variable value = d_trail.value(literals[i]);
+    TNode value = d_trail.value(literals[i]);
     if (!value.isNull()) {
       // This value has a meaning only if it's at 0 level
       if (d_trail.decisionLevel(literals[i].getVariable()) > 0) {
-        value = Variable::null;
+        value = TNode::null();
       }
     }
 

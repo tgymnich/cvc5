@@ -40,7 +40,9 @@ BCPEngine::BCPEngine(ClauseDatabase& clauseDb, const SolverTrail& trail, SolverP
   clauseDb.addNewClauseListener(&d_newClauseNotify);
 
   // Listen to new variables
-  VariableDatabase::getCurrentDB()->addNewVariableListener(&d_newVariableNotify);
+  VariableDatabase& db = *VariableDatabase::getCurrentDB();
+  db.addNewVariableListener(&d_newVariableNotify);
+  d_boolTypeIndex = db.getTypeIndex(NodeManager::currentNM()->booleanType());
 
   // Features we provide
   addFeature(CAN_PROPAGATE);
@@ -63,8 +65,8 @@ public:
   : d_trail(trail) {}
 
   bool operator () (const Literal& l1, const Literal& l2) {
-    Variable l1_value = d_trail.value(l1);
-    Variable l2_value = d_trail.value(l2);
+    TNode l1_value = d_trail.value(l1);
+    TNode l2_value = d_trail.value(l2);
 
     // Two unassigned literals are sorted arbitrarily
     if (l1_value.isNull() && l2_value.isNull()) {
@@ -146,30 +148,23 @@ void BCPEngine::propagate(SolverTrail::PropagationToken& out) {
   // Make sure the watches are clean
   d_watchManager.clean();
   
-  Variable c_TRUE = d_trail.getTrue();
-  Variable c_FALSE = d_trail.getFalse();
-
-  // Type index of the Booleans
-  size_t c_BOOLEAN = c_TRUE.typeIndex();
-
   // Propagate
   unsigned i = d_trailHead;
   for (; d_trail.consistent() && i < d_trail.size(); ++ i) {
     Variable var = d_trail[i].var;
     
-    if (var.typeIndex() == c_BOOLEAN) {
+    if (var.typeIndex() == d_boolTypeIndex) {
       
       // Variable that was propagated
-      Variable var_value = d_trail.value(var);
-      Assert(!var_value.isNull());
+      bool var_value = d_trail.isTrue(var);
 
       // The literal that was propagated
-      Literal lit(var, var_value == c_FALSE);
+      Literal lit(var, !var_value);
       // Negation of the literal (one that we're looking for in clauses)
       Literal lit_neg = ~lit;
     
       // Remember the value
-      d_variableValues[var.index()] = (var_value == c_TRUE);
+      d_variableValues[var.index()] = var_value;
     
       Debug("mcsat::bcp") << "BCPEngine::propagate(): propagating on " << lit << " with value " << d_trail.value(lit) << std::endl;
 
@@ -269,9 +264,8 @@ void BCPEngine::decide(SolverTrail::DecisionToken& out) {
 
 void BCPEngine::notifyVariableUnset(const std::vector<Variable>& vars) {
   // Just add the Boolean variables to the queue
-  size_t boolIndex = d_trail.c_TRUE.typeIndex();
   for (unsigned i = 0; i < vars.size(); ++ i) {
-    if (vars[i].typeIndex() == boolIndex) {
+    if (vars[i].typeIndex() == d_boolTypeIndex) {
       d_variableQueue.enqueue(vars[i]);
     }
   }

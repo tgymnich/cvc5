@@ -91,10 +91,10 @@ public:
   };
 
   /** True value */
-  Variable c_TRUE;
+  Node c_TRUE;
 
   /** False value */
-  Variable c_FALSE;
+  Node c_FALSE;
 
   /** Print the trail to the stream */
   void toStream(std::ostream& out) const;
@@ -135,7 +135,7 @@ private:
   void newDecision();
   
   /** Model indexed by variables */
-  variable_table<Variable_Strong> d_model;
+  variable_table<Node> d_model;
 
   struct VariableInfo {
     unsigned decisionLevel;
@@ -145,7 +145,7 @@ private:
   /** Information on the model variables */
   variable_table<VariableInfo> d_modelInfo;
 
-  void setValue(Variable var, Variable value) {
+  void setValue(Variable var, TNode value) {
     Assert(d_model[var].isNull());
     d_model[var] = value;
   }
@@ -205,8 +205,8 @@ public:
   }
 
   /** Return the value of the literal in the current trail */
-  Variable value(Literal l) const {
-    Variable v = d_model[l.getVariable()];
+  TNode value(Literal l) const {
+    TNode v = d_model[l.getVariable()];
     if (l.isNegated()) {
       if (v == c_TRUE) {
         return c_FALSE;
@@ -252,12 +252,12 @@ public:
   void getInconsistentPropagations(std::vector<InconsistentPropagation>& out) const;
 
   /** Get the true constant */
-  Variable getTrue() const { return c_TRUE; }
+  TNode getTrue() const { return c_TRUE; }
   /** Get the false constant */
-  Variable getFalse() const { return c_FALSE; }
+  TNode getFalse() const { return c_FALSE; }
 
   /** Return the assigned value in the current trail */
-  Variable value(Variable var) const {
+  TNode value(Variable var) const {
     return d_model[var];
   }
 
@@ -352,7 +352,7 @@ public:
     /** Decide a Boolean typed variable to a value */
     void operator () (Literal lit);
     /** Decide a non-Boolean typed variable to a value */
-    void operator () (Variable variable, Variable value);
+    void operator () (Variable variable, TNode value);
   };
 
   friend class PropagationToken;

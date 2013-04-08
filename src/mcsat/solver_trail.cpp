@@ -9,19 +9,18 @@ SolverTrail::SolverTrail(context::Context* context)
 : d_decisionLevel(0)
 , d_context(context)
 {
-  Node trueNode = NodeManager::currentNM()->mkConst<bool>(true);
-  Node falseNode = NodeManager::currentNM()->mkConst<bool>(false);
+  c_TRUE = NodeManager::currentNM()->mkConst<bool>(true);
+  c_FALSE = NodeManager::currentNM()->mkConst<bool>(false);
 
-  c_TRUE = VariableDatabase::getCurrentDB()->getVariable(trueNode);
-  c_FALSE = VariableDatabase::getCurrentDB()->getVariable(falseNode);
+  Variable varTrue = VariableDatabase::getCurrentDB()->getVariable(c_TRUE);
+  Variable varFalse = VariableDatabase::getCurrentDB()->getVariable(c_FALSE);
 
-  Debug("mcsat::trail") << "true = " << c_TRUE << " (" << c_TRUE.index() << ")" << std::endl;
-  Debug("mcsat::trail") << "false = " << c_FALSE << " (" << c_FALSE.index() << ")" << std::endl;
 
-  // Add true and (not false) to the trail
-  PropagationToken prop(*this, PropagationToken::PROPAGATION_NORMAL);
-  prop(Literal(c_TRUE, false));
-  prop(Literal(c_FALSE, true));
+  PropagationToken out(*this, PropagationToken::PROPAGATION_INIT);
+  Literal l1(varTrue, false);
+  Literal l2(varFalse, true);
+  out(l1);
+  out(l2);
 }
 
 SolverTrail::~SolverTrail() {
@@ -47,7 +46,7 @@ void SolverTrail::popDecision(std::vector<Variable>& variablesUnset) {
     variablesUnset.push_back(var);
 
     // Unset all the variable info
-    d_model[var] = Variable::null;
+    d_model[var] = Node::null();
     d_modelInfo[var].decisionLevel = 0;
     d_modelInfo[var].trailIndex = 0;
 
@@ -104,12 +103,10 @@ void SolverTrail::PropagationToken::operator () (Literal l) {
 
   d_used = true;
 
-  Variable currentValue = d_trail.value(l);
-
-  Assert(currentValue != d_trail.c_FALSE);
+  Assert(!d_trail.isFalse(l));
   Assert(true); // TODO: Check that l evaluates to true in the model
 
-  if (currentValue != d_trail.c_TRUE) {
+  if (!d_trail.isTrue(l)) {
     if (l.isNegated()) {
       d_trail.setValue(l.getVariable(), d_trail.c_FALSE);
     } else {
@@ -128,14 +125,12 @@ void SolverTrail::PropagationToken::operator () (Literal l, CRef reason) {
 
   d_used = true;
 
-  Variable currentValue = d_trail.value(l);
-
   Assert(true); // TODO: Check that reason propagates l
 
   // If new propagation, record in model and in trail
-  if (currentValue != d_trail.c_TRUE) {
+  if (!d_trail.isTrue(l)) {
     // Check that we're not in conflict with this propagation
-    if (currentValue == d_trail.c_FALSE) {
+    if (d_trail.isFalse(l)) {
       // Conflict
       Debug("mcsat::trail") << "PropagationToken::operator () (" << l << ", " << reason << "): conflict" << std::endl;
       d_trail.d_inconsistentPropagations.push_back(InconsistentPropagation(l, reason));
@@ -157,9 +152,6 @@ void SolverTrail::PropagationToken::operator () (Literal l, CRef reason) {
       d_trail.d_trail.push_back(Element(CLAUSAL_PROPAGATION, var));
     }
   } 
-
-  Debug("mcsat::trail") << "PropagationToken::operator () (" << l << ", " << reason << "): value of " << l << " is " << d_trail.value(l) << std::endl;
-  Debug("mcsat::trail") << "PropagationToken::operator () (" << l << ", " << reason << "): value of " << ~l << " is " << d_trail.value(~l) << std::endl;
 
 }
 
@@ -186,7 +178,7 @@ void SolverTrail::DecisionToken::operator () (Literal l) {
   d_trail.d_trail.push_back(Element(BOOLEAN_DECISION, l.getVariable()));
 }
 
-void SolverTrail::DecisionToken::operator () (Variable var, Variable val) {
+void SolverTrail::DecisionToken::operator () (Variable var, TNode val) {
   Assert(!d_used);
   Assert(d_trail.consistent());
   Assert(d_trail.d_model[var].isNull());

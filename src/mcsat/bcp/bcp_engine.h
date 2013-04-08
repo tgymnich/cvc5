@@ -13,6 +13,9 @@ namespace mcsat {
  * Boolean constraint propagation (BCP) engine.
  */
 class BCPEngine : public SolverPlugin {
+
+  /** Type index for the boolean type */
+  size_t d_boolTypeIndex;
   
   /** Watch lists */
   WatchListManager d_watchManager;
@@ -85,7 +88,7 @@ public:
   /** Notification of a new conflict */
   void notifyConflict();
   
-  /** Nofification of a new conflict resolution step */
+  /** Notification of a new conflict resolution step */
   void notifyConflictResolution(CRef clause);
   
   /** Notification of unset variables */

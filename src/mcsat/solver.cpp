@@ -46,7 +46,7 @@ Solver::Solver(context::UserContext* userContext, context::Context* searchContex
   // Add some engines
   addPlugin("CVC4::mcsat::CNFPlugin");
   addPlugin("CVC4::mcsat::BCPEngine");
-  // addPlugin("CVC4::mcsat::FMPlugin");
+//  addPlugin("CVC4::mcsat::FMPlugin");
 }
 
 Solver::~Solver() {
@@ -333,11 +333,9 @@ void Solver::analyzeConflicts() {
 
       // We can resolve the variable, so let's do it
       Variable varToResolve = d_trail[trailIndex].var;
-      Variable varToResolveValue = d_trail.value(varToResolve);
-      Assert(!varToResolve.isNull());
 
       // If the variable is false, take the negated literal
-      Literal literalToResolve(varToResolve, varToResolveValue == d_trail.c_FALSE);
+      Literal literalToResolve(varToResolve, d_trail.isFalse(varToResolve));
 
       // Get the reason of the literal
       CRef literalReason = d_trail.reason(literalToResolve);

@@ -65,6 +65,7 @@ std::string FMPlugin::toString() const  {
 
 void FMPlugin::newVariable(Variable var) {
   Debug("mcsat::fm") << "FMPlugin::newVariable(" << var << ")" << std::endl;
+  d_variableQueue.newVariable(var);
 }
 
 class var_assign_compare {
@@ -235,7 +236,7 @@ void FMPlugin::processUnitConstraint(Variable constraint) {
     }
     // Assigned variable
     if (d_trail.hasValue(var)) {
-      Rational varValue = d_trail.value(var).getNode().getConst<Rational>();
+      Rational varValue = d_trail.value(var).getConst<Rational>();
       sum += it->second * varValue;
     } else {
       Assert(x.isNull());
@@ -293,7 +294,7 @@ void FMPlugin::processConflicts() {
     Variable var = *it;
 
     const BoundInfo& lowerBound = d_bounds.getLowerBoundInfo(var);
-    const BoundInfo& upperBound = d_bounds.getLowerBoundInfo(var);
+    const BoundInfo& upperBound = d_bounds.getUpperBoundInfo(var);
 
     Variable lowerBoundVariable = lowerBound.reason;
     Literal lowerBoundLiteral(lowerBoundVariable, d_trail.isFalse(lowerBoundVariable));
@@ -310,5 +311,20 @@ void FMPlugin::processConflicts() {
 }
 
 void FMPlugin::decide(SolverTrail::DecisionToken& out) {
-  Debug("mcsat::fm") << "FMPlugin::decide()" << std::endl;
+  Debug("mcsat::fm") << "BCPEngine::decide()" << std::endl;
+  Assert(d_trailHead == d_trail.size());
+  while (!d_variableQueue.empty()) {
+    Variable var = d_variableQueue.pop();
+
+    if (d_trail.value(var).isNull()) {
+
+      const BoundInfo& lowerBound = d_bounds.getLowerBoundInfo(var);
+      const BoundInfo& upperBound = d_bounds.getUpperBoundInfo(var);
+
+      Rational value = (lowerBound.value + upperBound.value)/2;
+      out(var, NodeManager::currentNM()->mkConst(value));
+
+      return;
+    }
+  }
 }
