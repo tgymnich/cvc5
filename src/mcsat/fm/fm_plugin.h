@@ -103,7 +103,7 @@ class FMPlugin : public SolverPlugin {
   /**
    * Processes any conflicts.
    */
-  void processConflicts();
+  void processConflicts(SolverTrail::PropagationToken& out);
 
 public:
 

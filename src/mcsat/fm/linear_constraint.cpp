@@ -25,7 +25,9 @@ void LinearConstraint::swap(LinearConstraint& c) {
   std::swap(d_kind, c.d_kind);
 }
 
-bool LinearConstraint::evaluate(const SolverTrail& trail) const {
+bool LinearConstraint::evaluate(const SolverTrail& trail, unsigned& level) const {
+
+  level = 0;
 
   Rational lhsValue;
   const_iterator it = begin();
@@ -36,6 +38,7 @@ bool LinearConstraint::evaluate(const SolverTrail& trail) const {
       lhsValue += it->second;
     } else {
       Assert(trail.hasValue(var));
+      level = std::max(level, trail.decisionLevel(var));
       lhsValue += trail.value(var).getConst<Rational>() * it->second;
     }
   }

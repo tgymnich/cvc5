@@ -166,6 +166,26 @@ private:
   /** The databases that are being solved */
   std::vector<ClauseDatabase*> d_clauses;
 
+  struct RepropagateInfo {
+    /** Variable to repropagate */
+    Variable var;
+    /** The value to repropagate */
+    bool value;
+    /** Level of validity */
+    unsigned level;
+
+    RepropagateInfo(Variable var, bool value, unsigned level)
+    : var(var), value(value), level(level) {}
+
+    RepropagateInfo() {}
+  };
+
+  /** Vector of repropagations while popping */
+  std::vector<RepropagateInfo> d_semanticRepropagate;
+
+  /** Pop the last decision level. All unset variables are pushed into the vector. */
+  void popDecision(std::vector<Variable>& variablesUnset);
+
 public:
   
   /** Create an empty trail with the give set of clauses */
@@ -199,9 +219,6 @@ public:
   size_t decisionLevel() const {
     return d_decisionLevel;
   }
-  
-  /** Pop the last decision level. All unset variables are pushed into the vector. */
-  void popDecision(std::vector<Variable>& variablesUnset);
 
   /** Pop to the given decision level. All unset variables are pushed into the vector. */
   void popToLevel(unsigned level, std::vector<Variable>& variablesUnset);
@@ -329,7 +346,7 @@ public:
      * Semantic propagation based on current model in the trail. A literal that is true in the model must evaluate
      * to true. The literal will be marked with the level at which is true, and will be repropagated on backtracks.
      */
-    void operator () (Literal l);
+    void operator () (Literal l, unsigned level);
 
     /**
      * Propagation based on clause that propagates under the current Boolean assignment in the trail.

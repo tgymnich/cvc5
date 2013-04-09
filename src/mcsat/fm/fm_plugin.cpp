@@ -42,7 +42,7 @@ FMPlugin::FMPlugin(ClauseDatabase& database, const SolverTrail& trail, SolverPlu
 , d_newVariableNotify(*this)
 , d_trailHead(trail.getSearchContext(), 0)
 , d_bounds(trail.getSearchContext())
-, d_fmRule(database)
+, d_fmRule(database, trail)
 {
   Debug("mcsat::fm") << "FMPlugin::FMPlugin()" << std::endl;
 
@@ -91,8 +91,8 @@ public:
     if (!v1_hasValue) return true;
     if (!v2_hasValue) return false;
 
-    // Bot are assigned, we compare by trail idnex
-    return d_trail.trailIndex(v1) > d_trail.trailIndex(v2);
+    // Both are assigned, we compare by trail index
+    return d_trail.decisionLevel(v1) > d_trail.decisionLevel(v2);
   }
 };
 
@@ -138,7 +138,6 @@ void FMPlugin::newConstraint(Variable constraint) {
   d_varlistToVar[listRef] = constraint;
   // Status of the constraint
   d_constraintUnassignedStatus.resize(constraint.index() + 1, UNASSIGNED_UNKNOWN);
-
 
   // Check if anything to do immediately
   if (!d_trail.hasValue(vars[0])) {
@@ -201,8 +200,9 @@ void FMPlugin::propagate(SolverTrail::PropagationToken& out) {
             // Even the first one is assigned, so we have a semantic propagation
             Variable constraintVar = getLinearConstraint(variableListRef);
             const LinearConstraint& constraint = getLinearConstraint(constraintVar);
-            bool value = constraint.evaluate(d_trail);
-            out(Literal(constraintVar, !value));
+            unsigned valueLevel;
+            bool value = constraint.evaluate(d_trail, valueLevel);
+            out(Literal(constraintVar, !value), valueLevel);
             // Mark the assignment
             d_constraintUnassignedStatus[constraintVar.index()] = UNASSIGNED_NONE;
           } else {
@@ -231,7 +231,7 @@ void FMPlugin::propagate(SolverTrail::PropagationToken& out) {
 
   // Process any conflicts
   if (d_bounds.inConflict()) {
-    processConflicts();
+    processConflicts(out);
   }
 }
 
@@ -315,7 +315,7 @@ void FMPlugin::processUnitConstraint(Variable constraint) {
 
 }
 
-void FMPlugin::processConflicts() {
+void FMPlugin::processConflicts(SolverTrail::PropagationToken& out) {
   std::set<Variable> variablesInConflict;
   d_bounds.getVariablesInConflict(variablesInConflict);
 
@@ -335,10 +335,8 @@ void FMPlugin::processConflicts() {
 
     d_fmRule.start(lowerBoundLiteral);
     d_fmRule.resolve(var, upperBoundLiteral);
-    d_fmRule.finish();
-
+    d_fmRule.finish(out);
   }
-
 }
 
 void FMPlugin::decide(SolverTrail::DecisionToken& out) {

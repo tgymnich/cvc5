@@ -45,6 +45,11 @@ public:
     d_kind = kind::LAST_KIND;
   }
 
+  /** Returns the number of proper variables */
+  unsigned size() {
+    return d_coefficients.size() - 1;
+  }
+
   /** Get the variables of this constraint */
   void getVariables(std::vector<Variable>& vars);
 
@@ -59,8 +64,11 @@ public:
   /** Output to stream */
   void toStream(std::ostream& out) const;
 
-  /** Evaluate the constraint in the trail (true, false) */
-  bool evaluate(const SolverTrail& trail) const;
+  /**
+   * Evaluate the constraint in the trail (true, false). It returns the level at which
+   * the constraint evaluates.
+   */
+  bool evaluate(const SolverTrail& trail, unsigned& level) const;
 
   typedef var_to_rational_map::const_iterator const_iterator;
 

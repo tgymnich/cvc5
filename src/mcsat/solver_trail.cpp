@@ -20,8 +20,8 @@ SolverTrail::SolverTrail(context::Context* context)
   PropagationToken out(*this, PropagationToken::PROPAGATION_INIT);
   Literal l1(varTrue, false);
   Literal l2(varFalse, true);
-  out(l1);
-  out(l2);
+  out(l1, 0u);
+  out(l2, 0u);
 }
 
 SolverTrail::~SolverTrail() {
@@ -44,6 +44,11 @@ void SolverTrail::popDecision(std::vector<Variable>& variablesUnset) {
 
     // The variable that was set
     Variable var = d_trail.back().var;
+
+    if (d_trail.back().type == SolverTrail::SEMANTIC_PROPAGATION) {
+      d_semanticRepropagate.push_back(RepropagateInfo(var, isTrue(var), decisionLevel(var)));
+    }
+
     variablesUnset.push_back(var);
 
     // Unset all the variable info
@@ -51,11 +56,9 @@ void SolverTrail::popDecision(std::vector<Variable>& variablesUnset) {
     d_modelInfo[var].decisionLevel = 0;
     d_modelInfo[var].trailIndex = 0;
 
-    // Remember the reason
+    // Remove any reasons
     Literal var_pos(var, false);
     Literal var_neg(var, true);
-
-    // Remove any reasons
     d_clauseReasons[var_pos] = CRef_Strong::null;
     d_clauseReasons[var_neg] = CRef_Strong::null;
     d_reasonProviders[var_pos] = 0;
@@ -76,9 +79,22 @@ void SolverTrail::popDecision(std::vector<Variable>& variablesUnset) {
 
 void SolverTrail::popToLevel(unsigned level, std::vector<Variable>& variablesUnset) {
   Debug("mcsat::trail") << "SolverTrail::popToLevel(" << level << "): at level " << d_decisionLevel << std::endl;
+
+  // Pop to the given level
   while (d_decisionLevel > level) {
     popDecision(variablesUnset);
   }
+
+  // Repropagate all the semantic propagations valid at this level
+  PropagationToken out(*this, PropagationToken::PROPAGATION_INIT);
+  for (unsigned i = 0; i < d_semanticRepropagate.size(); ++ i) {
+    const RepropagateInfo& info = d_semanticRepropagate[i];
+    if (info.level <= level) {
+      out(Literal(info.var, !info.value), info.level);
+    }
+  }
+  d_semanticRepropagate.clear();
+
   Debug("mcsat::trail") << "SolverTrail::popToLevel(" << level << "): new trail: " << *this << std::endl;
 }
 
@@ -98,26 +114,26 @@ unsigned SolverTrail::trailIndex(Variable var) const {
   return d_modelInfo[var].trailIndex;
 }
 
-void SolverTrail::PropagationToken::operator () (Literal l) {
+void SolverTrail::PropagationToken::operator () (Literal l, unsigned level) {
 
   Debug("mcsat::trail") << "PropagationToken::operator () (" << l << ")" << std::endl;
 
   d_used = true;
 
-  Assert(!d_trail.isFalse(l));
+  Assert(level <= d_trail.decisionLevel());
+  Assert(!d_trail.hasValue(l.getVariable()));
   Assert(true); // TODO: Check that l evaluates to true in the model
 
-  if (!d_trail.isTrue(l)) {
-    if (l.isNegated()) {
-      d_trail.setValue(l.getVariable(), d_trail.c_FALSE, false);
-    } else {
-      d_trail.setValue(l.getVariable(), d_trail.c_TRUE, false);
-    }
-    Variable var = l.getVariable();
-    d_trail.d_modelInfo[var].decisionLevel = d_trail.decisionLevel();
-    d_trail.d_modelInfo[var].trailIndex = d_trail.d_trail.size();
-    d_trail.d_trail.push_back(Element(SEMANTIC_PROPAGATION, var));
+  if (l.isNegated()) {
+    d_trail.setValue(l.getVariable(), d_trail.c_FALSE, false);
+  } else {
+    d_trail.setValue(l.getVariable(), d_trail.c_TRUE, false);
   }
+  Variable var = l.getVariable();
+
+  d_trail.d_modelInfo[var].decisionLevel = level;
+  d_trail.d_modelInfo[var].trailIndex = d_trail.d_trail.size();
+  d_trail.d_trail.push_back(Element(SEMANTIC_PROPAGATION, var));
 }
 
 void SolverTrail::PropagationToken::operator () (Literal l, CRef reason) {

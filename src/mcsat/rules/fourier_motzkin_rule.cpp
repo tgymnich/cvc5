@@ -5,8 +5,9 @@ using namespace mcsat;
 using namespace rules;
 using namespace fm;
 
-FourierMotzkinRule::FourierMotzkinRule(ClauseDatabase& clauseDB)
+FourierMotzkinRule::FourierMotzkinRule(ClauseDatabase& clauseDB, const SolverTrail& trail)
 : ProofRule("mcsat::fourier_motzkin_rule", clauseDB)
+, d_trail(trail)
 {
 }
 
@@ -30,9 +31,9 @@ void FourierMotzkinRule::resolve(Variable var, Literal ineq) {
   bool linear = LinearConstraint::parse(ineq, toResolve);
   Assert(linear);
 
-  Debug("mcsat::fm") << "ForuierMotzkinRule: resolving " << d_resolvent << std::endl;
+  Debug("mcsat::fm") << "ForuierMotzkinRule: resolving " << toResolve << std::endl;
 
-  // We know that both are one of >, >= so coeficients with var must be opposite
+  // We know that both are one of >, >= so coefficients with var must be opposite
   Rational d_resolventC = d_resolvent.getCoefficient(var);
   Rational toResolveC = toResolve.getCoefficient(var);
   Assert(d_resolventC*toResolveC < 0);
@@ -48,7 +49,7 @@ void FourierMotzkinRule::resolve(Variable var, Literal ineq) {
 }
 
 /** Finish the derivation */
-CRef FourierMotzkinRule::finish() {
+CRef FourierMotzkinRule::finish(SolverTrail::PropagationToken& propToken) {
   
   LiteralVector lits;
   
@@ -60,8 +61,22 @@ CRef FourierMotzkinRule::finish() {
     // negation of the assumption
     lits.push_back(~(*it));
   }
-  lits.push_back(d_resolvent.getLiteral());
   
+  // Add the resolvent if not trivially false
+  if (d_resolvent.size() > 0) {
+    // Add the literal
+    Literal resolventLiteral = d_resolvent.getLiteral();
+    lits.push_back(resolventLiteral);
+
+    // Evaluate and propagate
+    unsigned evalLevel;
+    bool eval = d_resolvent.evaluate(d_trail, evalLevel);
+    Assert(!eval, "Must be false");
+
+    // Propagate !resolvent semantically at the apropriate level
+    propToken(~resolventLiteral, evalLevel);
+  }
+
   return commit(lits);
 }
 

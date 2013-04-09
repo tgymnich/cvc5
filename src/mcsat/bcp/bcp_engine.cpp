@@ -81,7 +81,13 @@ public:
     if (l1_value == l2_value) {
       Variable l1_var = l1.getVariable();
       Variable l2_var = l2.getVariable();
-      return d_trail.trailIndex(l1_var) > d_trail.trailIndex(l2_var);
+      unsigned l1_level = d_trail.decisionLevel(l1_var);
+      unsigned l2_level = d_trail.decisionLevel(l2_var);
+      if (l1_level != l2_level) {
+        return l1_level > l2_level;
+      } else {
+        return d_trail.trailIndex(l1_var) > d_trail.trailIndex(l2_var);
+      }
     } else {
       // Of two assigned literals, the true literal goes up front
       return (l1_value == d_trail.getTrue());

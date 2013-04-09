@@ -2,6 +2,7 @@
 
 #include "mcsat/rules/proof_rule.h"
 #include "mcsat/fm/linear_constraint.h"
+#include "mcsat/solver_trail.h"
 
 namespace CVC4 {
 namespace mcsat {
@@ -18,10 +19,13 @@ class FourierMotzkinRule : public ProofRule {
   /** Resolvent */
   fm::LinearConstraint d_resolvent;
 
+  /** The trail */
+  const SolverTrail& d_trail;
+
 public:
 
   /** Create a new Fourier-Motzkin resolution */
-  FourierMotzkinRule(ClauseDatabase& clauseDB);
+  FourierMotzkinRule(ClauseDatabase& clauseDB, const SolverTrail& trail);
 
   /** Start the resolution */
   void start(Literal ineq);
@@ -29,8 +33,10 @@ public:
   /** Resolve with given inequality over the given variable. */
   void resolve(Variable var, Literal ineq);
 
-  /** Finish the derivation */
-  CRef finish();
+  /**
+   * Finish the derivation. We need the prop token, since the newly created literal will evaluate at lower level.
+   */
+  CRef finish(SolverTrail::PropagationToken& propToken);
   
 };
 
