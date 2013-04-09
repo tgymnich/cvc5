@@ -221,14 +221,21 @@ Rational LinearConstraint::getCoefficient(Variable var) const {
 
 void LinearConstraint::multiply(Rational c) {
   Assert(c > 0);
+
+  Debug("mcsat::linear") << "LinearConstraint::multiply(): " << c << " * " << *this << std::endl;
+
   var_to_rational_map::iterator it = d_coefficients.begin();
   var_to_rational_map::iterator it_end = d_coefficients.end();
   for (; it != it_end; ++ it) {
     it->second *= c;
   }
+
+  Debug("mcsat::linear") << "LinearConstraint::multiply(): = " << *this << std::endl;
 }
   
 void LinearConstraint::add(const LinearConstraint& other, Rational c) {
+
+  Debug("mcsat::linear") << "LinearConstraint::add(): " << *this << " + " << c << " * " << other << std::endl;
 
   // Figure out the resulting kind
   switch (d_kind) {
@@ -256,14 +263,27 @@ void LinearConstraint::add(const LinearConstraint& other, Rational c) {
   const_iterator it_end = other.end();
   for (; it != it_end; ++ it) {
     Rational newValue = (d_coefficients[it->first] += c*it->second);
-    if (newValue.isZero() && !it->first.isNull()) {
-      d_coefficients.erase(it->first);
+  }
+
+  // Gather all 0 terms
+  std::vector<Variable> toErase;
+  for (it = begin(), it_end = end(); it != it_end; ++ it) {
+    if (it->second.isZero() && !it->first.isNull()) {
+      toErase.push_back(it->first);
     }
   }
+  for (unsigned i = 0; i < toErase.size(); ++ i) {
+    d_coefficients.erase(toErase[i]);
+  }
+
+  Debug("mcsat::linear") << "LinearConstraint::add(): = " << *this << std::endl;
+
 }
 
 Literal LinearConstraint::getLiteral() const {
-  
+
+  Debug("mcsat::linear") << "LinearConstraint::getLiteral(): " << *this << std::endl;
+
   Assert(d_coefficients.size() >= 1);
   
   NodeManager* nm = NodeManager::currentNM();
@@ -278,9 +298,13 @@ Literal LinearConstraint::getLiteral() const {
     for (; it != it_end; ++ it) {
       Variable x = it->first;
       Rational a = it->second;
-      Node xNode = x.getNode();
-      Node aNode = nm->mkConst<Rational>(a);
-      sumBuilder << nm->mkNode(kind::MULT, aNode, xNode);
+      if (x.isNull()) {
+        sumBuilder << nm->mkConst<Rational>(a);
+      } else {
+        Node xNode = x.getNode();
+        Node aNode = nm->mkConst<Rational>(a);
+        sumBuilder << nm->mkNode(kind::MULT, aNode, xNode);
+      }
     }
     sum = sumBuilder;
   } else {
@@ -303,5 +327,8 @@ Literal LinearConstraint::getLiteral() const {
   Variable variable = db->getVariable(atom);
 
   // Return the literal
-  return Literal(variable, negated);
+  Literal result(variable, negated);
+
+  Debug("mcsat::linear") << "LinearConstraint::getLiteral(): " << result << std::endl;
+  return result;
 }

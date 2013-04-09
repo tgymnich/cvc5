@@ -116,7 +116,7 @@ unsigned SolverTrail::trailIndex(Variable var) const {
 
 void SolverTrail::PropagationToken::operator () (Literal l, unsigned level) {
 
-  Debug("mcsat::trail") << "PropagationToken::operator () (" << l << ")" << std::endl;
+  Debug("mcsat::trail") << "PropagationToken::operator () (" << l << ", " << level << ")" << std::endl;
 
   d_used = true;
 
@@ -207,6 +207,10 @@ void SolverTrail::DecisionToken::operator () (Variable var, TNode val, bool trac
 
   d_trail.setValue(var, val, track);
 
+  // Set the model information
+  d_trail.d_modelInfo[var].decisionLevel = d_trail.decisionLevel();
+  d_trail.d_modelInfo[var].trailIndex = d_trail.d_trail.size();
+  // Push to the trail
   d_trail.d_trail.push_back(Element(SEMANTIC_DECISION, var));
 }
 

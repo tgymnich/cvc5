@@ -248,7 +248,7 @@ void BCPEngine::decide(SolverTrail::DecisionToken& out) {
   while (!d_variableQueue.empty()) {
     Variable var = d_variableQueue.pop();
 
-    if (d_trail.value(var).isNull()) {
+    if (!d_trail.hasValue(var)) {
       
       // Phase heuristic
       if (options::use_mcsat_bcp_value_phase_heuristic()) {

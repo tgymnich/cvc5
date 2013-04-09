@@ -199,10 +199,14 @@ void FMPlugin::propagate(SolverTrail::PropagationToken& out) {
           if (d_trail.hasValue(variableList[0])) {
             // Even the first one is assigned, so we have a semantic propagation
             Variable constraintVar = getLinearConstraint(variableListRef);
-            const LinearConstraint& constraint = getLinearConstraint(constraintVar);
             unsigned valueLevel;
-            bool value = constraint.evaluate(d_trail, valueLevel);
-            out(Literal(constraintVar, !value), valueLevel);
+            if (!d_trail.hasValue(constraintVar)) {
+              const LinearConstraint& constraint = getLinearConstraint(constraintVar);
+              bool value = constraint.evaluate(d_trail, valueLevel);
+              out(Literal(constraintVar, !value), valueLevel);
+            } else {
+              Assert(getLinearConstraint(constraintVar).evaluate(d_trail, valueLevel) == d_trail.isTrue(constraintVar));
+            }
             // Mark the assignment
             d_constraintUnassignedStatus[constraintVar.index()] = UNASSIGNED_NONE;
           } else {
@@ -246,7 +250,7 @@ void FMPlugin::processUnitConstraint(Variable constraint) {
 
   // Get the constraint
   const LinearConstraint& c = getLinearConstraint(constraint);
-  Debug("mcsat::fm") << "FMPlugin::processUnitConstraint(): " << c << std::endl;
+  Debug("mcsat::fm") << "FMPlugin::processUnitConstraint(): " << c << " with value " << d_trail.value(constraint) << std::endl;
 
   // Compute ax + sum:
   // * the sum of the linear term that evaluates
@@ -371,6 +375,8 @@ void FMPlugin::decide(SolverTrail::DecisionToken& out) {
         }
       }
 
+      Debug("mcsat::fm") << "BCPEngine::decide(): " << var << " -> " << value << std::endl;
+
       out(var, NodeManager::currentNM()->mkConst(value), true);
 
       // Done
@@ -396,6 +402,8 @@ void FMPlugin::notifyVariableUnset(const std::vector<Variable>& vars) {
           d_constraintUnassignedStatus[constraintVar.index()] = UNASSIGNED_UNKNOWN;
         }
       }
+    } else if (isArithmeticVariable(vars[i])) {
+      d_variableQueue.enqueue(vars[i]);
     }
   }
 }
