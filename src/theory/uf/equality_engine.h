@@ -1,11 +1,11 @@
 /*********************                                                        */
 /*! \file equality_engine.h
  ** \verbatim
- ** Original author: dejan
- ** Major contributors: mdeters
- ** Minor contributors (to current version): bobot, lianah, taking, ajreynol
- ** This file is part of the CVC4 prototype.
- ** Copyright (c) 2009-2012  New York University and The University of Iowa
+ ** Original author: Dejan Jovanovic
+ ** Major contributors: Morgan Deters
+ ** Minor contributors (to current version): Tim King, Liana Hadarean, Andrew Reynolds
+ ** This file is part of the CVC4 project.
+ ** Copyright (c) 2009-2013  New York University and The University of Iowa
  ** See the file COPYING in the top-level source directory for licensing
  ** information.\endverbatim
  **
@@ -727,7 +727,7 @@ public:
   }
 
   /**
-   * Returns true if this kind is used for congruencce closure + evaluation of constants.
+   * Returns true if this kind is used for congruence closure + evaluation of constants.
    */
   bool isInterpretedFunctionKind(Kind fun) const {
     return d_congruenceKindsInterpreted.tst(fun);

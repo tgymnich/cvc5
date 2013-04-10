@@ -1,8 +1,8 @@
 /*********************                                                        */
 /*! \file quant_util.h
  ** \verbatim
- ** Original author: Andrew Reynolds <andrew.j.reynolds@gmail.com>
- ** Major contributors: Morgan Deters <mdeters@cs.nyu.edu>
+ ** Original author: Andrew Reynolds
+ ** Major contributors: Morgan Deters
  ** Minor contributors (to current version): none
  ** This file is part of the CVC4 project.
  ** Copyright (c) 2009-2013  New York University and The University of Iowa
@@ -31,7 +31,7 @@ namespace theory {
 class QuantRelevance
 {
 private:
-  /** for computing relavance */
+  /** for computing relevance */
   bool d_computeRel;
   /** map from quantifiers to symbols they contain */
   std::map< Node, std::vector< Node > > d_syms;

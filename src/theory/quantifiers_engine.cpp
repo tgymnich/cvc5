@@ -1,11 +1,11 @@
 /*********************                                                        */
 /*! \file quantifiers_engine.cpp
  ** \verbatim
- ** Original author: ajreynol
- ** Major contributors: bobot, mdeters
- ** Minor contributors (to current version): none
- ** This file is part of the CVC4 prototype.
- ** Copyright (c) 2009-2012  New York University and The University of Iowa
+ ** Original author: Morgan Deters
+ ** Major contributors: Andrew Reynolds
+ ** Minor contributors (to current version): Francois Bobot
+ ** This file is part of the CVC4 project.
+ ** Copyright (c) 2009-2013  New York University and The University of Iowa
  ** See the file COPYING in the top-level source directory for licensing
  ** information.\endverbatim
  **
@@ -122,6 +122,10 @@ void QuantifiersEngine::check( Theory::Effort e ){
   }
   if( needsCheck ){
     Trace("quant-engine") << "Quantifiers Engine check, level = " << e << std::endl;
+    if( !getMasterEqualityEngine()->consistent() ){
+      Trace("quant-engine") << "Master equality engine not consistent, return." << std::endl;
+      return;
+    }
     //reset relevant information
     d_hasAddedLemma = false;
     d_term_db->reset( e );

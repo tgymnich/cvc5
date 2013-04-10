@@ -1,11 +1,11 @@
 /*********************                                                        */
 /*! \file theory_bv.h
  ** \verbatim
- ** Original author: mdeters
- ** Major contributors: dejan, lianah
- ** Minor contributors (to current version): barrett, ajreynol
- ** This file is part of the CVC4 prototype.
- ** Copyright (c) 2009-2012  New York University and The University of Iowa
+ ** Original author: Morgan Deters
+ ** Major contributors: lianah, Dejan Jovanovic, Liana Hadarean
+ ** Minor contributors (to current version): Clark Barrett, Tim King, Andrew Reynolds
+ ** This file is part of the CVC4 project.
+ ** Copyright (c) 2009-2013  New York University and The University of Iowa
  ** See the file COPYING in the top-level source directory for licensing
  ** information.\endverbatim
  **

@@ -1,11 +1,11 @@
 /*********************                                                        */
 /*! \file bv_inequality_graph.cpp
  ** \verbatim
- ** Original author: lianah
- ** Major contributors: none
- ** Minor contributors (to current version): none
- ** This file is part of the CVC4 prototype.
- ** Copyright (c) 2009-2012  New York University and The University of Iowa
+ ** Original author: Liana Hadarean
+ ** Major contributors: lianah
+ ** Minor contributors (to current version): Morgan Deters
+ ** This file is part of the CVC4 project.
+ ** Copyright (c) 2009-2013  New York University and The University of Iowa
  ** See the file COPYING in the top-level source directory for licensing
  ** information.\endverbatim
  **
@@ -30,7 +30,7 @@ const ReasonId CVC4::theory::bv::AxiomReasonId = -2;
 
 
 bool InequalityGraph::addInequality(TNode a, TNode b, bool strict, TNode reason) {
-  Debug("bv-inequality") << "InequlityGraph::addInequality " << a << " " << b << " strict: " << strict << "\n"; 
+  Debug("bv-inequality") << "InequalityGraph::addInequality " << a << " " << b << " strict: " << strict << "\n"; 
 
   TermId id_a = registerTerm(a);
   TermId id_b = registerTerm(b);
@@ -121,7 +121,7 @@ bool InequalityGraph::processQueue(BFSQueue& queue, TermId start) {
   while (!queue.empty()) {
     TermId current = queue.top();
     queue.pop();
-    Debug("bv-inequality-internal") << "InequalityGraph::processQueue proceessing " << getTermNode(current) << "\n";
+    Debug("bv-inequality-internal") << "InequalityGraph::processQueue processing " << getTermNode(current) << "\n";
   
     BitVector current_value = getValue(current);
   

@@ -1,11 +1,11 @@
 /*********************                                                        */
 /*! \file equality_engine_types.h
  ** \verbatim
- ** Original author: dejan
+ ** Original author: Dejan Jovanovic
  ** Major contributors: none
- ** Minor contributors (to current version): mdeters
- ** This file is part of the CVC4 prototype.
- ** Copyright (c) 2009-2012  New York University and The University of Iowa
+ ** Minor contributors (to current version): Morgan Deters
+ ** This file is part of the CVC4 project.
+ ** Copyright (c) 2009-2013  New York University and The University of Iowa
  ** See the file COPYING in the top-level source directory for licensing
  ** information.\endverbatim
  **
@@ -282,7 +282,7 @@ enum FunctionApplicationType {
 struct FunctionApplication {
   /** Type of application */
   FunctionApplicationType type;
-  /** The actuall application elements */
+  /** The actual application elements */
   EqualityNodeId a, b;
 
   /** Construct an application */

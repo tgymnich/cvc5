@@ -1,11 +1,11 @@
 /*********************                                                        */
 /*! \file smt_engine.cpp
  ** \verbatim
- ** Original author: mdeters
- ** Major contributors: barrett
- ** Minor contributors (to current version): lianah, cconway, taking, kshitij, dejan, ajreynol
- ** This file is part of the CVC4 prototype.
- ** Copyright (c) 2009-2012  New York University and The University of Iowa
+ ** Original author: Morgan Deters
+ ** Major contributors: Clark Barrett
+ ** Minor contributors (to current version): Christopher L. Conway, Liana Hadarean, Tim King, Kshitij Bansal, Dejan Jovanovic, Andrew Reynolds
+ ** This file is part of the CVC4 project.
+ ** Copyright (c) 2009-2013  New York University and The University of Iowa
  ** See the file COPYING in the top-level source directory for licensing
  ** information.\endverbatim
  **
@@ -59,6 +59,7 @@
 #include "theory/substitutions.h"
 #include "theory/uf/options.h"
 #include "theory/arith/options.h"
+#include "theory/bv/options.h"
 #include "theory/theory_traits.h"
 #include "theory/logic_info.h"
 #include "theory/options.h"
@@ -254,7 +255,7 @@ class SmtEnginePrivate : public NodeManagerListener {
    * A map of AbsractValues to their actual constants.  Only used if
    * options::abstractValues() is on.
    */
-  theory::SubstitutionMap d_abstractValueMap;
+  SubstitutionMap d_abstractValueMap;
 
   /**
    * A mapping of all abstract values (actual value |-> abstract) that
@@ -489,7 +490,7 @@ public:
 
   /**
    * Return the uinterpreted function symbol corresponding to division-by-zero
-   * for this particular bit-wdith
+   * for this particular bit-width
    * @param k should be UREM or UDIV
    * @param width
    *
@@ -674,6 +675,11 @@ void SmtEngine::finalOptionsAreSet() {
     return;
   }
 
+  if (options::bitvectorEagerBitblast()) {
+    // Eager solver should use the internal decision strategy
+    options::decisionMode.set(DECISION_STRATEGY_INTERNAL);
+  }
+
   if(options::checkModels()) {
     if(! options::produceModels()) {
       Notice() << "SmtEngine: turning on produce-models to support check-model" << endl;
@@ -695,7 +701,7 @@ void SmtEngine::finalOptionsAreSet() {
     setLogicInternal();
   }
 
-  // finish initalization, creat the prop engine, etc.
+  // finish initialization, create the prop engine, etc.
   finishInit();
 
   AlwaysAssert( d_propEngine->getAssertionLevel() == 0,
@@ -815,11 +821,11 @@ void SmtEngine::setLogicInternal() throw() {
   d_logic.lock();
 
   // may need to force uninterpreted functions to be on for non-linear
-  if(((d_logic.isTheoryEnabled(theory::THEORY_ARITH) && !d_logic.isLinear()) ||
-      d_logic.isTheoryEnabled(theory::THEORY_BV)) &&
-     !d_logic.isTheoryEnabled(theory::THEORY_UF)){
+  if(((d_logic.isTheoryEnabled(THEORY_ARITH) && !d_logic.isLinear()) ||
+      d_logic.isTheoryEnabled(THEORY_BV)) &&
+     !d_logic.isTheoryEnabled(THEORY_UF)){
     d_logic = d_logic.getUnlockedCopy();
-    d_logic.enableTheory(theory::THEORY_UF);
+    d_logic.enableTheory(THEORY_UF);
     d_logic.lock();
   }
 
@@ -863,6 +869,27 @@ void SmtEngine::setLogicInternal() throw() {
        (d_logic.isTheoryEnabled(THEORY_ARRAY) && d_logic.isTheoryEnabled(THEORY_UF) && d_logic.isTheoryEnabled(THEORY_BV)));
     Trace("smt") << "setting ite simplification to " << iteSimp << endl;
     options::doITESimp.set(iteSimp);
+  }
+  // Turn off array eager index splitting for QF_AUFLIA
+  if(! options::arraysEagerIndexSplitting.wasSetByUser()) {
+    if (not d_logic.isQuantified() &&
+        d_logic.isTheoryEnabled(THEORY_ARRAY) &&
+        d_logic.isTheoryEnabled(THEORY_UF) &&
+        d_logic.isTheoryEnabled(THEORY_ARITH)) {
+      Trace("smt") << "setting array eager index splitting to false" << endl;
+      options::arraysEagerIndexSplitting.set(false);
+    }
+  }
+  // Turn on model-based arrays for QF_AX (unless models are enabled)
+  if(! options::arraysModelBased.wasSetByUser()) {
+    if (not d_logic.isQuantified() &&
+        d_logic.isTheoryEnabled(THEORY_ARRAY) &&
+        d_logic.isPure(THEORY_ARRAY) &&
+        !options::produceModels() &&
+        !options::checkModels()) {
+      Trace("smt") << "turning on model-based array solver" << endl;
+      options::arraysModelBased.set(true);
+    }
   }
   // Turn on multiple-pass non-clausal simplification for QF_AUFBV
   if(! options::repeatSimp.wasSetByUser()) {
@@ -1020,7 +1047,7 @@ void SmtEngine::setLogicInternal() throw() {
   }
 
   // Non-linear arithmetic does not support models
-  if (d_logic.isTheoryEnabled(theory::THEORY_ARITH) &&
+  if (d_logic.isTheoryEnabled(THEORY_ARITH) &&
       !d_logic.isLinear()) {
     if (options::produceModels()) {
       Warning() << "SmtEngine: turning off produce-models because unsupported for nonlinear arith" << endl;
@@ -1032,8 +1059,8 @@ void SmtEngine::setLogicInternal() throw() {
     }
   }
 
-  //datatypes theory should assign values to all datatypes terms if logic is quantified
-  if (d_logic.isQuantified() && d_logic.isTheoryEnabled(theory::THEORY_DATATYPES)) {
+  // datatypes theory should assign values to all datatypes terms if logic is quantified
+  if (d_logic.isQuantified() && d_logic.isTheoryEnabled(THEORY_DATATYPES)) {
     if( !options::dtForceAssignment.wasSetByUser() ){
       options::dtForceAssignment.set(true);
     }
@@ -1790,7 +1817,7 @@ bool SmtEnginePrivate::nonClausalSimplify() {
     for( SubstitutionMap::iterator pos = d_topLevelSubstitutions.begin(); pos != d_topLevelSubstitutions.end(); ++pos) {
       Node n = (*pos).first;
       Node v = (*pos).second;
-      Trace("model") << "Add substitution : " << n << " " << v << std::endl;
+      Trace("model") << "Add substitution : " << n << " " << v << endl;
       m->addSubstitution( n, v );
     }
   }
@@ -2385,7 +2412,7 @@ bool SmtEnginePrivate::simplifyAssertions()
           // miplib rewrites aren't safe in incremental mode
           ! options::incrementalSolving() &&
           // only useful in arith
-          d_smt.d_logic.isTheoryEnabled(theory::THEORY_ARITH) &&
+          d_smt.d_logic.isTheoryEnabled(THEORY_ARITH) &&
           // we add new assertions and need this (in practice, this
           // restriction only disables miplib processing during
           // re-simplification, which we don't expect to be useful anyway)
@@ -2644,16 +2671,16 @@ void SmtEnginePrivate::processAssertions() {
         switch(booleans::BooleanTermConversionMode mode = options::booleanTermConversionMode()) {
         case booleans::BOOLEAN_TERM_CONVERT_TO_BITVECTORS:
         case booleans::BOOLEAN_TERM_CONVERT_NATIVE:
-          if(!d_smt.d_logic.isTheoryEnabled(theory::THEORY_BV)) {
+          if(!d_smt.d_logic.isTheoryEnabled(THEORY_BV)) {
             d_smt.d_logic = d_smt.d_logic.getUnlockedCopy();
-            d_smt.d_logic.enableTheory(theory::THEORY_BV);
+            d_smt.d_logic.enableTheory(THEORY_BV);
             d_smt.d_logic.lock();
           }
           break;
         case booleans::BOOLEAN_TERM_CONVERT_TO_DATATYPES:
-          if(!d_smt.d_logic.isTheoryEnabled(theory::THEORY_DATATYPES)) {
+          if(!d_smt.d_logic.isTheoryEnabled(THEORY_DATATYPES)) {
             d_smt.d_logic = d_smt.d_logic.getUnlockedCopy();
-            d_smt.d_logic.enableTheory(theory::THEORY_DATATYPES);
+            d_smt.d_logic.enableTheory(THEORY_DATATYPES);
             d_smt.d_logic.lock();
           }
           break;
@@ -3359,7 +3386,7 @@ void SmtEngine::checkModel(bool hardFailure) {
   // We have a "fake context" for the substitution map (we don't need it
   // to be context-dependent)
   context::Context fakeContext;
-  SubstitutionMap substitutions(&fakeContext);
+  SubstitutionMap substitutions(&fakeContext, /* substituteUnderQuantifiers = */ false);
 
   for(size_t k = 0; k < m->getNumCommands(); ++k) {
     const DeclareFunctionCommand* c = dynamic_cast<const DeclareFunctionCommand*>(m->getCommand(k));
@@ -3447,13 +3474,13 @@ void SmtEngine::checkModel(bool hardFailure) {
     Notice() << "SmtEngine::checkModel(): -- simplifies to  " << n << endl;
 
     TheoryId thy = Theory::theoryOf(n);
-    if(thy == THEORY_QUANTIFIERS || thy == THEORY_REWRITERULES) {
+    if(thy == THEORY_REWRITERULES) {
       // Note this "skip" is done here, rather than above.  This is
       // because (1) the quantifier could in principle simplify to false,
       // which should be reported, and (2) checking for the quantifier
       // above, before simplification, doesn't catch buried quantifiers
       // anyway (those not at the top-level).
-      Notice() << "SmtEngine::checkModel(): -- skipping quantified assertion"
+      Notice() << "SmtEngine::checkModel(): -- skipping rewrite-rules assertion"
                << endl;
       continue;
     }

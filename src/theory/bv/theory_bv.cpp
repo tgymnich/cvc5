@@ -1,11 +1,11 @@
 /*********************                                                        */
 /*! \file theory_bv.cpp
  ** \verbatim
- ** Original author: dejan
- ** Major contributors: mdeters, lianah
- ** Minor contributors (to current version): barrett, ajreynol
- ** This file is part of the CVC4 prototype.
- ** Copyright (c) 2009-2012  New York University and The University of Iowa
+ ** Original author: Dejan Jovanovic
+ ** Major contributors: Morgan Deters, Liana Hadarean, lianah
+ ** Minor contributors (to current version): Tim King, Andrew Reynolds, Clark Barrett
+ ** This file is part of the CVC4 project.
+ ** Copyright (c) 2009-2013  New York University and The University of Iowa
  ** See the file COPYING in the top-level source directory for licensing
  ** information.\endverbatim
  **
@@ -102,6 +102,7 @@ void TheoryBV::preRegisterTerm(TNode node) {
 
   if (options::bitvectorEagerBitblast()) {
     // don't use the equality engine in the eager bit-blasting
+    d_subtheoryMap[SUB_BITBLAST]->preRegister(node);
     return;
   }
   for (unsigned i = 0; i < d_subtheories.size(); ++i) {
@@ -124,6 +125,10 @@ void TheoryBV::sendConflict() {
 void TheoryBV::check(Effort e)
 {
   Debug("bitvector") << "TheoryBV::check(" << e << ")" << std::endl;
+  if (options::bitvectorEagerBitblast()) {
+    return;
+  }
+
   if (Theory::fullEffort(e)) {
     ++(d_statistics.d_numCallsToCheckFullEffort); 
   } else {
@@ -185,6 +190,10 @@ Node TheoryBV::getModelValue(TNode var) {
 
 void TheoryBV::propagate(Effort e) {
   Debug("bitvector") << indent() << "TheoryBV::propagate()" << std::endl;
+
+  if (options::bitvectorEagerBitblast()) {
+    return;
+  }
 
   if (inConflict()) {
     return;

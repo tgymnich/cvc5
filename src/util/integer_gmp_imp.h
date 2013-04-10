@@ -1,11 +1,11 @@
 /*********************                                                        */
 /*! \file integer_gmp_imp.h
  ** \verbatim
- ** Original author: taking
- ** Major contributors: lianah, mdeters
- ** Minor contributors (to current version): dejan
- ** This file is part of the CVC4 prototype.
- ** Copyright (c) 2009-2012  New York University and The University of Iowa
+ ** Original author: Tim King
+ ** Major contributors: Morgan Deters, Liana Hadarean
+ ** Minor contributors (to current version): Dejan Jovanovic
+ ** This file is part of the CVC4 project.
+ ** Copyright (c) 2009-2013  New York University and The University of Iowa
  ** See the file COPYING in the top-level source directory for licensing
  ** information.\endverbatim
  **
@@ -174,10 +174,6 @@ public:
   /** 
    * Returns the Integer obtained by setting the ith bit of the
    * current Integer to 1. 
-   * 
-   * @param bit 
-   * 
-   * @return 
    */
   Integer setBit(uint32_t i) const {
     mpz_class res = d_value;

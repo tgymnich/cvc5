@@ -1,11 +1,11 @@
 /*********************                                                        */
 /*! \file theory_arrays.cpp
  ** \verbatim
- ** Original author: barrett
- ** Major contributors: mdeters
- ** Minor contributors (to current version): ajreynol, dejan
- ** This file is part of the CVC4 prototype.
- ** Copyright (c) 2009-2012  New York University and The University of Iowa
+ ** Original author: Clark Barrett
+ ** Major contributors: Morgan Deters
+ ** Minor contributors (to current version): Tim King, Andrew Reynolds, Dejan Jovanovic
+ ** This file is part of the CVC4 project.
+ ** Copyright (c) 2009-2013  New York University and The University of Iowa
  ** See the file COPYING in the top-level source directory for licensing
  ** information.\endverbatim
  **
@@ -40,7 +40,7 @@ namespace arrays {
 // Use static configuration of options for now
 const bool d_ccStore = false;
 const bool d_useArrTable = false;
-const bool d_eagerLemmas = false;
+  //const bool d_eagerLemmas = false;
 const bool d_propagateLemmas = true;
 const bool d_preprocess = true;
 const bool d_solveWrite = true;
@@ -964,7 +964,7 @@ void TheoryArrays::check(Effort e) {
     checkModel(e);
   }
 
-  if(!d_eagerLemmas && fullEffort(e) && !d_conflict && !options::arraysModelBased()) {
+  if(!options::arraysEagerLemmas() && fullEffort(e) && !d_conflict && !options::arraysModelBased()) {
     // generate the lemmas on the worklist
     Trace("arrays-lem")<<"Arrays::discharging lemmas: "<<d_RowQueue.size()<<"\n";
     dischargeLemmas();
@@ -1060,7 +1060,9 @@ void TheoryArrays::checkModel(Effort e)
   unsigned constraintIdx;
   Node assertion, assertionToCheck;
   vector<TNode> assumptions;
+  //  int numrestarts = 0;
   while (true) {
+    //    ++numrestarts;
     int level = getSatContext()->getLevel();
     d_getModelValCache.clear();
     for (constraintIdx = 0; constraintIdx < d_modelConstraints.size(); ++constraintIdx) {
@@ -1133,7 +1135,6 @@ void TheoryArrays::checkModel(Effort e)
           all.insert(t);
         }
       }
-      //      d_lemmas.push_back(mkAnd(assumptions, true));
 
       bool eq = false;
       Node decision, explanation;
@@ -1198,6 +1199,23 @@ void TheoryArrays::checkModel(Effort e)
         d_conflict = true;
         break;
       }
+      {
+        // generate lemma
+        // if (all.size() == 0) {
+        //   d_lemmas.push_back(decision.negate());
+        // }
+        // else {
+        //   NodeBuilder<> disjunction(kind::OR);
+        //   std::set<TNode>::const_iterator it = all.begin();
+        //   std::set<TNode>::const_iterator it_end = all.end();
+        //   while (it != it_end) {
+        //     disjunction << (*it).negate();
+        //     ++it;
+        //   }
+        //   disjunction << decision.negate();
+        //   d_lemmas.push_back(disjunction);
+        // }
+      }
       d_equalityEngine.assertEquality(decision, eq, explanation);
       if (!eq) decision = decision.notNode();
       Debug("arrays-model-based") << "Asserting learned literal " << decision << " with explanation " << explanation << endl;
@@ -1257,7 +1275,7 @@ void TheoryArrays::checkModel(Effort e)
     assumptions.clear();
   }
 #ifdef CVC4_ASSERTIONS
-  if (!d_conflict) {
+  if (!d_conflict && fullEffort(e)) {
     context::CDList<Assertion>::const_iterator assert_it = facts_begin(), assert_it_end = facts_end();
     for (; assert_it != assert_it_end; ++assert_it) {
       Assert(getModelVal(*assert_it) == d_true);
@@ -2263,7 +2281,7 @@ void TheoryArrays::queueRowLemma(RowLemmaType lem)
 
   // TODO: maybe add triggers here
 
-  if (d_eagerLemmas || bothExist) {
+  if (options::arraysEagerLemmas() || bothExist) {
 
     // Make sure that any terms introduced by rewriting are appropriately stored in the equality database
     Node aj2 = Rewriter::rewrite(aj);

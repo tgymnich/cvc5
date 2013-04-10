@@ -1,11 +1,11 @@
 /*********************                                                        */
 /*! \file bv_subtheory_bitblast.h
  ** \verbatim
- ** Original author: dejan
- ** Major contributors: mdeters
- ** Minor contributors (to current version): lianah
- ** This file is part of the CVC4 prototype.
- ** Copyright (c) 2009-2012  New York University and The University of Iowa
+ ** Original author: Dejan Jovanovic
+ ** Major contributors: Morgan Deters, lianah
+ ** Minor contributors (to current version): Liana Hadarean
+ ** This file is part of the CVC4 project.
+ ** Copyright (c) 2009-2013  New York University and The University of Iowa
  ** See the file COPYING in the top-level source directory for licensing
  ** information.\endverbatim
  **
@@ -52,6 +52,7 @@ public:
   void collectModelInfo(TheoryModel* m); 
   Node getModelValue(TNode node);
   bool isComplete() { return true; }
+  void bitblastQueue();
 };
 
 }

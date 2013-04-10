@@ -1,11 +1,11 @@
 /*********************                                                        */
 /*! \file bitvector.h
  ** \verbatim
- ** Original author: dejan
- ** Major contributors: mdeters, lianah
- ** Minor contributors (to current version): cconway
- ** This file is part of the CVC4 prototype.
- ** Copyright (c) 2009-2012  New York University and The University of Iowa
+ ** Original author: Dejan Jovanovic
+ ** Major contributors: Morgan Deters, Liana Hadarean
+ ** Minor contributors (to current version): lianah, Christopher L. Conway
+ ** This file is part of the CVC4 project.
+ ** Copyright (c) 2009-2013  New York University and The University of Iowa
  ** See the file COPYING in the top-level source directory for licensing
  ** information.\endverbatim
  **

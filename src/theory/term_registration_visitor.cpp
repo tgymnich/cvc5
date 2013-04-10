@@ -1,11 +1,11 @@
 /*********************                                                        */
 /*! \file term_registration_visitor.cpp
  ** \verbatim
- ** Original author: dejan
- ** Major contributors: mdeters, ajreynol
- ** Minor contributors (to current version): taking, barrett
- ** This file is part of the CVC4 prototype.
- ** Copyright (c) 2009-2012  New York University and The University of Iowa
+ ** Original author: Dejan Jovanovic
+ ** Major contributors: Andrew Reynolds
+ ** Minor contributors (to current version): Tim King, Clark Barrett, Morgan Deters
+ ** This file is part of the CVC4 project.
+ ** Copyright (c) 2009-2013  New York University and The University of Iowa
  ** See the file COPYING in the top-level source directory for licensing
  ** information.\endverbatim
  **

@@ -1,11 +1,11 @@
 /*********************                                                        */
 /*! \file equality_engine.cpp
  ** \verbatim
- ** Original author: dejan
+ ** Original author: Dejan Jovanovic
  ** Major contributors: none
- ** Minor contributors (to current version): taking, bobot, mdeters
- ** This file is part of the CVC4 prototype.
- ** Copyright (c) 2009-2012  New York University and The University of Iowa
+ ** Minor contributors (to current version): Tim King, Francois Bobot, Morgan Deters
+ ** This file is part of the CVC4 project.
+ ** Copyright (c) 2009-2013  New York University and The University of Iowa
  ** See the file COPYING in the top-level source directory for licensing
  ** information.\endverbatim
  **
@@ -291,7 +291,7 @@ void EqualityEngine::addTermInternal(TNode t, bool isOperator) {
       d_subtermsToEvaluate[result] = t.getNumChildren();
       for (unsigned i = 0; i < t.getNumChildren(); ++ i) {
 	if (isConstant(getNodeId(t[i]))) {
-	  Debug("equality::evaluation") << d_name << "::eq::addTermInternal(" << t << "): evaluatates " << t[i] << std::endl;
+	  Debug("equality::evaluation") << d_name << "::eq::addTermInternal(" << t << "): evaluates " << t[i] << std::endl;
 	  subtermEvaluates(result);
 	}
       }
@@ -390,7 +390,7 @@ void EqualityEngine::assertPredicate(TNode t, bool polarity, TNode reason) {
 }
 
 void EqualityEngine::mergePredicates(TNode p, TNode q, TNode reason) {
-  Debug("equality") << d_name << "::eq::mergePredicats(" << p << "," << q << ")" << std::endl;
+  Debug("equality") << d_name << "::eq::mergePredicates(" << p << "," << q << ")" << std::endl;
   assertEqualityInternal(p, q, reason);
   propagate();
 }

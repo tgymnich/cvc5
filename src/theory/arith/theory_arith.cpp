@@ -1,11 +1,11 @@
 /*********************                                                        */
 /*! \file theory_arith.cpp
  ** \verbatim
- ** Original author: taking
+ ** Original author: Tim King
  ** Major contributors: none
- ** Minor contributors (to current version): kshitij, ajreynol, mdeters, dejan
- ** This file is part of the CVC4 prototype.
- ** Copyright (c) 2009-2012  New York University and The University of Iowa
+ ** Minor contributors (to current version): Kshitij Bansal, Andrew Reynolds, Morgan Deters, Dejan Jovanovic
+ ** This file is part of the CVC4 project.
+ ** Copyright (c) 2009-2013  New York University and The University of Iowa
  ** See the file COPYING in the top-level source directory for licensing
  ** information.\endverbatim
  **
@@ -89,6 +89,7 @@ TheoryArith::TheoryArith(context::Context* c, context::UserContext* u, OutputCha
   d_basicVarModelUpdateCallBack(d_simplex),
   d_DELTA_ZERO(0),
   d_fullCheckCounter(0),
+  d_cutsInContext(c,0),
   d_statistics()
 {
 }
@@ -1648,7 +1649,7 @@ void TheoryArith::check(Effort effortLevel){
     break;
   case Result::UNSAT:
     d_unknownsInARow = 0;
-    if(previous == Result::SAT){
+    if(options::revertArithModels() && previous == Result::SAT){
       ++d_statistics.d_revertsOnConflicts;
       Debug("arith::bt") << "clearing on conflict" << " " << newFacts << " " << previous << " " << d_qflraStatus  << endl;
       revertOutOfConflict();
@@ -1737,13 +1738,21 @@ void TheoryArith::check(Effort effortLevel){
   static const int CUT_ALL_BOUNDED_PERIOD = 10;
   if(!emmittedConflictOrSplit && fullEffort(effortLevel) &&
      d_fullCheckCounter % CUT_ALL_BOUNDED_PERIOD == 1){
+
+    Debug("arith::demand-restart") << options::maxCutsInContext() << " " << d_cutsInContext << "cut all" << endl;
+
     vector<Node> lemmas = cutAllBounded();
     //output the lemmas
     for(vector<Node>::const_iterator i = lemmas.begin(); i != lemmas.end(); ++i){
       d_out->lemma(*i);
+      Debug("arith::demand-restart") << options::maxCutsInContext() << " " << d_cutsInContext << "cut all " << *i << endl;
       ++(d_statistics.d_externalBranchAndBounds);
+      d_cutsInContext = d_cutsInContext + 1;
+      emmittedConflictOrSplit = lemmas.size() > 0;
     }
-    emmittedConflictOrSplit = lemmas.size() > 0;
+    if(options::maxCutsInContext() <= d_cutsInContext){
+      d_out->demandRestart();
+    }
   }
 
   if(!emmittedConflictOrSplit && fullEffort(effortLevel)){
@@ -1769,15 +1778,30 @@ void TheoryArith::check(Effort effortLevel){
         emmittedConflictOrSplit = true;
         d_hasDoneWorkSinceCut = false;
         d_out->lemma(possibleLemma);
+
+        d_cutsInContext = d_cutsInContext + 1;
+        Debug("arith::demand-restart") << options::maxCutsInContext() << " " << d_cutsInContext << " dio cut" << endl;
+        if(options::maxCutsInContext() <= d_cutsInContext){
+          d_out->demandRestart();
+        }
       }
     }
 
     if(!emmittedConflictOrSplit) {
       Node possibleLemma = roundRobinBranch();
       if(!possibleLemma.isNull()){
+
+        d_cutsInContext = d_cutsInContext + 1;
+
+        Debug("arith::demand-restart") << options::maxCutsInContext() << " " << d_cutsInContext << " branch" << endl;
+
         ++(d_statistics.d_externalBranchAndBounds);
         emmittedConflictOrSplit = true;
         d_out->lemma(possibleLemma);
+        d_cutsInContext = d_cutsInContext + 1;
+        if(options::maxCutsInContext() <= d_cutsInContext){
+          d_out->demandRestart();
+        }
       }
     }
   }//if !emmittedConflictOrSplit && fullEffort(effortLevel) && !hasIntegerModel()

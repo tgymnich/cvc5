@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 m4_define(_CVC4_MAJOR,          1)       dnl version (major)
-m4_define(_CVC4_MINOR,          1)       dnl version (minor)
+m4_define(_CVC4_MINOR,          2)       dnl version (minor)
 m4_define(_CVC4_RELEASE,        0)       dnl version (alpha)
 m4_define(_CVC4_EXTRAVERSION,   [-prerelease])      dnl version (extra)
 m4_define(_CVC4_RELEASE_STRING, _CVC4_MAJOR[.]_CVC4_MINOR[]m4_if(_CVC4_RELEASE,[0],,[.]_CVC4_RELEASE)_CVC4_EXTRAVERSION) dnl version string
@@ -1179,7 +1179,7 @@ AC_SUBST(MAN_DATE)
 AC_CONFIG_FILES([
   Makefile.builds
   Makefile]
-  m4_esyscmd([find contrib src test examples -name Makefile.am | grep -v '^contrib/theoryskel/' | grep -v '^src/prop/cryptominisat/' | sort | sed 's,\.am$,,'])
+  m4_esyscmd([find contrib src test examples -name Makefile.am | grep -v '^contrib/theoryskel/' | sort | sed 's,\.am$,,'])
 )
 
 if test $cvc4_has_threads = yes; then
@@ -1205,8 +1205,6 @@ CVC4_CONFIG_FILE_ONLY_IF_CHANGED([doc/SmtEngine.3cvc_template])
 CVC4_CONFIG_FILE_ONLY_IF_CHANGED([doc/options.3cvc_template])
 CVC4_CONFIG_FILE_ONLY_IF_CHANGED([doc/libcvc4parser.3])
 CVC4_CONFIG_FILE_ONLY_IF_CHANGED([doc/libcvc4compat.3])
-
-# AC_CONFIG_SUBDIRS([src/prop/cryptominisat])
 
 AC_OUTPUT
 

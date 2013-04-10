@@ -1,11 +1,11 @@
 /*********************                                                        */
 /*! \file theory_bv_rewrite_rules_constant_evaluation.h
  ** \verbatim
- ** Original author: lianah
- ** Major contributors: barrett
- ** Minor contributors (to current version): mdeters
- ** This file is part of the CVC4 prototype.
- ** Copyright (c) 2009-2012  New York University and The University of Iowa
+ ** Original author: Liana Hadarean
+ ** Major contributors: Clark Barrett
+ ** Minor contributors (to current version): lianah, Morgan Deters, Tim King
+ ** This file is part of the CVC4 project.
+ ** Copyright (c) 2009-2013  New York University and The University of Iowa
  ** See the file COPYING in the top-level source directory for licensing
  ** information.\endverbatim
  **

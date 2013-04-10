@@ -1,11 +1,11 @@
 /* *******************                                                        */
 /*! \file Tptp.g
  ** \verbatim
- ** Original author: bobot
+ ** Original author: Francois Bobot
  ** Major contributors: none
- ** Minor contributors (to current version): mdeters
- ** This file is part of the CVC4 prototype.
- ** Copyright (c) 2009-2012  New York University and The University of Iowa
+ ** Minor contributors (to current version): Morgan Deters
+ ** This file is part of the CVC4 project.
+ ** Copyright (c) 2009-2013  New York University and The University of Iowa
  ** See the file COPYING in the top-level source directory for licensing
  ** information.\endverbatim
  **
@@ -290,7 +290,7 @@ simpleTerm[CVC4::Expr& expr]
   : variable[expr]
   | NUMBER { expr = PARSER_STATE->d_tmp_expr; }
   | DISTINCT_OBJECT { expr = PARSER_STATE->convertStrToUnsorted(
-        MK_CONST(AntlrInput::tokenText($DISTINCT_OBJECT))); }
+        AntlrInput::tokenText($DISTINCT_OBJECT)); }
 ;
 
 functionTerm[CVC4::Expr& expr]

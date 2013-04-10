@@ -1,11 +1,11 @@
 /*********************                                                        */
 /*! \file bitblaster.cpp
  ** \verbatim
- ** Original author: lianah
- ** Major contributors: dejan
- ** Minor contributors (to current version): mdeters
- ** This file is part of the CVC4 prototype.
- ** Copyright (c) 2009-2012  New York University and The University of Iowa
+ ** Original author: Liana Hadarean
+ ** Major contributors: Dejan Jovanovic
+ ** Minor contributors (to current version): Clark Barrett, Morgan Deters, lianah
+ ** This file is part of the CVC4 project.
+ ** Copyright (c) 2009-2013  New York University and The University of Iowa
  ** See the file COPYING in the top-level source directory for licensing
  ** information.\endverbatim
  **
@@ -104,6 +104,7 @@ void Bitblaster::bbAtom(TNode node) {
     d_bitblastedAtoms.insert(node);
   } else {
     d_bvOutput->lemma(atom_definition, false);
+    d_bitblastedAtoms.insert(node);
   }
 }
 

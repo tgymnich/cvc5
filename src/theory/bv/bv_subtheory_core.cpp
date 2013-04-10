@@ -1,11 +1,11 @@
 /*********************                                                        */
-/*! \file bv_subtheory_eq.cpp
+/*! \file bv_subtheory_core.cpp
  ** \verbatim
- ** Original author: dejan
- ** Major contributors: none
- ** Minor contributors (to current version): lianah
- ** This file is part of the CVC4 prototype.
- ** Copyright (c) 2009-2012  New York University and The University of Iowa
+ ** Original author: Liana Hadarean
+ ** Major contributors: lianah
+ ** Minor contributors (to current version): none
+ ** This file is part of the CVC4 project.
+ ** Copyright (c) 2009-2013  New York University and The University of Iowa
  ** See the file COPYING in the top-level source directory for licensing
  ** information.\endverbatim
  **
@@ -202,6 +202,7 @@ bool CoreSolver::check(Theory::Effort e) {
 void CoreSolver::buildModel() {
   if (options::bitvectorCoreSolver()) {
     // FIXME
+    Unreachable(); 
     return; 
   }
   Debug("bv-core") << "CoreSolver::buildModel() \n"; 
@@ -227,7 +228,15 @@ void CoreSolver::buildModel() {
   eqcs_i = eq::EqClassesIterator(&d_equalityEngine);
   while (!eqcs_i.isFinished()) {
     TNode repr = *eqcs_i;
-    ++eqcs_i; 
+    ++eqcs_i;
+    
+    if (repr.getKind() != kind::VARIABLE &&
+        repr.getKind() != kind::SKOLEM &&
+        repr.getKind() != kind::CONST_BITVECTOR &&
+        !d_bv->isSharedTerm(repr)) {
+      continue; 
+    }
+  
     TypeNode type = repr.getType(); 
     if (type.isBitVector() && repr.getKind()!= kind::CONST_BITVECTOR) {
       Debug("bv-core-model") << "   processing " << repr <<"\n"; 
