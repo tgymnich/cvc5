@@ -94,6 +94,11 @@ public:
    */
   void multiply(Rational c);
   
+  /**
+   * Multiply an equality with -1.
+   */
+  void flipEquality();
+  
   /** 
    * Add the given linear constraint multiplied with the given positive 
    * factor.

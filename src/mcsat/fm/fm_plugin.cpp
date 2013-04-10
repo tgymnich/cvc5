@@ -309,7 +309,7 @@ void FMPlugin::processUnitConstraint(Variable constraint) {
     d_bounds.updateUpperBound(x, BoundInfo(-sum/a, kind == kind::LT, constraint));
     break;
   case kind::EQUAL:
-    // (ax + sum == 0) <=> (x == -sum/a)
+    // (ax + sum == 0) <=> (x >= -sum/a) and (x <= -sum/a)
     d_bounds.updateLowerBound(x, BoundInfo(-sum/a, false, constraint));
     d_bounds.updateUpperBound(x, BoundInfo(-sum/a, false, constraint));
     break;

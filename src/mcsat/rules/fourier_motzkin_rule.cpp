@@ -26,17 +26,28 @@ void FourierMotzkinRule::start(Literal lit) {
 
 /** Resolve with given inequality over the given variable. */
 void FourierMotzkinRule::resolve(Variable var, Literal ineq) {
-
+  
   LinearConstraint toResolve;
   bool linear = LinearConstraint::parse(ineq, toResolve);
   Assert(linear);
-
+  
   Debug("mcsat::fm") << "ForuierMotzkinRule: resolving " << toResolve << std::endl;
 
   // We know that both are one of >, >= so coefficients with var must be opposite
   Rational d_resolventC = d_resolvent.getCoefficient(var);
   Rational toResolveC = toResolve.getCoefficient(var);
-  Assert(d_resolventC*toResolveC < 0);
+  
+  // There are cases where we should fixup the coefficients 
+  Assert(d_resolventC.sgn()*toResolveC.sgn() != 0);
+  if (d_resolventC.sgn()*toResolveC.sgn() > 0) {
+    if (d_resolvent.getKind() == kind::EQUAL) {
+      d_resolvent.flipEquality();
+    } else if (toResolve.getKind() == kind::EQUAL) {
+      toResolve.flipEquality();
+    } else {
+      Assert(false);
+    }
+  }
 
   // Compute the new resolvent
   d_resolvent.multiply(toResolveC.abs());

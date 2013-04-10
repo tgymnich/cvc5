@@ -232,6 +232,21 @@ void LinearConstraint::multiply(Rational c) {
 
   Debug("mcsat::linear") << "LinearConstraint::multiply(): = " << *this << std::endl;
 }
+
+void LinearConstraint::flipEquality() {
+  Assert(d_kind == kind::EQUAL);
+  
+  Debug("mcsat::linear") << "LinearConstraint::flipEquality(): " << -1 << " * " << *this << std::endl;
+
+  var_to_rational_map::iterator it = d_coefficients.begin();
+  var_to_rational_map::iterator it_end = d_coefficients.end();
+  for (; it != it_end; ++ it) {
+    it->second *= -1;
+  }
+
+  Debug("mcsat::linear") << "LinearConstraint::flipEquality(): = " << *this << std::endl;
+}
+
   
 void LinearConstraint::add(const LinearConstraint& other, Rational c) {
 
