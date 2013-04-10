@@ -27,7 +27,16 @@ struct DisequalInfo {
   DisequalInfo(Rational value, Variable reason)
   : value(value), reason(reason)
   {}
+
+  void toStream(std::ostream& out) const {
+    out << value;
+  }
 };
+
+inline std::ostream& operator << (std::ostream& out, const DisequalInfo& info) {
+  info.toStream(out);
+  return out;
+}
 
 /** Bound information */
 struct BoundInfo {

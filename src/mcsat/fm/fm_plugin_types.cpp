@@ -57,9 +57,12 @@ void CDBoundsModel::contextNotifyPop() {
 }
 
 void CDBoundsModel::addDisequality(Variable var, const DisequalInfo& info) {
+
   // If the value is outside of the feasible range, we can ignore it
   bool onlyOption = false;
   if (inRange(var, info.value, onlyOption)) {
+
+    Debug("mcsat::fm") << "CDBoundsModel::addDiseq(" << var << ", " << info << ")" << std::endl;
 
     // Add the new info to the trail
     DisequalInfoIndex index = d_disequalTrail.size();
@@ -80,6 +83,7 @@ void CDBoundsModel::addDisequality(Variable var, const DisequalInfo& info) {
     if (onlyOption) {
       // Conflict
       d_variablesInConflict.insert(var);
+      Debug("mcsat::fm") << "CDBoundsModel::addDiseq(" << var << ", " << info << "): bound and diseq conflict" << std::endl;
     }
   }
 }
@@ -114,11 +118,13 @@ void CDBoundsModel::updateLowerBound(Variable var, const BoundInfo& lBound) {
       // Bounds in conflict
       if (BoundInfo::inConflict(lBound, uBound)) {
         d_variablesInConflict.insert(var);
+        Debug("mcsat::fm") << "CDBoundsModel::updateLowerBound(" << var << ", " << uBound << "): bound conflict" << std::endl;
       }
       // Bounds imply a value that is in the disequal list
       else if (!lBound.strict && !uBound.strict && lBound.value == uBound.value) {
         if (isDisequal(var, lBound.value)) {
           d_variablesInConflict.insert(var);
+          Debug("mcsat::fm") << "CDBoundsModel::updateLowerBound(" << var << ", " << uBound << "): bound and diseq conflict" << std::endl;
         }
       }
     }
@@ -153,12 +159,14 @@ void CDBoundsModel::updateUpperBound(Variable var, const BoundInfo& uBound) {
       const BoundInfo& lBound = getLowerBoundInfo(var);
       // Bounds in conflictr
       if (BoundInfo::inConflict(lBound, uBound)) {
+        Debug("mcsat::fm") << "CDBoundsModel::updateUpperBound(" << var << ", " << uBound << "): bound conflict" << std::endl;
         d_variablesInConflict.insert(var);
       }
       // Bounds imply a value that is in the disequal list
       else if (!lBound.strict && !uBound.strict && lBound.value == uBound.value) {
         if (isDisequal(var, lBound.value)) {
           d_variablesInConflict.insert(var);
+          Debug("mcsat::fm") << "CDBoundsModel::updateUpperBound(" << var << ", " << uBound << "): bound and diseq conflict" << std::endl;
         }
       }
     }

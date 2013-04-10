@@ -144,10 +144,12 @@ void FMPlugin::newConstraint(Variable constraint) {
     if (vars.size() == 1 || d_trail.hasValue(vars[1])) {
       // Single variable is unassigned
       d_constraintUnassignedStatus[constraint.index()] = UNASSIGNED_UNIT;
+      Debug("mcsat::fm") << "FMPlugin::newConstraint(" << constraint << "): unit " << std::endl;
     }
   } else {
     // All variables are unassigned
     d_constraintUnassignedStatus[constraint.index()] = UNASSIGNED_NONE;
+    Debug("mcsat::fm") << "FMPlugin::newConstraint(" << constraint << "): all assigned " << std::endl;
     // Propagate later
     d_delayedPropagations.push_back(constraint);
   }

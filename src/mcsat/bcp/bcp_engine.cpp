@@ -120,6 +120,7 @@ void BCPEngine::newClause(CRef cRef) {
       
     // If clause[1] is false, the clause propagates
     if (d_trail.isFalse(clause[1])) {
+      Debug("mcsat::bcp") << "BCPEngine::newClause(): false at creation" << std::endl;
       unsigned propagationLevel = d_trail.decisionLevel(clause[1].getVariable());
       if (propagationLevel < d_trail.decisionLevel()) {
         d_request.backtrack(propagationLevel, cRef);
