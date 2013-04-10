@@ -134,6 +134,9 @@ private:
   /** Request a search restart */
   void requestRestart();
   
+  /** Request a propagation round */
+  void requestPropagate();
+
   friend class SolverPluginRequest;
 
   /** Scores of learnt clauses */

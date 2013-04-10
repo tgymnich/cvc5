@@ -10,3 +10,7 @@ void SolverPluginRequest::backtrack(unsigned level, CRef cRef) {
 void SolverPluginRequest::restart() {
   d_solver->requestRestart();
 }
+
+void SolverPluginRequest::propagate() {
+  d_solver->requestPropagate();
+}

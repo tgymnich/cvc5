@@ -36,6 +36,11 @@ public:
   void backtrack(unsigned level, CRef cRef);
   
   /**
+   * Request a round of propagation from the solver.
+   */
+  void propagate();
+
+  /**
    * Ask for a search restart.
    */
   void restart();

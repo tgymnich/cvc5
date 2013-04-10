@@ -131,6 +131,11 @@ void Solver::requestRestart() {
   d_restartRequested = true;
 }
 
+void Solver::requestPropagate() {
+  d_request = true;
+}
+
+
 void Solver::requestBacktrack(unsigned level, CRef cRef) {
   Assert(level < d_trail.decisionLevel(), "Don't try to fool backtracking to do your propagation");
 

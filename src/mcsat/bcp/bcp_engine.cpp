@@ -103,6 +103,7 @@ void BCPEngine::newClause(CRef cRef) {
       d_request.backtrack(0, cRef);
     } else {
       d_delayedPropagations.push_back(cRef);
+      d_request.propagate();
     }
   } else {
 
@@ -126,6 +127,7 @@ void BCPEngine::newClause(CRef cRef) {
         d_request.backtrack(propagationLevel, cRef);
       } else {
         d_delayedPropagations.push_back(cRef);
+        d_request.propagate();
       }
     }
   }
