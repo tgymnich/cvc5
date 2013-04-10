@@ -15,6 +15,20 @@ namespace fm {
 /** Map from variables to constraints */
 typedef std::hash_map<Variable, LinearConstraint, VariableHashFunction> var_to_constraint_map;
 
+/** Value info for stating x != value */
+struct DisequalInfo {
+  /** The value itself */
+  Rational value;
+  /** The reason for this bound */
+  Variable reason;
+
+  DisequalInfo() {}
+
+  DisequalInfo(Rational value, Variable reason)
+  : value(value), reason(reason)
+  {}
+};
+
 /** Bound information */
 struct BoundInfo {
   /** The value of the bound */
@@ -67,13 +81,13 @@ inline std::ostream& operator << (std::ostream& out, const BoundInfo& info) {
 class CDBoundsModel : public context::ContextNotifyObj {
 
   /** Index of the bound in the bounds vector */
-  typedef unsigned BoundIndex;
+  typedef unsigned BoundInfoIndex;
   
   /** Null bound index */
-  static const BoundIndex null = boost::integer_traits<BoundIndex>::const_max;
+  static const BoundInfoIndex null_bound_index = boost::integer_traits<BoundInfoIndex>::const_max;
   
   /** Map from variables to the index of the bound information in the bound trail */
-  typedef std::hash_map<Variable, BoundIndex, VariableHashFunction> bound_map;
+  typedef std::hash_map<Variable, BoundInfoIndex, VariableHashFunction> bound_map;
     
   /** Lower bounds map */
   bound_map d_lowerBounds;
@@ -85,26 +99,62 @@ class CDBoundsModel : public context::ContextNotifyObj {
   std::vector<BoundInfo> d_boundTrail;
 
   /** Information for undoing */
-  struct UndoInfo {
+  struct UndoBoundInfo {
     /** Which variable to undo */
     Variable var;
     /** Index of the previous bound (null if none) */
-    BoundIndex prev;
+    BoundInfoIndex prev;
     /** Is it a lower bound */
     bool isLower;
     
-    UndoInfo()
-    : prev(null), isLower(false) {}
+    UndoBoundInfo()
+    : prev(null_bound_index), isLower(false) {}
     
-    UndoInfo(Variable var, BoundIndex prev, bool isLower)
+    UndoBoundInfo(Variable var, BoundInfoIndex prev, bool isLower)
     : var(var), prev(prev), isLower(isLower) {}      
   };
   
   /** Bound update trail (same size as d_boundTrail) */
-  std::vector<UndoInfo> d_boundTrailUndo;
+  std::vector<UndoBoundInfo> d_boundTrailUndo;
   
   /** Count of lower bound updates */
   context::CDO<unsigned> d_boundTrailSize;
+
+  /** Index of the value in the value list */
+  typedef unsigned DisequalInfoIndex;
+
+  /** Null value list index index */
+  static const DisequalInfoIndex null_diseqal_index = boost::integer_traits<DisequalInfoIndex>::const_max;
+
+  /** Map from variables to the head of their value list */
+  typedef std::hash_map<Variable, DisequalInfoIndex, VariableHashFunction> disequal_map;
+
+  /** The map from variables to it's diseqality lists */
+  disequal_map d_disequalValues;
+
+  /** Trail of disequality information */
+  std::vector<DisequalInfo> d_disequalTrail;
+
+  /** Var != value, and link to the previous dis-equality */
+  struct UndoDisequalInfo {
+    /** Which variable */
+    Variable var;
+    /** INdex of the previsous disequal info */
+    DisequalInfoIndex prev;
+
+    UndoDisequalInfo()
+    : prev(null_diseqal_index) {}
+
+    UndoDisequalInfo(Variable var, DisequalInfoIndex prev)
+    : var(var), prev(prev) {}
+
+  };
+
+  /** Values */
+  std::vector<UndoDisequalInfo> d_disequalTrailUndo;
+
+  /** Size of the values trail */
+  context::CDO<unsigned> d_disequalTrailSize;
 
   /** Variables that are in conflict */
   std::set<Variable> d_variablesInConflict;
@@ -112,6 +162,22 @@ class CDBoundsModel : public context::ContextNotifyObj {
   /** Update to the appropriate context state */
   void contextNotifyPop();
   
+  /**
+   * Is the value in the range of the bounds.
+   * @oaram onlyOption if in range and this is the only available option => true
+   */
+  bool inRange(Variable var, Rational value, bool& onlyOption) const;
+
+  /**
+   * Check whether variable is asserted to be different from the given constant.
+   */
+  bool isDisequal(Variable var, Rational value) const;
+
+  /**
+   * Get the set of all the values that are asserted to be disequal from var.
+   */
+  void getDisequal(Variable var, std::set<Rational>& disequal) const;
+
 public:
   
   ~CDBoundsModel() throw(AssertionException) {}
@@ -125,12 +191,18 @@ public:
   /** Update the upper bound */
   void updateUpperBound(Variable var, const BoundInfo& info);
 
+  /** Adds the value to the list of values that a variable must be disequal from */
+  void addDisequality(Variable var, const DisequalInfo& info);
+
   /** Does the variable have a lower bound */
   bool hasLowerBound(Variable var) const;
 
   /** Does the variable have an upper bound */
   bool hasUpperBound(Variable var) const;
   
+  /** Pick a value for a variable */
+  Rational pick(Variable var) const;
+
   /** Get the current lower bound info */
   const BoundInfo& getLowerBoundInfo(Variable var) const;
 

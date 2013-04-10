@@ -314,7 +314,8 @@ void FMPlugin::processUnitConstraint(Variable constraint) {
     d_bounds.updateUpperBound(x, BoundInfo(-sum/a, false, constraint));
     break;
   case kind::DISTINCT:
-    // TODO: add to list
+    // (ax + sum != 0) <=> x != -sum/a
+    d_bounds.addDisequality(x, DisequalInfo(-sum/a, constraint));
     break;
   default:
     Unreachable();
@@ -334,15 +335,21 @@ void FMPlugin::processConflicts(SolverTrail::PropagationToken& out) {
     const BoundInfo& lowerBound = d_bounds.getLowerBoundInfo(var);
     const BoundInfo& upperBound = d_bounds.getUpperBoundInfo(var);
 
-    Variable lowerBoundVariable = lowerBound.reason;
-    Literal lowerBoundLiteral(lowerBoundVariable, d_trail.isFalse(lowerBoundVariable));
+    if (BoundInfo::inConflict(lowerBound, upperBound)) {
+      // Clash of bounds
+      Variable lowerBoundVariable = lowerBound.reason;
+      Literal lowerBoundLiteral(lowerBoundVariable, d_trail.isFalse(lowerBoundVariable));
 
-    Variable upperBoundVariable = upperBound.reason;
-    Literal upperBoundLiteral(upperBoundVariable, d_trail.isFalse(upperBoundVariable));
+      Variable upperBoundVariable = upperBound.reason;
+      Literal upperBoundLiteral(upperBoundVariable, d_trail.isFalse(upperBoundVariable));
 
-    d_fmRule.start(lowerBoundLiteral);
-    d_fmRule.resolve(var, upperBoundLiteral);
-    d_fmRule.finish(out);
+      d_fmRule.start(lowerBoundLiteral);
+      d_fmRule.resolve(var, upperBoundLiteral);
+      d_fmRule.finish(out);
+    } else {
+      // Bounds clash with a disequality
+      Unreachable();
+    }
   }
 }
 
@@ -354,32 +361,9 @@ void FMPlugin::decide(SolverTrail::DecisionToken& out) {
 
     if (d_trail.value(var).isNull()) {
 
-      Rational value;
-
-      if (d_bounds.hasLowerBound(var)) {
-        const BoundInfo& lowerBound = d_bounds.getLowerBoundInfo(var);
-        if (d_bounds.hasUpperBound(var)) {
-          const BoundInfo& upperBound = d_bounds.getUpperBoundInfo(var);
-          // Both bounds present, go for middle
-          value = (lowerBound.value + upperBound.value)/2;
-        } else {
-          // No upper bound, just round the lower bound up
-          value = (lowerBound.value + 1).floor();
-        }
-      } else {
-        // No lower bound
-        if (d_bounds.hasUpperBound(var)) {
-          const BoundInfo& upperBound = d_bounds.getUpperBoundInfo(var);
-          // No lower bound, just round the upper bound down
-          value = (upperBound.value - 1).ceiling();
-        } else {
-          // No bounds at all, just use 0
-          value = 0;
-        }
-      }
-
+      // Pick a value withing the bounds different from the disequality constrainted values
+      Rational value = d_bounds.pick(var);
       Debug("mcsat::fm") << "BCPEngine::decide(): " << var << " -> " << value << std::endl;
-
       out(var, NodeManager::currentNM()->mkConst(value), true);
 
       // Done
