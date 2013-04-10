@@ -72,21 +72,21 @@ class CDBoundsModel : public context::ContextNotifyObj {
   /** Null bound index */
   static const BoundIndex null = boost::integer_traits<BoundIndex>::const_max;
   
-  /** Map from variables to their bounds */
+  /** Map from variables to the index of the bound information in the bound trail */
   typedef std::hash_map<Variable, BoundIndex, VariableHashFunction> bound_map;
     
-  /** Lower bounds */
+  /** Lower bounds map */
   bound_map d_lowerBounds;
   
-  /** Upper bounds */
+  /** Upper bounds map */
   bound_map d_upperBounds;
   
-  /** Bound update trail */
+  /** Bound update trail (this is where the actual bounds are) */
   std::vector<BoundInfo> d_boundTrail;
 
   /** Information for undoing */
   struct UndoInfo {
-    /** Which variable */
+    /** Which variable to undo */
     Variable var;
     /** Index of the previous bound (null if none) */
     BoundIndex prev;
@@ -97,10 +97,10 @@ class CDBoundsModel : public context::ContextNotifyObj {
     : prev(null), isLower(false) {}
     
     UndoInfo(Variable var, BoundIndex prev, bool isLower)
-    : prev(prev), isLower(isLower) {}      
+    : var(var), prev(prev), isLower(isLower) {}      
   };
   
-  /** Bound update trail */
+  /** Bound update trail (same size as d_boundTrail) */
   std::vector<UndoInfo> d_boundTrailUndo;
   
   /** Count of lower bound updates */

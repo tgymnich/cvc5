@@ -225,7 +225,10 @@ void FMPlugin::propagate(SolverTrail::PropagationToken& out) {
     } else if (isLinearConstraint(var)) {
       // If the constraint is unit we propagate a new bound
       if (isUnitConstraint(var)) {
+	Debug("mcsat::fm") << "FMPlugin::propagate(): processing " << var << " -> " << d_trail.value(var) << std::endl;
         processUnitConstraint(var);
+      } else {
+	Debug("mcsat::fm") << "FMPlugin::propagate(): " << var << " not unit yet" << std::endl;
       }
     }
   }
@@ -387,7 +390,7 @@ void FMPlugin::decide(SolverTrail::DecisionToken& out) {
 
 void FMPlugin::notifyVariableUnset(const std::vector<Variable>& vars) {
   for (unsigned i = 0; i < vars.size(); ++ i) {
-    if (isLinearConstraint(vars[i])) {
+    if (isArithmeticVariable(vars[i])) {
       // Go through the watch and mark the constraints
       // UNASSIGNED_UNKNOWN -> UNASSIGNED_UNKNOWN
       // UNASSIGNED_UNIT    -> UNASSIGNED_UNKNOWN
@@ -396,13 +399,23 @@ void FMPlugin::notifyVariableUnset(const std::vector<Variable>& vars) {
       while (!w.done()) {
         // Get the current list where var appears
         Variable constraintVar = getLinearConstraint(*w);
-        if (d_constraintUnassignedStatus[constraintVar.index()] == UNASSIGNED_NONE) {
-          d_constraintUnassignedStatus[constraintVar.index()] = UNASSIGNED_UNIT;
-        } else {
-          d_constraintUnassignedStatus[constraintVar.index()] = UNASSIGNED_UNKNOWN;
-        }
+        switch (d_constraintUnassignedStatus[constraintVar.index()]) {
+	  case UNASSIGNED_NONE:
+	    d_constraintUnassignedStatus[constraintVar.index()] = UNASSIGNED_UNIT;
+	    break;
+	  case UNASSIGNED_UNIT:
+	    if ((*w).size() > 1) {
+	      // Becomes unknown only if not unit by construction
+	      d_constraintUnassignedStatus[constraintVar.index()] = UNASSIGNED_UNKNOWN;
+	    }
+	    break;
+	  case UNASSIGNED_UNKNOWN:
+	    break;
+	}
+	w.next_and_keep();
       }
-    } else if (isArithmeticVariable(vars[i])) {
+
+      // Also mark to be decided later
       d_variableQueue.enqueue(vars[i]);
     }
   }
