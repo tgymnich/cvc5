@@ -3,7 +3,7 @@
 using namespace CVC4;
 using namespace mcsat;
 using namespace fm;
- 
+
 CDBoundsModel::CDBoundsModel(context::Context* context)
 : context::ContextNotifyObj(context)
 , d_boundTrailSize(context, 0)
@@ -78,7 +78,7 @@ void CDBoundsModel::addDisequality(Variable var, const DisequalInfo& info) {
     }
 
     // Update the trail size
-    d_boundTrailSize = d_boundTrail.size();
+    d_disequalTrailSize = d_disequalTrail.size();
 
     if (onlyOption) {
       // Conflict
@@ -118,13 +118,13 @@ void CDBoundsModel::updateLowerBound(Variable var, const BoundInfo& lBound) {
       // Bounds in conflict
       if (BoundInfo::inConflict(lBound, uBound)) {
         d_variablesInConflict.insert(var);
-        Debug("mcsat::fm") << "CDBoundsModel::updateLowerBound(" << var << ", " << uBound << "): bound conflict" << std::endl;
+        Debug("mcsat::fm") << "CDBoundsModel::updateLowerBound(" << var << ", " << lBound << "): bound conflict" << std::endl;
       }
       // Bounds imply a value that is in the disequal list
       else if (!lBound.strict && !uBound.strict && lBound.value == uBound.value) {
         if (isDisequal(var, lBound.value)) {
           d_variablesInConflict.insert(var);
-          Debug("mcsat::fm") << "CDBoundsModel::updateLowerBound(" << var << ", " << uBound << "): bound and diseq conflict" << std::endl;
+          Debug("mcsat::fm") << "CDBoundsModel::updateLowerBound(" << var << ", " << lBound << "): bound and diseq conflict" << std::endl;
         }
       }
     }
@@ -235,6 +235,9 @@ bool CDBoundsModel::inRange(Variable var, Rational value, bool& onlyOption) cons
 }
 
 Rational CDBoundsModel::pick(Variable var) const {
+
+  Debug("mcsat::fm") << "CDBoundsModel::pick(" << var << ")" << std::endl;
+
   // Set of values to be disequal from
   std::set<Rational> disequal;
   getDisequal(var, disequal);
@@ -287,6 +290,7 @@ Rational CDBoundsModel::pick(Variable var) const {
 }
 
 bool CDBoundsModel::isDisequal(Variable var, Rational value) const {
+
   disequal_map::const_iterator find = d_disequalValues.find(var);
   if (find != d_disequalValues.end()) {
     // Go through all the values and check for the value
@@ -312,13 +316,16 @@ void CDBoundsModel::getDisequal(Variable var, std::set<Rational>& disequal) cons
   if (find != d_disequalValues.end()) {
     bool forced = false;
     // Go through all the values and check for the value
+    Debug("mcsat::fm") << var << " !=";
     DisequalInfoIndex it = find->second;
     while (it != null_diseqal_index) {
       if (inRange(var, d_disequalTrail[it].value, forced)) {
         Assert(!forced);
         disequal.insert(d_disequalTrail[it].value);
+	Debug("mcsat::fm") << " " << d_disequalTrail[it].value << std::endl;
       }
       it = d_disequalTrailUndo[it].prev;
     }
+    Debug("mcsat::fm") << std::endl;
   }
 }

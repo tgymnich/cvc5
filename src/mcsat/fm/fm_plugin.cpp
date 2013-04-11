@@ -356,7 +356,7 @@ void FMPlugin::processConflicts(SolverTrail::PropagationToken& out) {
 }
 
 void FMPlugin::decide(SolverTrail::DecisionToken& out) {
-  Debug("mcsat::fm") << "BCPEngine::decide()" << std::endl;
+  Debug("mcsat::fm") << "FMPlugin::decide()" << std::endl;
   Assert(d_trailHead == d_trail.size());
   while (!d_variableQueue.empty()) {
     Variable var = d_variableQueue.pop();
@@ -365,7 +365,7 @@ void FMPlugin::decide(SolverTrail::DecisionToken& out) {
 
       // Pick a value withing the bounds different from the disequality constrainted values
       Rational value = d_bounds.pick(var);
-      Debug("mcsat::fm") << "BCPEngine::decide(): " << var << " -> " << value << std::endl;
+      Debug("mcsat::fm") << "FMPlugin::decide(): " << var << " -> " << value << std::endl;
       out(var, NodeManager::currentNM()->mkConst(value), true);
 
       // Done
