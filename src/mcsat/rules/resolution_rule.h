@@ -14,10 +14,16 @@ class BooleanResolutionRule : public ProofRule {
   /** The literals of the current clause */
   LiteralHashSet d_literals;
 
+  /** Initial clause */
+  CRef d_initialClause;
+
+  /** Number of resolution steps in this round */
+  unsigned d_stepsCount;
+
 public:
 
   /** Create a new Boolean resolution starting from the given initial clause */
-  BooleanResolutionRule(ClauseDatabase& clauseDB);
+  BooleanResolutionRule(ClauseDatabase& clauseDB, const SolverTrail& trail);
 
   /** Start the resolution */
   void start(CRef initialClause);

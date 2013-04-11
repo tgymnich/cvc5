@@ -4,8 +4,9 @@ using namespace CVC4;
 using namespace mcsat;
 using namespace rules;
 
-BooleanResolutionRule::BooleanResolutionRule(ClauseDatabase& clauseDB)
-: ProofRule("mcsat::resolution_rule", clauseDB)
+BooleanResolutionRule::BooleanResolutionRule(ClauseDatabase& clauseDB, const SolverTrail& trail)
+: ProofRule("mcsat::resolution_rule", clauseDB, trail)
+, d_stepsCount(0)
 {
 }
 
@@ -13,6 +14,9 @@ void BooleanResolutionRule::start(CRef initialClause) {
   Debug("mcsat::resolution_rule") << "BooleanResolutionRule(): starting with " << initialClause << std::endl;
 
   Assert(d_literals.size() == 0);
+
+  d_stepsCount = 0;
+  d_initialClause = initialClause;
 
   Clause& clause = initialClause.getClause();
   for (unsigned i = 0; i < clause.size(); ++ i) {
@@ -24,6 +28,9 @@ void BooleanResolutionRule::resolve(CRef cRef, unsigned literalIndex) {
   Debug("mcsat::resolution_rule") << "BooleanResolutionRule(): resolving " << d_literals << " with " << cRef << std::endl;
   Clause& toResolve = cRef.getClause();
   Assert(literalIndex < toResolve.size());
+
+  // Increase number of steps
+  d_stepsCount ++;
 
   // Add all the literals and remove the one we're resolving
   for (unsigned i = 0; i < toResolve.size(); ++ i) {
@@ -50,8 +57,14 @@ void BooleanResolutionRule::resolve(CRef cRef, unsigned literalIndex) {
 }
 
 CRef BooleanResolutionRule::finish() {
-  CRef result = commit(d_literals);
-  d_literals.clear();
-  return result;
+  if (d_stepsCount == 0) {
+    return d_initialClause;
+  } else {
+    CRef result = commit(d_literals);
+    d_literals.clear();
+    d_stepsCount = 0;
+    d_initialClause = CRef::null;
+    return result;
+  }
 }
 

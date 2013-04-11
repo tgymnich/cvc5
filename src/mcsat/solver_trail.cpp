@@ -120,20 +120,23 @@ void SolverTrail::PropagationToken::operator () (Literal l, unsigned level) {
 
   d_used = true;
 
-  Assert(level <= d_trail.decisionLevel());
-  Assert(!d_trail.hasValue(l.getVariable()));
-  Assert(true); // TODO: Check that l evaluates to true in the model
+  if (!d_trail.hasValue(l.getVariable())) {
+    Assert(level <= d_trail.decisionLevel());
+    Assert(true); // TODO: Check that l evaluates to true in the model
 
-  if (l.isNegated()) {
-    d_trail.setValue(l.getVariable(), d_trail.c_FALSE, false);
+    if (l.isNegated()) {
+      d_trail.setValue(l.getVariable(), d_trail.c_FALSE, false);
+    } else {
+      d_trail.setValue(l.getVariable(), d_trail.c_TRUE, false);
+    }
+    Variable var = l.getVariable();
+
+    d_trail.d_modelInfo[var].decisionLevel = level;
+    d_trail.d_modelInfo[var].trailIndex = d_trail.d_trail.size();
+    d_trail.d_trail.push_back(Element(SEMANTIC_PROPAGATION, var));
   } else {
-    d_trail.setValue(l.getVariable(), d_trail.c_TRUE, false);
+    Assert(d_trail.isTrue(l));
   }
-  Variable var = l.getVariable();
-
-  d_trail.d_modelInfo[var].decisionLevel = level;
-  d_trail.d_modelInfo[var].trailIndex = d_trail.d_trail.size();
-  d_trail.d_trail.push_back(Element(SEMANTIC_PROPAGATION, var));
 }
 
 void SolverTrail::PropagationToken::operator () (Literal l, CRef reason) {

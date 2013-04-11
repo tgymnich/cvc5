@@ -341,7 +341,6 @@ void FMPlugin::processConflicts(SolverTrail::PropagationToken& out) {
       // Clash of bounds
       Variable lowerBoundVariable = lowerBound.reason;
       Literal lowerBoundLiteral(lowerBoundVariable, d_trail.isFalse(lowerBoundVariable));
-
       Variable upperBoundVariable = upperBound.reason;
       Literal upperBoundLiteral(upperBoundVariable, d_trail.isFalse(upperBoundVariable));
 
@@ -350,7 +349,16 @@ void FMPlugin::processConflicts(SolverTrail::PropagationToken& out) {
       d_fmRule.finish(out);
     } else {
       // Bounds clash with a disequality
-      Unreachable();
+      Variable lowerBoundVariable = lowerBound.reason;
+      Literal lowerBoundLiteral(lowerBoundVariable, d_trail.isFalse(lowerBoundVariable));
+      Variable upperBoundVariable = upperBound.reason;
+      Literal upperBoundLiteral(upperBoundVariable, d_trail.isFalse(upperBoundVariable));
+
+      Assert (!lowerBound.strict && !upperBound.strict && lowerBound.value == upperBound.value);
+      const DisequalInfo& disequal = d_bounds.getDisequalInfo(var, lowerBound.value);
+      Literal disequalityLiteral(disequal.reason, d_trail.isFalse(disequal.reason));
+
+      d_fmRule.resolveDisequality(var, lowerBoundLiteral, upperBoundLiteral, disequalityLiteral, out);
     }
   }
 }

@@ -322,10 +322,33 @@ void CDBoundsModel::getDisequal(Variable var, std::set<Rational>& disequal) cons
       if (inRange(var, d_disequalTrail[it].value, forced)) {
         Assert(!forced);
         disequal.insert(d_disequalTrail[it].value);
-	Debug("mcsat::fm") << " " << d_disequalTrail[it].value << std::endl;
+	Debug("mcsat::fm") << " " << d_disequalTrail[it].value;
       }
       it = d_disequalTrailUndo[it].prev;
     }
     Debug("mcsat::fm") << std::endl;
   }
+}
+
+const DisequalInfo& CDBoundsModel::getDisequalInfo(Variable var, Rational value) const {
+
+  DisequalInfoIndex found_index = null_diseqal_index;
+
+  disequal_map::const_iterator find = d_disequalValues.find(var);
+  if (find != d_disequalValues.end()) {
+    bool forced = false;
+    // Go through all the values and check for the value
+    Debug("mcsat::fm") << var << " !=";
+    DisequalInfoIndex it = find->second;
+    while (it != null_diseqal_index) {
+      if (d_disequalTrail[it].value == value) {
+        found_index = it;
+      }
+      it = d_disequalTrailUndo[it].prev;
+    }
+    Debug("mcsat::fm") << std::endl;
+  }
+
+  Assert(found_index != null_diseqal_index);
+  return d_disequalTrail[found_index];
 }

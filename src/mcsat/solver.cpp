@@ -33,7 +33,7 @@ Solver::Solver(context::UserContext* userContext, context::Context* searchContex
 , d_clauseFarm(searchContext)
 , d_clauseDatabase(d_clauseFarm.newClauseDB("problem_clauses"))
 , d_trail(searchContext)
-, d_rule_Resolution(d_clauseDatabase)
+, d_rule_Resolution(d_clauseDatabase, d_trail)
 , d_featuresDispatch(d_trail)
 , d_request(false)
 , d_backtrackRequested(false)
@@ -91,13 +91,43 @@ void Solver::processRequests() {
       d_notifyDispatch.notifyVariableUnset(variablesUnset);
     }
     
-    // Propagate all the added clauses
+    // All backtrack clauses are to the same level, but some might propagate and some are decision inducing clauses.
+    // If there any propagating clauses, we just do the propagations to ensure progress.
+    bool somePropagates = false;
+    std::vector<bool> propagates;
     std::set<CRef>::iterator it = d_backtrackClauses.begin();
     for (; it != d_backtrackClauses.end(); ++ it) {
-      SolverTrail::PropagationToken propagate(d_trail, SolverTrail::PropagationToken::PROPAGATION_INIT);
       Clause& clause = it->getClause();
       Debug("mcsat::solver") << "Solver::processBacktrackRequests(): processing " << clause << std::endl;
-      propagate(clause[0], *it);
+      if (clause.size() == 1 || d_trail.isFalse(clause[1])) {
+        propagates.push_back(true);
+        somePropagates = true;
+      } else {
+        propagates.push_back(false);
+      }
+    }
+
+    if (somePropagates) {
+      // Propagate all the added clauses that propagate
+      std::set<CRef>::iterator it = d_backtrackClauses.begin();
+      SolverTrail::PropagationToken propagate(d_trail, SolverTrail::PropagationToken::PROPAGATION_INIT);
+      for (unsigned i = 0; it != d_backtrackClauses.end(); ++ it, ++ i) {
+        if (propagates[i]) {
+          Clause& clause = it->getClause();
+          propagate(clause[0], *it);
+        }
+      }
+    } else {
+      // Decide on the first clause
+      Clause& c = d_backtrackClauses.begin()->getClause();
+      for (unsigned i = 0; i < c.size(); ++ i) {
+        if (d_trail.hasValue(c[i].getVariable())) {
+          Assert(d_trail.isFalse(c[i]));
+        } else {
+          SolverTrail::DecisionToken decide(d_trail);
+          decide(c[i]);
+        }
+      }
     }
 
     // Clear the requests
@@ -296,8 +326,6 @@ void Solver::analyzeConflicts() {
     // Number of literals in the current resolvent
     unsigned varsAtConflictLevel = 0;
 
-    // TODO: Resolve out 0-level literals
-
     // Setup the initial variable info
     for (unsigned i = 0; i < conflictingClause.size(); ++ i) {
       Literal lit = conflictingClause[i];
@@ -375,7 +403,17 @@ void Solver::analyzeConflicts() {
 
     // Finish the resolution
     CRef resolvent = d_rule_Resolution.finish();
-    d_learntClausesScore[resolvent] = d_learntClausesScoreMax;
+    if (resolvent.getClause().getRuleId() == d_rule_Resolution.getRuleId()) {
+      // If this is a new clause, it will get pick up by whoever is propagating the clauses, we just update
+      // some heuristic
+      d_learntClausesScore[resolvent] = d_learntClausesScoreMax;
+    } else {
+      // This is the same clause, meaning that the literals are true semantically:
+      // * last decision is semantic
+      // * we need to decide one of the literals that get unassigned
+      Assert(conflictLevel > 0);
+      requestBacktrack(conflictLevel - 1, resolvent);
+    }
     Debug("mcsat::solver::analyze") << "Solver::analyzeConflicts(): resolvent: " << resolvent << std::endl;
   }
 }

@@ -218,6 +218,9 @@ public:
   /** Get the current upper bound info */
   const BoundInfo& getUpperBoundInfo(Variable var) const;
   
+  /** Get the information about the disequality */
+  const DisequalInfo& getDisequalInfo(Variable var, Rational value) const;
+
   /** Is the state of bounds in conflict */
   bool inConflict() const {
     return d_variablesInConflict.size() > 0;

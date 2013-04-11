@@ -11,11 +11,9 @@ namespace rules {
  * to many clauses.
  */
 class InputClauseRule : public ProofRule {
-  const SolverTrail& d_trail;
 public:
   InputClauseRule(ClauseDatabase& clauseDB, const SolverTrail& trail)
-  : ProofRule("mcsat::input_clause_rule", clauseDB)
-  , d_trail(trail) {}
+  : ProofRule("mcsat::input_clause_rule", clauseDB, trail) {}
 
   /** Simplify and add the clause to the database */
   CRef apply(LiteralVector& literals);

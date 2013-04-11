@@ -95,10 +95,17 @@ public:
   void multiply(Rational c);
   
   /**
-   * Multiply an equality with -1.
+   * Multiply an (dis-)equality with -1.
    */
   void flipEquality();
   
+  /**
+   * Split this disequality ax + t != 0 into
+   *  [this]    |a| x + p > 0 and
+   *  [other]  -|a| x - p > 0
+   */
+  void splitDisequality(Variable x, LinearConstraint& other);
+
   /** 
    * Add the given linear constraint multiplied with the given positive 
    * factor.

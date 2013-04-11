@@ -234,7 +234,7 @@ void LinearConstraint::multiply(Rational c) {
 }
 
 void LinearConstraint::flipEquality() {
-  Assert(d_kind == kind::EQUAL);
+  Assert(d_kind == kind::EQUAL || d_kind == kind::DISTINCT);
   
   Debug("mcsat::linear") << "LinearConstraint::flipEquality(): " << -1 << " * " << *this << std::endl;
 
@@ -247,6 +247,25 @@ void LinearConstraint::flipEquality() {
   Debug("mcsat::linear") << "LinearConstraint::flipEquality(): = " << *this << std::endl;
 }
 
+void LinearConstraint::splitDisequality(Variable x, LinearConstraint& other) {
+  Assert(d_kind == kind::DISTINCT);
+  Assert(d_coefficients.find(x) != d_coefficients.end());
+
+  // Make a copy
+  other.d_coefficients = d_coefficients;
+  other.d_kind = kind::DISTINCT;
+
+  // Setup the coefficients
+  if (d_coefficients[x] < 0) {
+    flipEquality();
+  } else {
+    other.flipEquality();
+  }
+
+  // The kinds
+  d_kind = kind::GT;
+  other.d_kind = kind::GT;
+}
   
 void LinearConstraint::add(const LinearConstraint& other, Rational c) {
 

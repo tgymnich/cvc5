@@ -21,6 +21,7 @@ namespace rules {
  */
 class ProofRule {
 private:
+
   /** Descriptive name of the proof rule */
   std::string d_name;
   /** Statistic for number of applications */
@@ -29,20 +30,27 @@ private:
   ClauseDatabase& d_clauseDB;
   /** Id of the rule with the clause database */
   size_t d_id;
+
 protected:
+
+  /** The trail this rule is using */
+  const SolverTrail& d_trail;
+
   /**
    * Construct the rule with the given name.
    * @param name the name of the rule (for use in statistics)
    * @param clauseDB the database the rule will output to
    */
-  ProofRule(std::string name, ClauseDatabase& clauseDB);
+  ProofRule(std::string name, ClauseDatabase& clauseDB, const SolverTrail& trail);
   /** Commit the result of the proof rule */
   CRef commit(LiteralVector& literals);
   /** Commit the result of the proof rule */
   CRef commit(LiteralSet& literals);
   /** Commit the result of the proof rule */
   CRef commit(LiteralHashSet& literals);
+
 public:
+
   /** Virtual destructor */
   virtual ~ProofRule();
   /** Get the id of this rule */
