@@ -57,14 +57,13 @@ void BooleanResolutionRule::resolve(CRef cRef, unsigned literalIndex) {
 }
 
 CRef BooleanResolutionRule::finish() {
-  if (d_stepsCount == 0) {
-    return d_initialClause;
-  } else {
-    CRef result = commit(d_literals);
-    d_literals.clear();
-    d_stepsCount = 0;
-    d_initialClause = CRef::null;
-    return result;
-  }
+
+  CRef result = d_stepsCount == 0 ? d_initialClause : commit(d_literals);
+
+  d_literals.clear();
+  d_stepsCount = 0;
+  d_initialClause = CRef::null;
+
+  return result;
 }
 
