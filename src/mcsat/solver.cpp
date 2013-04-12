@@ -368,6 +368,7 @@ void Solver::analyzeConflicts() {
 
       // We can resolve the variable, so let's do it
       Variable varToResolve = d_trail[trailIndex].var;
+      Debug("mcsat::solver::analyze") << "Solver::analyzeConflicts(): resolving: " << varToResolve << " at " << trailIndex << std::endl;
 
       // If the variable is false, take the negated literal
       Literal literalToResolve(varToResolve, d_trail.isFalse(varToResolve));
@@ -375,6 +376,7 @@ void Solver::analyzeConflicts() {
       // Get the reason of the literal
       CRef literalReason = d_trail.reason(literalToResolve);
       Clause& literalReasonClause = literalReason.getClause();
+      Assert(literalReasonClause[0].getVariable() == varToResolve);
 
       // Resolve the literal (propagations should always have first literal propagating)
       d_rule_Resolution.resolve(literalReason, 0);
@@ -385,7 +387,7 @@ void Solver::analyzeConflicts() {
 
       // Update the info for the resolved literals
       for (unsigned i = 1; i < literalReasonClause.size(); ++ i) {
-        Literal lit = literalReasonClause[i];
+	Literal lit = literalReasonClause[i];
         Variable var = lit.getVariable();
         // We resolve literals at the conflict level
         if (d_trail.decisionLevel(var) == conflictLevel) {

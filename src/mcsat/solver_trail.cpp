@@ -139,13 +139,26 @@ void SolverTrail::PropagationToken::operator () (Literal l, unsigned level) {
   }
 }
 
+static bool clausePropagates(Literal l, CRef reason, SolverTrail& trail) {
+  Clause& clause = reason.getClause();
+  if (clause[0] != l) {
+    return false;
+  }
+  for (unsigned i = 1; i < clause.size(); ++ i) {
+    if (!trail.isFalse(clause[i])) {
+      return false;
+    }
+  }
+  return true;
+}
+
 void SolverTrail::PropagationToken::operator () (Literal l, CRef reason) {
 
   Debug("mcsat::trail") << "PropagationToken::operator () (" << l << ", " << reason << ")" << std::endl;
 
   d_used = true;
 
-  Assert(true); // TODO: Check that reason propagates l
+  Assert(clausePropagates(l, reason, d_trail));
 
   // If new propagation, record in model and in trail
   if (!d_trail.isTrue(l)) {
@@ -251,6 +264,7 @@ void SolverTrail::toStream(std::ostream& out) const {
     } else {
       out << ", ";
     }
+    out << i << ":";
     TNode v = value(d_trail[i].var);
     if (v.getType().isBoolean()) {
       Literal l(d_trail[i].var, v == c_FALSE);
