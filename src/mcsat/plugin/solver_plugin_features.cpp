@@ -4,6 +4,26 @@
 using namespace CVC4;
 using namespace mcsat;
 
+template<typename T>
+class ScopedReset {
+
+  T& d_toReset;
+  T d_resetValue;
+
+public:
+
+  ScopedReset(T& toWatch, T resetValue)
+  : d_toReset(toWatch)
+  , d_resetValue(resetValue)
+  {
+    d_toReset = d_resetValue;
+  }
+
+  ~ScopedReset() {
+    d_toReset = d_resetValue;
+  }
+};
+
 void FeatureDispatch::addPlugin(SolverPlugin* plugin) {
   Debug("mcsat::plugin") << "FeatureDispatch::addPlugin(): " << *plugin << std::endl;
   const features_set& s = plugin->getFeaturesSet();
@@ -19,7 +39,8 @@ void FeatureDispatch::addPlugin(SolverPlugin* plugin) {
 }
 
 void FeatureDispatch::propagate(SolverTrail::PropagationToken& out) {
-  for(unsigned i = 0; d_trail.consistent() && i < d_plugins[CAN_PROPAGATE].size(); ++ i) {
+  ScopedReset<bool> interrupt(d_interrupt, false);
+  for(unsigned i = 0; d_trail.consistent() && !d_interrupt && i < d_plugins[CAN_PROPAGATE].size(); ++ i) {
     SolverPlugin* plugin = d_plugins[CAN_PROPAGATE][i];
     Debug("mcsat::plugin") << "FeatureDispatch::propagate(): " << *plugin << std::endl;
     plugin->propagate(out);
@@ -27,10 +48,14 @@ void FeatureDispatch::propagate(SolverTrail::PropagationToken& out) {
 }
 
 void FeatureDispatch::decide(SolverTrail::DecisionToken& out) {
-  for(unsigned i = 0; !out.used() && i < d_plugins[CAN_DECIDE].size(); ++ i) {
+  ScopedReset<bool> interrupt(d_interrupt, false);
+  for(unsigned i = 0; !out.used() && !d_interrupt && i < d_plugins[CAN_DECIDE].size(); ++ i) {
     SolverPlugin* plugin = d_plugins[CAN_DECIDE][i];
     Debug("mcsat::plugin") << "FeatureDispatch::decide(): " << *plugin << std::endl;
     plugin->decide(out);
   }
 }
 
+void FeatureDispatch::interrupt() {
+  d_interrupt = true;
+}

@@ -39,6 +39,13 @@ void SolverTrail::popDecision(std::vector<Variable>& variablesUnset) {
 
   Assert(d_decisionTrail.size() > 0);
 
+  if (Debug.isOn("mcsat::trail")) {
+    if (!checkConsistency()) {
+      Debug("mcsat::trail") << *this << std::endl;
+      Assert(false);
+    }
+  }
+
   // Pop the trail elements
   while (d_trail.size() > d_decisionTrail.back()) {
 
@@ -57,12 +64,14 @@ void SolverTrail::popDecision(std::vector<Variable>& variablesUnset) {
     d_modelInfo[var].trailIndex = 0;
 
     // Remove any reasons
-    Literal var_pos(var, false);
-    Literal var_neg(var, true);
-    d_clauseReasons[var_pos] = CRef_Strong::null;
-    d_clauseReasons[var_neg] = CRef_Strong::null;
-    d_reasonProviders[var_pos] = 0;
-    d_reasonProviders[var_neg] = 0;
+    if (d_trail.back().type == CLAUSAL_PROPAGATION) {
+      Literal var_pos(var, false);
+      Literal var_neg(var, true);
+      d_clauseReasons[var_pos] = CRef_Strong::null;
+      d_clauseReasons[var_neg] = CRef_Strong::null;
+      d_reasonProviders[var_pos] = 0;
+      d_reasonProviders[var_neg] = 0;
+    }
 
     // Pop the element
     d_trail.pop_back();
@@ -75,6 +84,13 @@ void SolverTrail::popDecision(std::vector<Variable>& variablesUnset) {
 
   // If we were inconsistent, not anymore
   d_inconsistentPropagations.clear();
+
+  if (Debug.isOn("mcsat::trail")) {
+    if (!checkConsistency()) {
+      Debug("mcsat::trail") << *this << std::endl;
+      Assert(false);
+    }
+  }
 }
 
 void SolverTrail::popToLevel(unsigned level, std::vector<Variable>& variablesUnset) {
@@ -274,4 +290,47 @@ void SolverTrail::toStream(std::ostream& out) const {
     }
   }
   out << std::endl << "]";
+}
+
+bool SolverTrail::checkConsistency() const {
+  for (unsigned i = 0; i < d_trail.size(); ++ i) {
+    const Element& e = d_trail[i];
+    switch (e.type) {
+    case BOOLEAN_DECISION:
+      // Decisions don't have reasons
+      if (hasReason(Literal(e.var, isFalse(e.var)))) {
+        Debug("mcsat::trail") << "SolverTrail::checkConsistency(): decision at " << i << " has a reason!!!" << std::endl;
+        return false;
+      }
+      break;
+    case SEMANTIC_DECISION:
+      // No Booleans here
+      if (e.var.getNode().getType().isBoolean()) {
+        Debug("mcsat::trail") << "SolverTrail::checkConsistency(): semantic decision at " << i << " is Boolean!!!" << std::endl;
+        return false;
+      }
+      // Same type as the assignment
+      if (!e.var.getNode().getType().isComparableTo(value(e.var).getType())) {
+        Debug("mcsat::trail") << "SolverTrail::checkConsistency(): semantic decision at " << i << " of different type!!!" << std::endl;
+        return false;
+      }
+      break;
+    case CLAUSAL_PROPAGATION:
+      // Clausal propagations must have reasons
+      if (!hasReason(Literal(e.var, isFalse(e.var)))) {
+        Debug("mcsat::trail") << "SolverTrail::checkConsistency(): clausal propagation with no reason at " << i << "!!!" << std::endl;
+        return false;
+      }
+      break;
+    case SEMANTIC_PROPAGATION:
+      // Semantic propagations don't have reasons
+      if (hasReason(Literal(e.var, isFalse(e.var)))) {
+        Debug("mcsat::trail") << "SolverTrail::checkConsistency(): semantic propagation with reason" << i << "!!!" << std::endl;
+        return false;
+      }
+      break;
+    }
+  }
+
+  return true;
 }

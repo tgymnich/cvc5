@@ -85,10 +85,13 @@ class FeatureDispatch : public SolverPluginFeatures  {
   /** The solver trail */
   const SolverTrail& d_trail;
 
+  /** True if interrupted */
+  bool d_interrupt;
+
 public:
 
   FeatureDispatch(const SolverTrail& trail)
-  : d_trail(trail)
+  : d_trail(trail), d_interrupt(false)
   {}
 
   /** Add a plugin to notify */
@@ -99,6 +102,9 @@ public:
 
   /** Perform a decision */
   void decide(SolverTrail::DecisionToken& out);
+
+  /** Interrupt it. No-op if nothing running, and as soon as any the method is done, interrupt is off */
+  void interrupt();
 };
 
 }

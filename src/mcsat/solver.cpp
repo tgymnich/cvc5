@@ -182,6 +182,9 @@ void Solver::requestBacktrack(unsigned level, CRef cRef) {
     }
   }
 
+  // Interrupt the dispatch
+  d_featuresDispatch.interrupt();
+
   d_request = true;
   d_backtrackRequested = true;
   d_backtrackClauses.insert(cRef);
@@ -192,7 +195,7 @@ void Solver::propagate(SolverTrail::PropagationToken::Mode mode) {
   Debug("mcsat::solver") << "Solver::propagate(" << mode << ")" << std::endl;
 
   bool propagationDone = false;
-  while (d_trail.consistent() && !propagationDone) {
+  while (d_trail.consistent() && !d_request && !propagationDone) {
     // Token for the plugins to propagate at
     SolverTrail::PropagationToken propagationOut(d_trail, mode);
     // Let all plugins propagate
@@ -315,6 +318,7 @@ void Solver::analyzeConflicts() {
       conflictLevel = std::max(conflictLevel, d_trail.decisionLevel(conflictingClause[i].getVariable()));
     }
     Debug("mcsat::solver::analyze") << "Solver::analyzeConflicts(): in conflict at level " << conflictLevel << std::endl;
+    Debug("mcsat::solver::analyze") << "Solver::analyzeConflicts(): trail: " << d_trail << std::endl;
 
     // The Boolean resolution rule
     d_rule_Resolution.start(conflictPropagation.reason);
@@ -352,8 +356,8 @@ void Solver::analyzeConflicts() {
     while (!d_trail[trailIndex].isDecision() && varsAtConflictLevel > 1) {
 
       Debug("mcsat::solver::analyze") << "Solver::analyzeConflicts(): can be resolved: " << varsWithReason << std::endl;
+      Debug("mcsat::solver::analyze") << "Solver::analyzeConflicts(): seen: " << varsSeen << std::endl;
       Debug("mcsat::solver::analyze") << "Solver::analyzeConflicts(): at index " << trailIndex << std::endl;
-      Debug("mcsat::solver::analyze") << "Solver::analyzeConflicts(): trail: " << d_trail << std::endl;
 
       // Find the next literal to resolve
       while (!d_trail[trailIndex].isDecision() && varsWithReason.find(d_trail[trailIndex].var) == varsWithReason.end()) {
@@ -386,11 +390,14 @@ void Solver::analyzeConflicts() {
       -- varsAtConflictLevel;
 
       // Update the info for the resolved literals
+      Assert(literalReasonClause[0].getVariable() == varToResolve);
       for (unsigned i = 1; i < literalReasonClause.size(); ++ i) {
 	Literal lit = literalReasonClause[i];
         Variable var = lit.getVariable();
+        Debug("mcsat::solver::analyze") << "Solver::analyzeConflicts(): checking reason lit: " << lit << " at " << d_trail.decisionLevel(var) << std::endl;
         // We resolve literals at the conflict level
         if (d_trail.decisionLevel(var) == conflictLevel) {
+          Debug("mcsat::solver::analyze") << "Solver::analyzeConflicts(): checking reason var: " << (varsSeen.count(var) == 0 ? "unseen" : "seen") << std::endl;
           if (varsSeen.count(var) == 0) {
             varsAtConflictLevel ++;
             varsSeen.insert(var);

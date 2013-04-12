@@ -14,3 +14,7 @@ void SolverPluginRequest::restart() {
 void SolverPluginRequest::propagate() {
   d_solver->requestPropagate();
 }
+
+bool SolverPluginRequest::pending() const {
+  return d_solver->d_request;
+}

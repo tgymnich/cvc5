@@ -100,6 +100,9 @@ public:
   /** Print the trail to the stream */
   void toStream(std::ostream& out) const;
 
+  /** Returns true if the trail has some basic properties on (debug stuff) */
+  bool checkConsistency() const;
+
 private:
 
   /**

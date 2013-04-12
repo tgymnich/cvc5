@@ -51,6 +51,10 @@ public:
    */
   void gc();
 
+  /**
+   * Are there any pending requests. Meaning we can stop, and will be called back again.
+   */
+  bool pending() const;
 };
 
 /**
