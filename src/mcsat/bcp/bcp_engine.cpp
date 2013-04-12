@@ -270,6 +270,9 @@ void BCPEngine::notifyVariableUnset(const std::vector<Variable>& vars) {
       d_variableQueue.enqueue(vars[i]);
     }
   }
+
+  // Clear any delayed propagations
+  d_delayedPropagations.clear();
 }
 
 static unsigned luby(unsigned index) {
