@@ -243,12 +243,21 @@ void SolverTrail::getInconsistentPropagations(std::vector<InconsistentPropagatio
 }
 
 void SolverTrail::toStream(std::ostream& out) const {
-  out << "[";
+  out << "Trail[";
+  unsigned level = 0;
   for (unsigned i = 0; i < d_trail.size(); ++ i) {
-    if (i > 0) {
+    if (d_trail[i].isDecision() || i == 0) {
+      out << std::endl << level++ << "\t";
+    } else {
       out << ", ";
     }
-    out << "(" << d_trail[i].var << " -> " << value(d_trail[i].var) << ")";
+    TNode v = value(d_trail[i].var);
+    if (v.getType().isBoolean()) {
+      Literal l(d_trail[i].var, v == c_FALSE);
+      out << "[" << l << "]";
+    } else {
+      out << "[" << d_trail[i].var << " -> " << v << "]";
+    }
   }
-  out << "]";
+  out << std::endl << "]";
 }

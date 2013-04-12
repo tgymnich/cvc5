@@ -18,7 +18,7 @@ void FourierMotzkinRule::start(Literal lit) {
   d_assumptions.insert(lit);
   bool linear = LinearConstraint::parse(lit, d_resolvent);
 
-  Debug("mcsat::fm") << "ForuierMotzkinRule: starting with " << d_resolvent << std::endl;
+  Debug("mcsat::fm") << "FourierMotzkinRule: starting with " << d_resolvent << std::endl;
 
   Assert(linear);
 }
@@ -52,13 +52,13 @@ void FourierMotzkinRule::resolve(Variable var, Literal ineq) {
   bool linear = LinearConstraint::parse(ineq, toResolve);
   Assert(linear);
 
-  Debug("mcsat::fm") << "ForuierMotzkinRule: resolving " << toResolve << std::endl;
+  Debug("mcsat::fm") << "FourierMotzkinRule: resolving " << toResolve << std::endl;
   resolve(var, d_resolvent, toResolve);
 
   // Add to assumptions
   d_assumptions.insert(ineq);
 
-  Debug("mcsat::fm") << "ForuierMotzkinRule: got " << d_resolvent << std::endl;
+  Debug("mcsat::fm") << "FourierMotzkinRule: got " << d_resolvent << std::endl;
 }
 
 /** Finish the derivation */
@@ -75,27 +75,24 @@ CRef FourierMotzkinRule::finish(SolverTrail::PropagationToken& propToken) {
     lits.push_back(~(*it));
   }
   
-  // Add the resolvent if not trivially false
-  if (d_resolvent.size() > 0) {
-    // Add the literal
-    Literal resolventLiteral = d_resolvent.getLiteral();
-    lits.push_back(resolventLiteral);
+  // Evaluate 
+  unsigned evalLevel;
+  bool eval = d_resolvent.evaluate(d_trail, evalLevel);
+  Assert(!eval, "Must be false");
 
-    // Evaluate and propagate
-    unsigned evalLevel;
-    bool eval = d_resolvent.evaluate(d_trail, evalLevel);
-    Assert(!eval, "Must be false");
-
-    // Propagate !resolvent semantically at the apropriate level
-    propToken(~resolventLiteral, evalLevel);
-  }
+  // Propagate
+  Literal resolventLiteral = d_resolvent.getLiteral();
+  propToken(~resolventLiteral, evalLevel);
+  
+  // Add the literal
+  lits.push_back(resolventLiteral);
 
   return commit(lits);
 }
 
 CRef FourierMotzkinRule::resolveDisequality(Variable var, Literal varL, Literal varU, Literal D, SolverTrail::PropagationToken& propToken) {
 
-  Debug("mcsat::fm") << "ForuierMotzkinRule::resolveDisequality(" << var << "):" << std::endl;
+  Debug("mcsat::fm") << "FourierMotzkinRule::resolveDisequality(" << var << "):" << std::endl;
 
   bool linear, eval;
   unsigned evalLevel;

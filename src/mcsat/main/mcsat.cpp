@@ -49,7 +49,7 @@ int main(int argc, char* argv[]) {
   ExprManager exprManager(options);
 
   // Output as SMT2
-  Debug.getStream() << expr::ExprSetDepth(-1) << expr::ExprSetLanguage(language::output::LANG_SMTLIB_V2);
+  Debug.getStream() << expr::ExprSetDepth(-1) << expr::ExprSetLanguage(language::output::LANG_CVC4);
   
   // Solve the problems 
   for (unsigned i = 0; i < filenames.size(); ++ i) {

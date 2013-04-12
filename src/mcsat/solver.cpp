@@ -219,6 +219,8 @@ bool Solver::check() {
     if (!d_trail.consistent()) {
 
       Debug("mcsat::solver::search") << "Solver::check(): Conflict" << std::endl;
+      Debug("mcsat::trail") << d_trail << std::endl;
+     
       ++ d_stats.conflicts;
       
       // Notify of a new conflict situation

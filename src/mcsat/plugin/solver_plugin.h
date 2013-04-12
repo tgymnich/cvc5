@@ -21,7 +21,7 @@ class SolverPluginRequest {
 
   /** The solver */
   Solver* d_solver;
-
+  
 public:
 
   /** Construct a request token for the given solver */
