@@ -102,12 +102,15 @@ void Solver::processRequests() {
       if (clause.size() == 1 || d_trail.isFalse(clause[1])) {
         propagates.push_back(true);
         somePropagates = true;
+	Debug("mcsat::solver") << "Solver::processBacktrackRequests(): propagates" << std::endl;
       } else {
         propagates.push_back(false);
+	Debug("mcsat::solver") << "Solver::processBacktrackRequests(): doesn't propagates " << std::endl;
       }
     }
 
     if (somePropagates) {
+      Debug("mcsat::solver") << "Solver::processBacktrackRequests(): we have a propagation" << std::endl;
       // Propagate all the added clauses that propagate
       std::set<CRef>::iterator it = d_backtrackClauses.begin();
       SolverTrail::PropagationToken propagate(d_trail, SolverTrail::PropagationToken::PROPAGATION_INIT);
@@ -118,6 +121,7 @@ void Solver::processRequests() {
         }
       }
     } else {
+      Debug("mcsat::solver") << "Solver::processBacktrackRequests(): we do a decision" << std::endl;
       // Decide on the first clause
       Clause& c = d_backtrackClauses.begin()->getClause();
       for (unsigned i = 0; i < c.size(); ++ i) {
@@ -126,6 +130,7 @@ void Solver::processRequests() {
         } else {
           SolverTrail::DecisionToken decide(d_trail);
           decide(c[i]);
+	  break;
         }
       }
     }
