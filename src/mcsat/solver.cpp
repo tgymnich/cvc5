@@ -45,8 +45,8 @@ Solver::Solver(context::UserContext* userContext, context::Context* searchContex
 {
   // Add some engines
   addPlugin("CVC4::mcsat::CNFPlugin");
-  addPlugin("CVC4::mcsat::BCPEngine");
   addPlugin("CVC4::mcsat::FMPlugin");
+  addPlugin("CVC4::mcsat::BCPEngine");
 }
 
 Solver::~Solver() {
@@ -414,18 +414,21 @@ void Solver::analyzeConflicts() {
 
     // Finish the resolution
     CRef resolvent = d_rule_Resolution.finish();
+    Debug("mcsat::solver::analyze") << "Solver::analyzeConflicts(): resolvent: " << resolvent << std::endl;
+
     if (resolvent.getClause().getRuleId() == d_rule_Resolution.getRuleId()) {
-      // If this is a new clause, it will get pick up by whoever is propagating the clauses, we just update
-      // some heuristic
+      // If this is a new clause, so we manage it's deletion
       d_learntClausesScore[resolvent] = d_learntClausesScoreMax;
-    } else {
-      // This is the same clause, meaning that the literals are true semantically:
-      // * last decision is semantic
-      // * we need to decide one of the literals that get unassigned
-      Assert(conflictLevel > 0);
+    } 
+    
+    // If number of variables in the resolvent is > 1, it must be that these 
+    // literals are semantically true. This also means that the clause 
+    // propagates at the conflict level, and we can't resolve the literals.
+    // So, we go back and decide one of them 
+    if (varsAtConflictLevel > 1) {
+      Assert(d_trail[trailIndex].type == SolverTrail::SEMANTIC_DECISION);
       requestBacktrack(conflictLevel - 1, resolvent);
     }
-    Debug("mcsat::solver::analyze") << "Solver::analyzeConflicts(): resolvent: " << resolvent << std::endl;
   }
 }
 
