@@ -93,9 +93,7 @@ int main(int argc, char* argv[]) {
       }
   
       // Check the problem
-      if (options[options::parseOnly]) {
-        cout << "unknown" << endl;
-      } else {
+      if (!options[options::parseOnly]) {
         bool result = mcSolver.check();
         cout << (result ? "sat" : "unsat") << endl;
       }

@@ -112,7 +112,8 @@ bool LinearConstraint::parse(TNode term, Rational mult, var_to_rational_map& coe
     case kind::CONST_RATIONAL:
       coefficientMap[Variable::null] += mult*term.getConst<Rational>();
       break;
-    case kind::VARIABLE: {
+    case kind::VARIABLE:
+    case kind::SKOLEM: {
       Assert(db.hasVariable(term));
       Variable var = db.getVariable(term);
       coefficientMap[var] += mult;
