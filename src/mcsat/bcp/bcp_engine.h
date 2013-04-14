@@ -101,7 +101,8 @@ public:
   std::string toString() const { return "BCP Engine"; }
 };
 
-template class SolverPluginConstructor<BCPEngine>;
+// Register the plugin
+MCSAT_REGISTER_PLUGIN(BCPEngine);
 
 }
 }

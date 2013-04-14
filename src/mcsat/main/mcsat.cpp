@@ -55,9 +55,28 @@ int main(int argc, char* argv[]) {
   for (unsigned i = 0; i < filenames.size(); ++ i) {
     try {
 
+      // Setup the langage based on the options or extension
+      if(options[options::inputLanguage] == language::input::LANG_AUTO) {
+        size_t pos = filenames[i].find_last_of('.');
+        if (pos != string::npos) {
+          string extension = filenames[i].substr(pos + 1);
+          if (extension == "smt2") {
+            options.set(options::inputLanguage, language::input::LANG_SMTLIB_V2);
+          } else if (extension == "smt") {
+            options.set(options::inputLanguage, language::input::LANG_SMTLIB_V1);
+          } else if (extension == "smt1") {
+            options.set(options::inputLanguage, language::input::LANG_SMTLIB_V1);
+          } else if (extension == "cvc") {
+            options.set(options::inputLanguage, language::input::LANG_CVC4);
+          } else if (extension == "cvc4") {
+            options.set(options::inputLanguage, language::input::LANG_TPTP);
+          }
+        }
+      }
+
       // Create the parser
       ParserBuilder parserBuilder(&exprManager, filenames[i], options);
-      Parser* parser = parserBuilder.withInputLanguage(language::input::LANG_SMTLIB_V2).build();
+      Parser* parser = parserBuilder.build();
   
       // Create the MCSAT engine
       mcsat::MCSatEngine mcSolver(&exprManager);

@@ -1,5 +1,9 @@
 #include "mcsat/plugin/solver_plugin_factory.h"
-#include "mcsat/plugin/solver_plugin_registry.h"
+
+// All plugins to ensure static linking
+#include "mcsat/bcp/bcp_engine.h"
+#include "mcsat/cnf/cnf_plugin.h"
+#include "mcsat/fm/fm_plugin.h"
 
 #include <sstream>
 

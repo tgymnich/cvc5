@@ -124,7 +124,8 @@ public:
 
 };
 
-template class SolverPluginConstructor<FMPlugin>;
+// Register the plugin
+MCSAT_REGISTER_PLUGIN(FMPlugin);
 
 }
 }

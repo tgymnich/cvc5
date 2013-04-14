@@ -43,7 +43,8 @@ public:
 
 };
 
-template class SolverPluginConstructor<CNFPlugin>;
+// Register the plugin
+MCSAT_REGISTER_PLUGIN(CNFPlugin);
 
 }
 }

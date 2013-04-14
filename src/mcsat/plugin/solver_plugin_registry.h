@@ -36,6 +36,9 @@ public:
   SolverPlugin* construct(ClauseDatabase& clauseDb, const SolverTrail& trail, SolverPluginRequest& request) {
     return new Solver(clauseDb, trail, request);
   }
+
+  /** The id of the solver constructor */
+  static size_t getId() { return s_solverId; }
 };
 
 /**
@@ -92,6 +95,8 @@ public:
 /** Actually register the solver */
 template<typename Solver>
 const size_t SolverPluginConstructor<Solver>::s_solverId = SolverPluginRegistry::getInstance()->registerSolver<SolverPluginConstructor>(typeid(Solver).name());
+
+#define MCSAT_REGISTER_PLUGIN(PLUGIN) template class SolverPluginConstructor<PLUGIN>;
 
 }
 }
