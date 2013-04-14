@@ -153,9 +153,6 @@ void BCPEngine::propagate(SolverTrail::PropagationToken& out) {
     out(d_delayedPropagations[i].getClause()[0], d_delayedPropagations[i]);
   }
   d_delayedPropagations.clear();
-
-  // Make sure the watches are clean
-  d_watchManager.clean();
   
   // Propagate
   unsigned i = d_trailHead;

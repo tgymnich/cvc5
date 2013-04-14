@@ -4,11 +4,14 @@
 using namespace CVC4;
 using namespace mcsat;
 
-template<bool refCount>
-Clause& ClauseRef<refCount>::getClause() const {
+const CRef CRef::null;
+
+void CRef::toStream(std::ostream& out) const {
+  return getClause().toStream(out);
+}
+
+Clause& CRef::getClause() const {
   Assert(hasClause());
   return ClauseFarm::getCurrent()->getClauseDB(d_db).getClause(*this);
 }
 
-template class ClauseRef<true>;
-template class ClauseRef<false>;

@@ -75,16 +75,6 @@ private:
   /** Allocate new memory */
   char* allocate(unsigned size) __attribute__ ((malloc));
 
-  template<bool refCount>
-  friend class ClauseRef;
-
-  /**
-   * Get the clause given the reference
-   */
-  Clause& getClause(ClauseRef<false> cRef) {
-    return *((Clause*) (d_memory + cRef.d_ref));
-  }
-
   friend class rules::ProofRule;
 
   /** Number of rules attached to this clause database */
@@ -147,11 +137,14 @@ public:
   /** Import a clause from a different db (in the same farm) */
   CRef adopt(CRef cRef);
   
-  /**
-   * Get the clause given the reference
-   */
-  const Clause& getClause(ClauseRef<false> cRef) const {
+  /** Get the clause given the reference */
+  const Clause& getClause(CRef cRef) const {
     return *((const Clause*) (d_memory + cRef.d_ref));
+  }
+
+  /** Get the clause given the reference */
+  Clause& getClause(CRef cRef) {
+    return *((Clause*) (d_memory + cRef.d_ref));
   }
 
   /**

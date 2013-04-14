@@ -28,7 +28,7 @@ class CNFPlugin : public SolverPlugin {
   rules::InputClauseRule d_inputClauseRule;
 
   /** List of converted clauses */
-  std::vector<CRef_Strong> d_convertedClauses;
+  std::vector<CRef> d_convertedClauses;
 
 public:
 

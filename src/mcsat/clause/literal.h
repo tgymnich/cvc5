@@ -11,67 +11,44 @@
 namespace CVC4 {
 namespace mcsat {
 
-template <bool refCount>
-class LiteralRef;
 
-typedef LiteralRef<true> Literal_Strong;
-typedef LiteralRef<false> Literal;
-  
 /** Literal encapsulates a variable and whether it is negated or not */
-template <bool refCount>
-class LiteralRef {
-
-  friend void std::swap<>(LiteralRef& l1, LiteralRef& l2);
+class Literal {
 
   /** The variable */
-  VariableRef<refCount> d_variable;
+  Variable d_variable;
 
   /** Is the variable negated */
   bool d_negated;
   
-  friend class LiteralRef<!refCount>;
-
 public:
 
   /** The null literal */
-  static const LiteralRef null;
+  static const Literal null;
 
   /** Construct the literal given the variable and whether it is negated */
-  LiteralRef(Variable var, bool negated)
+  Literal(Variable var, bool negated)
   : d_variable(var)
   , d_negated(negated)
   {
   }
 
   /** Construct a null literal */
-  LiteralRef()
+  Literal()
   : d_variable(), d_negated(0) {}
 
   /** Copy constructor */
-  LiteralRef(const LiteralRef& other)
-  : d_variable(other.d_variable)
-  , d_negated(other.d_negated)
-  {}
-
-  /** Copy constructor from other type of literal */
-  LiteralRef(const LiteralRef<!refCount>& other)
+  Literal(const Literal& other)
   : d_variable(other.d_variable)
   , d_negated(other.d_negated)
   {}
 
   /** Assignment */
-  LiteralRef& operator = (const LiteralRef& other) {
+  Literal& operator = (const Literal& other) {
     if (this != &other) {
       d_variable = other.d_variable;
       d_negated = other.d_negated;
     }
-    return *this;
-  }
-
-  /** Assignment from other type */
-  LiteralRef& operator = (const LiteralRef<!refCount>& other) {
-    d_variable = other.d_variable;
-    d_negated = other.d_negated;
     return *this;
   }
 
@@ -146,8 +123,7 @@ public:
 typedef std::hash_set<Literal, LiteralHashFunction> LiteralHashSet;
 
 /** Output operator for a literal */
-template<bool refCount>
-inline std::ostream& operator << (std::ostream& out, const LiteralRef<refCount>& lit) {
+inline std::ostream& operator << (std::ostream& out, const Literal& lit) {
   lit.toStream(out);
   return out;
 }
@@ -186,20 +162,5 @@ inline std::ostream& operator << (std::ostream& out, const LiteralHashSet& liter
   return out;
 }
 
-template<bool refCount>
-const LiteralRef<refCount> LiteralRef<refCount>::null;
-
-BOOST_STATIC_ASSERT(sizeof(Literal) == sizeof(Literal_Strong));
-
 }
-}
-
-namespace std {
-
-template<>
-inline void swap(CVC4::mcsat::Literal_Strong& l1, CVC4::mcsat::Literal_Strong& l2) {
-  std::swap(l1.d_variable, l2.d_variable);
-  std::swap(l1.d_negated, l2.d_negated);
-}
-
 }

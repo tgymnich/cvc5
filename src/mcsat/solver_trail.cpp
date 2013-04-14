@@ -67,8 +67,8 @@ void SolverTrail::popDecision(std::vector<Variable>& variablesUnset) {
     if (d_trail.back().type == CLAUSAL_PROPAGATION) {
       Literal var_pos(var, false);
       Literal var_neg(var, true);
-      d_clauseReasons[var_pos] = CRef_Strong::null;
-      d_clauseReasons[var_neg] = CRef_Strong::null;
+      d_clauseReasons[var_pos] = CRef::null;
+      d_clauseReasons[var_neg] = CRef::null;
       d_reasonProviders[var_pos] = 0;
       d_reasonProviders[var_neg] = 0;
     }

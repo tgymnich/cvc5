@@ -23,17 +23,11 @@ class WatchListManager {
   
 public:
 
-  void needsCleanup(Literal lit) {
-    d_needsCleanup[lit] = true;
-  }
-
   void add(Literal lit, CRef cRef) {
     Debug("mcsat::bcp::watch") << "WatchListManager::add(" << lit << ", " << cRef << ")" << std::endl;
     d_watchLists[lit].push_back(cRef);
   }
   
-  void clean();
-
   class remove_iterator {
     
     friend class WatchListManager;

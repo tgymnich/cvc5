@@ -43,7 +43,7 @@ CRef ProofRule::commit(LiteralVector& literals) {
 
     if (value == c_True) {
       // Literal is true and hence the clause too
-      return CRef_Strong::null;
+      return CRef::null;
       break;
     }
     if (value == c_False) {

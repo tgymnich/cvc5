@@ -109,15 +109,12 @@ private:
    * Simple reason provider based on a clause.
    */
   class ClauseReasonProvider : public ReasonProvider {
-    typedef literal_table<CRef_Strong> reasons_map;
-
+    typedef literal_table<CRef> reasons_map;
     /** Map from literals to clausal reasons */
     reasons_map d_reasons;
   public:
-    CRef explain(Literal l) {
-      return d_reasons[l];
-    }
-    CRef_Strong& operator [] (Literal l) { return d_reasons[l]; }
+    CRef explain(Literal l) { return d_reasons[l]; }
+    CRef& operator [] (Literal l) { return d_reasons[l]; }
   };
   
   /** The actual trail */

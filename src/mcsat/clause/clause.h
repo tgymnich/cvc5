@@ -14,17 +14,11 @@ class Clause {
 
   /** Size of the clause */
   size_t d_size     : 32;
-  /** Reference count */
-  size_t d_refCount : 16;
   /** Rule that produced this clause */
   size_t d_ruleId   : 16;
 
-  typedef Literal_Strong literal_type;
-
   /** The literals */
-  literal_type d_literals[0];
-
-  friend class ClauseDatabase;
+  Literal d_literals[0];
 
   /** Construct the clause from given literals */
   Clause(const std::vector<Literal>& literals, size_t ruleId);
@@ -32,14 +26,7 @@ class Clause {
   /** Copy construction */
   Clause(const Clause& clause);
   
-  template<bool refCount>
-  friend class ClauseRef;
-
-  /** Increase the reference count */
-  void incRefCount() { d_refCount ++; }
-
-  /** Decrease the reference count */
-  void decRefCount() { d_refCount ++; }
+  friend class ClauseDatabase;
 
 public:
 
@@ -59,11 +46,6 @@ public:
   void swapLiterals(size_t i, size_t j) {
     // Swap is overloaded so that no references are counted
     std::swap(d_literals[i], d_literals[j]);
-  }
-
-  /** Is this clause in use */
-  bool inUse() const {
-    return d_refCount > 0; 
   }
 
   /** Get the id of the rule that produced this clause */

@@ -14,8 +14,7 @@ namespace mcsat {
 class ClauseDatabase;
 
 /** A reference to a clause */
-template<bool refCount>
-class ClauseRef {
+class CRef {
 
   /** Number of bits kept for the reference */
   static const size_t BITS_FOR_REFERENCE = 32;
@@ -28,8 +27,6 @@ class ClauseRef {
 
 private:
  
-  friend class ClauseRef<!refCount>;
-
   /** Reference into the clause database */
   size_t d_ref : BITS_FOR_REFERENCE;
   
@@ -40,7 +37,7 @@ private:
    * Construct the reference. This one is not reference counted, as only the
    * clause database creates these.
    */
-  ClauseRef(size_t ref, size_t db) 
+  CRef(size_t ref, size_t db)
   : d_ref(ref) 
   , d_db(db)
   {}
@@ -59,65 +56,28 @@ public:
   /**
    * Copy constructor of the same type.
    */
-  ClauseRef(const ClauseRef& other)
+  CRef(const CRef& other)
   : d_ref(other.d_ref)
-  , d_db(other.d_db) {
-    if (refCount && hasClause()) {
-      getClause().incRefCount();
-    }
-  }
-
-  /**
-   * Copy constructor of the other type.
-   */
-  ClauseRef(const ClauseRef<!refCount>& other)
-  : d_ref(other.d_ref) 
-  , d_db(other.d_db) {
-    if (refCount && hasClause()) {
-      getClause().incRefCount();
-    }
-  }
+  , d_db(other.d_db)
+  {}
 
   /** Assignment operator */
-  ClauseRef& operator = (const ClauseRef& other) {
+  CRef& operator = (const CRef& other) {
     if (this != &other) {
-      if (refCount && hasClause()) {
-	getClause().decRefCount();
-      }
       d_ref = other.d_ref;
       d_db = other.d_db;
-      if (refCount && hasClause()) {
-	getClause().incRefCount();
-      }
     }
     return *this;
   }
   
-  /** Assignment operator */
-  ClauseRef& operator = (const ClauseRef<!refCount>& other) {
-    if (refCount && hasClause()) {
-      getClause().decRefCount();
-    }
-    d_ref = other.d_ref;
-    d_db = other.d_db;
-    if (refCount && hasClause()) {
-      getClause().incRefCount();
-    }
-    return *this;
-  }
-
-  /** Decrease the reference counts if needed */
-  ~ClauseRef() {
-    if (refCount && hasClause()) {
-      getClause().decRefCount();
-    }
-  }
-
   /** Default constructs null */
-  ClauseRef() : d_ref(nullRef), d_db(0) {}
+  CRef()
+  : d_ref(nullRef)
+  , d_db(0)
+  {}
 
   /** The null clause reference */
-  static const ClauseRef null;
+  static const CRef null;
 
   /** Return the id of the database holding this clause */
   size_t getDatabaseId() const {
@@ -128,11 +88,8 @@ public:
   Clause& getClause() const;
 
   /** Check if the reference is null */
-  bool isNull() const;
-  
-  /** Is this clause reference in use */
-  bool inUse() const {
-    return getClause().inUse();
+  bool isNull() const {
+    return *this == null;
   }
   
   /** Print the clause to the stream */
@@ -144,11 +101,12 @@ public:
   }
 
   /** Compare two references */
-  template<bool rc2>
-  bool operator == (const ClauseRef<rc2>& other) const;
+  bool operator == (const CRef& other) const {
+    return d_ref == other.d_ref;
+  }
 
   /** Compare two references (by pointer value) */
-  bool operator < (const ClauseRef& other) const {
+  bool operator < (const CRef& other) const {
     if (d_db == other.d_db) {
       return d_ref < other.d_ref;
     } else {
@@ -157,28 +115,9 @@ public:
   }
 };
 
-/** Non reference counted reference */
-typedef ClauseRef<false> CRef;
-/** Non reference counted reference */
-typedef ClauseRef<true> CRef_Strong;
-
-template<bool refCount>
-const ClauseRef<refCount> ClauseRef<refCount>::null;
-
-template<bool refCount>
-bool ClauseRef<refCount>::isNull() const {
-  return *this == null;
-}
-
-template<bool rc1>
-template<bool rc2>
-bool ClauseRef<rc1>::operator == (const ClauseRef<rc2>& other) const {
-  return d_ref == other.d_ref;
-}
-
-template<bool refCount>
-inline std::ostream& operator << (std::ostream& out, const ClauseRef<refCount>& cRef) {
-  return out << cRef.getClause();
+inline std::ostream& operator << (std::ostream& out, const CRef& cRef) {
+  cRef.toStream(out);
+  return out;
 }
 
 struct CRefHashFunction {

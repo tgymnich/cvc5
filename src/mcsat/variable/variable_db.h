@@ -48,9 +48,6 @@ private:
   typedef std::hash_map<TypeNode, size_t, TypeNodeHashFunction> typenode_to_variable_map;
   typenode_to_variable_map d_typenodeToVariableMap;
 
-  /** Reference counts for the variables */
-  std::vector< std::vector<size_t> > d_variableRefCount;
-  
   /** Nodes of the variables */
   std::vector< std::vector<Node> > d_variableNodes;
 
@@ -78,20 +75,7 @@ private:
 
   /** Clause database we're using */
   static CVC4_THREADLOCAL(VariableDatabase*) s_current;
-
-  template<bool refCount>
-  friend class VariableRef;
   
-  /** Attach the variable */
-  void attach(Variable var) {
-    ++ d_variableRefCount[var.typeIndex()][var.index()];
-  }
-  
-  /** Detach the variable */
-  void detach(Variable var) {
-    -- d_variableRefCount[var.typeIndex()][var.index()];
-  }
-
   /** Pop notifications go through this class */
   class Backtracker : public context::ContextNotifyObj {
     VariableDatabase& d_db;
@@ -145,11 +129,6 @@ public:
   /** Returns the number of variables of a given type */
   size_t size(size_t typeIndex) const;
 
-  /** Check whether the variable is in use (rc > 0) */
-  bool inUse(Variable var) const {
-    return d_variableRefCount[var.typeIndex()][var.index()] > 0;
-  }
-  
   /**
    * Get the current clause database
    */

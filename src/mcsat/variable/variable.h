@@ -14,22 +14,13 @@
 
 namespace CVC4 {
 namespace mcsat {
-
-template <bool refCount>
-class VariableRef;
   
-/** Variable with reference counting */
-typedef VariableRef<true> Variable_Strong;
-/** Weak variable */
-typedef VariableRef<false> Variable;
-
 /**
  * A variable from a variable database. If refCount is true the references are
  * counted in the variable database. All variables with reference count 0 can
  * be reclaimed at search level 0. 
  */
-template <bool refCount>
-class VariableRef {
+class Variable {
 
 public:
   
@@ -44,29 +35,20 @@ public:
 private:
   
   friend class VariableDatabase;
-  friend class VariableRef<!refCount>;
-
-  friend void std::swap<>(VariableRef& v1, VariableRef& v2);
 
   /** Id of the variable */
   size_t d_varId     : BITS_FOR_VARIABLE_ID;
   size_t d_typeId    : BITS_FOR_TYPE_ID;
 
   /** Make a variable */
-  VariableRef(size_t varId, size_t typeId)
+  Variable(size_t varId, size_t typeId)
   : d_varId(varId), d_typeId(typeId)
   {}
-
-  /** Increase the reference count */
-  void incRefCount() const;
-
-  /** Decrease the reference count */
-  void decRefCount() const;
   
 public:
 
   /** The null variable */
-  static const VariableRef null;
+  static const Variable null;
 
   /** Is this a null variable */
   bool isNull() const {
@@ -74,48 +56,22 @@ public:
   }
 
   /** Creates a null variable */
-  VariableRef()
+  Variable()
   : d_varId(s_null_varId)
   , d_typeId(s_null_typeId)
   {}
 
-  ~VariableRef() {
-    if (refCount && !isNull()) {
-      decRefCount();
-    }
-  }
-  
   /** Copy constructor */
-  VariableRef(const VariableRef& other) 
+  Variable(const Variable& other)
   : d_varId(other.d_varId)
   , d_typeId(other.d_typeId)
-  {
-    if (refCount && !isNull()) {
-	incRefCount();
-    }
-  }
-
-  /** Copy constructor */
-  VariableRef(const VariableRef<!refCount>& other) 
-  : d_varId(other.d_varId)
-  , d_typeId(other.d_typeId)
-  {
-    if (refCount && !isNull()) {
-      incRefCount();
-    }
-  }
+  {}
 
   /** Assignment operator */
-  VariableRef& operator = (const VariableRef& other) {
+  Variable& operator = (const Variable& other) {
     if (this != &other) {
-      if (refCount && !isNull()) {
-	decRefCount();
-      }
       d_varId = other.d_varId;
       d_typeId = other.d_typeId;
-      if (refCount && !isNull()) {
-	incRefCount();
-      }
     }
     return *this;
   }
@@ -132,24 +88,21 @@ public:
   /** Returns the type of the variable (if any) */
   TypeNode getTypeNode() const;
 
-  /** Returns true if the variable is in use  */
-  bool inUse() const;
-  
   /** Output to stream */
   void toStream(std::ostream& out) const;
 
   /** Comparison operator */
-  bool operator < (const VariableRef& other) const {
+  bool operator < (const Variable& other) const {
     return d_varId < other.d_varId;
   }
 
   /** Comparison operator */
-  bool operator == (const VariableRef& other) const {
+  bool operator == (const Variable& other) const {
     return d_varId == other.d_varId && d_typeId == other.d_typeId;
   }
 
   /** Comparison operator */
-  bool operator != (const VariableRef& other) const {
+  bool operator != (const Variable& other) const {
     return !(*this == other);
   }
   
@@ -164,7 +117,7 @@ public:
   }
 
   /** Swap with the given variable */
-  void swap(VariableRef& var) {
+  void swap(Variable& var) {
     size_t tmp;
     tmp = d_varId; d_varId = var.d_varId; var.d_varId = tmp;
     tmp = d_typeId; d_typeId = var.d_typeId; var.d_typeId = tmp;
@@ -173,13 +126,10 @@ public:
 };
 
 /** Output operator for variables */
-template<bool refCount>
-inline std::ostream& operator << (std::ostream& out, const VariableRef<refCount>& var) {
+inline std::ostream& operator << (std::ostream& out, const Variable& var) {
   var.toStream(out); 
   return out;
 }
-
-BOOST_STATIC_ASSERT(sizeof(Variable) == sizeof(Variable_Strong));
 
 /** A vector of variables */
 typedef std::vector<Variable> VariableVector;
@@ -234,12 +184,3 @@ inline std::ostream& operator << (std::ostream& out, const VariableHashSet& vars
 
 } /* Namespace mcsat */
 } /* Namespace CVC4 */
-
-namespace std {
-
-template<>
-inline void swap(CVC4::mcsat::Variable_Strong& v1, CVC4::mcsat::Variable_Strong& v2) {
-  v1.swap(v2);
-}
-
-}

@@ -90,7 +90,7 @@ private:
   rules::BooleanResolutionRule d_rule_Resolution;
 
   /** Clauses learnt from conflicts */
-  std::vector<CRef_Strong> d_learntClauses;
+  std::vector<CRef> d_learntClauses;
 
   /** All the plugins */
   std::vector<SolverPlugin*> d_plugins;

@@ -39,7 +39,6 @@ size_t VariableDatabase::getTypeIndex(TypeNode type) {
     d_typenodeToVariableMap[type] = typeIndex;
     d_variableTypes.push_back(type);
     d_variableNodes.resize(typeIndex + 1);
-    d_variableRefCount.resize(typeIndex + 1);
   } else {
     typeIndex = find_type->second;
   }
@@ -74,7 +73,6 @@ Variable VariableDatabase::getVariable(TNode node) {
 
   // Add the information
   d_variableNodes[typeIndex].push_back(node);
-  d_variableRefCount[typeIndex].push_back(0);
 
   Variable var(newVarId, typeIndex);
 
