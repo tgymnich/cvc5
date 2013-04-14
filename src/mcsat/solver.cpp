@@ -41,6 +41,7 @@ Solver::Solver(context::UserContext* userContext, context::Context* searchContex
 , d_restartRequested(false)
 , d_learntClausesScoreMax(1.0)
 , d_learntClausesScoreIncrease(1.0)
+, d_removeITE(userContext)
 , d_variableRegister(d_variableDatabase)
 {
   // Add some engines
@@ -60,20 +61,28 @@ void Solver::addAssertion(TNode assertion, bool process) {
   VariableDatabase::SetCurrent scoped(&d_variableDatabase);
   Debug("mcsat::solver") << "Solver::addAssertion(" << assertion << ")" << endl; 
 
-  // Normalize the assertion
-  Node rewritten = theory::Rewriter::rewrite(assertion);
-  d_assertions.push_back(rewritten);
+  // Remove ITEs
+  IteSkolemMap skolemMap;
+  std::vector<Node> assertionVector;
+  assertionVector.push_back(assertion);
+  d_removeITE.run(assertionVector, skolemMap);
 
-  // Register all the variables wit the database
-  NodeVisitor<VariableRegister>::run(d_variableRegister, rewritten);
+  for (unsigned i = 0; i < assertionVector.size(); ++ i) {
+    // Normalize and remember
+    Node normalized = theory::Rewriter::rewrite(assertionVector[i]);
+    d_assertions.push_back(normalized);
 
-  // Notify the plugins about the new assertion
-  d_notifyDispatch.notifyAssertion(rewritten);
+    // Register all the variables wit the database
+    NodeVisitor<VariableRegister>::run(d_variableRegister, normalized);
 
-  // Run propagation immediately if requested
-  if (process) {
-    // Propagate the added clauses
-    propagate(SolverTrail::PropagationToken::PROPAGATION_INIT);
+    // Notify the plugins about the new assertion
+    d_notifyDispatch.notifyAssertion(normalized);
+
+    // Run propagation immediately if requested
+    if (process) {
+      // Propagate the added clauses
+      propagate(SolverTrail::PropagationToken::PROPAGATION_INIT);
+    }
   }
 }
 

@@ -33,6 +33,8 @@ void printUsage(Options& opts, bool full) {
   }
 }
 
+void execute(Command* command, mcsat::MCSatEngine& engine);
+
 int main(int argc, char* argv[]) {
   
   // Parse the options
@@ -80,23 +82,23 @@ int main(int argc, char* argv[]) {
   
       // Create the MCSAT engine
       mcsat::MCSatEngine mcSolver(&exprManager);
-      
+
       // Parse and assert
       Command* cmd;
       while ((cmd = parser->nextCommand())) {
-  
-        AssertCommand* assert = dynamic_cast<AssertCommand*>(cmd);
-        if (assert) {
-          // Assert to mcsat
-          mcSolver.addAssertion(assert->getExpr(), true);
+        if (!options[options::parseOnly]) {
+          execute(cmd, mcSolver);
         }
-  
         delete cmd;
       }
   
       // Check the problem
-      bool result = mcSolver.check();
-      cout << (result ? "sat" : "unsat") << endl;
+      if (options[options::parseOnly]) {
+        cout << "unknown" << endl;
+      } else {
+        bool result = mcSolver.check();
+        cout << (result ? "sat" : "unsat") << endl;
+      }
       
       // Dump the statistics if asked for 
       if(options[options::statistics]) {
@@ -110,5 +112,34 @@ int main(int argc, char* argv[]) {
     } catch (const Exception& e) {
       std::cerr << e << std::endl;
     }
+  }
+}
+
+void execute(Command* command, mcsat::MCSatEngine& engine) {
+
+  // Individual assertion
+  AssertCommand* assert = dynamic_cast<AssertCommand*>(command);
+  if (assert) {
+    // Assert to mcsat
+    engine.addAssertion(assert->getExpr(), true);
+    return;
+  }
+
+  CheckSatCommand* checkSat = dynamic_cast<CheckSatCommand*>(command);
+  if (checkSat) {
+    // Assert to mcsat
+    engine.addAssertion(checkSat->getExpr(), true);
+    return;
+  }
+
+  // Sequence of assertions
+  CommandSequence *cmdSequence = dynamic_cast<CommandSequence*>(command);
+  if(cmdSequence != NULL) {
+    CommandSequence::iterator it = cmdSequence->begin();
+    CommandSequence::iterator it_end = cmdSequence->end();
+    for (; it != it_end; ++ it) {
+      execute(*it, engine);
+    }
+    return;
   }
 }

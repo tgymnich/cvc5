@@ -11,6 +11,7 @@
 #include "mcsat/clause/clause_db.h"
 #include "mcsat/plugin/solver_plugin.h"
 #include "mcsat/rules/resolution_rule.h"
+#include "util/ite_removal.h"
 
 namespace CVC4 {
 namespace mcsat {
@@ -153,6 +154,9 @@ private:
 
   /** Heuristically remove some learnt clauses */
   void shrinkLearnts();
+
+  /** ITE Removal */
+  RemoveITE d_removeITE;
 
   /**
    * Class responsible for traversing the input formulas and registering variables
