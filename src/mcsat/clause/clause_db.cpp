@@ -32,7 +32,6 @@ ClauseDatabase::ClauseDatabase(context::Context* context, std::string name, size
 : d_memory(0)
 , d_size(0)
 , d_capacity(0)
-, d_wasted(0)
 , d_rules(0)
 , d_id(id)
 , d_name(name)
@@ -52,27 +51,27 @@ ClauseDatabase::~ClauseDatabase() {
   free(d_memory);
 }
 
-char* ClauseDatabase::allocate(unsigned size) {
+char* ClauseDatabase::allocate(size_t& size, char*& mem, size_t& memSize, size_t& memCapacity) {
   // The memory we are dealing with
   // Align the size
   size = align(size);
   // Ensure enough capacity
-  size_t requested = d_size + size;
-  if (requested > d_capacity) {
-    while (requested > d_capacity) {
-      d_capacity += d_capacity >> 1;
+  size_t requested = memSize + size;
+  if (requested > memCapacity) {
+    while (requested > memCapacity) {
+      memCapacity += memCapacity >> 1;
     }
     // Reallocate the memory
-    d_memory = (char*)std::realloc(d_memory, d_capacity);
-    if (d_memory == NULL) {
+    mem = (char*)std::realloc(mem, memCapacity);
+    if (mem == NULL) {
       std::cerr << "Out of memory" << std::endl;
       exit(1);
     }
   }
   // The pointer to the new memory
-  char* pointer = d_memory + d_size;
+  char* pointer = mem + memSize;
   // Increase the used size
-  d_size += size;
+  memSize += size;
   // And that's it
   return pointer;
 }
@@ -85,7 +84,7 @@ CRef ClauseDatabase::newClause(const LiteralVector& literals, size_t ruleId) {
   size_t size = sizeof(Clause) + sizeof(Literal)*literals.size();
 
   // Allocate the memory
-  char* memory = allocate(size);
+  char* memory = allocate(size, d_memory, d_size, d_capacity);
 
   // Construct the clause
   new (memory) Clause(literals, ruleId);
@@ -104,40 +103,6 @@ CRef ClauseDatabase::newClause(const LiteralVector& literals, size_t ruleId) {
 
   // The new clause
   return cRef;
-}
-
-CRef ClauseDatabase::adopt(CRef toAdopt) {
-  
-  Assert(toAdopt.getDatabaseId() != d_id, "No reason to adopt my own clauses");
-  
-  // The clause to adopt
-  Clause& clause = toAdopt.getClause(); 
-  
-  // Compute the size (this should be safe as variant puts the template data at the end)
-  size_t size = sizeof(Clause) + sizeof(int)*clause.size();
-
-  // Allocate the memory
-  char* memory = allocate(size);
-
-  // Construct the clause
-  new (memory) Clause(clause);
-
-  // The new reference (not reference counted for now)
-  CRef cRef(memory - d_memory, d_id);
-
-  // Notify
-  for (unsigned toNotify = 0; toNotify < d_notifySubscribers.size(); ++ toNotify) {
-    d_notifySubscribers[toNotify]->newClause(cRef);
-  }
-  d_clausesList.push_back(cRef);
-  d_firstNotNotified = d_clausesList.size();
-
-  // The new clause
-  return cRef;
-}
-
-void ClauseDatabase::addGCListener(IGCNotify* listener) {
-  d_gcListeners.push_back(listener);
 }
 
 void ClauseDatabase::addNewClauseListener(INewClauseNotify* listener) const {
@@ -162,5 +127,102 @@ ClauseFarm::~ClauseFarm() {
   }  
   if (s_current == this) {
     s_current = 0;
+  }
+}
+
+CRef ClauseDatabase::adopt(CRef toAdopt) {
+
+  Assert(toAdopt.getDatabaseId() != d_id, "No reason to adopt my own clauses");
+
+  // The clause to adopt
+  Clause& clause = toAdopt.getClause();
+
+  // Compute the size (this should be safe as variant puts the template data at the end)
+  size_t size = sizeof(Clause) + sizeof(Literal)*clause.size();
+
+  // Allocate the memory
+  char* memory = allocate(size, d_memory, d_size, d_capacity);
+
+  // Construct the clause
+  new (memory) Clause(clause);
+
+  // The new reference (not reference counted for now)
+  CRef cRef(memory - d_memory, d_id);
+
+  // Notify
+  for (unsigned toNotify = 0; toNotify < d_notifySubscribers.size(); ++ toNotify) {
+    d_notifySubscribers[toNotify]->newClause(cRef);
+  }
+  d_clausesList.push_back(cRef);
+  d_firstNotNotified = d_clausesList.size();
+
+  // The new clause
+  return cRef;
+}
+
+void ClauseDatabase::performGC(const std::set<CRef> clausesToKeep, const VariableRelocationInfo& variableRelocationInfo, ClauseRelocationInfo& clauseRelocationInfo) {
+
+  char* memoryNew = (char*)std::malloc(d_capacity);
+  size_t capacityNew = d_capacity;
+  size_t sizeNew = 0;
+
+  std::vector<CRef> clausesListNew;
+
+  for (unsigned i = 0; i < d_clausesList.size(); ++ i) {
+    CRef oldClauseRef = d_clausesList[i];
+    if (clausesToKeep.count(oldClauseRef) > 0) {
+      // Old clause
+      Clause& clause = oldClauseRef.getClause();
+
+      // Realloc the literals
+      for (unsigned i = 0; i < clause.size(); ++ i) {
+        Literal oldLiteral = clause[i];
+        Variable oldVariable = oldLiteral.getVariable();
+        Variable newVariable = variableRelocationInfo.relocate(oldVariable);
+        clause.d_literals[i] = Literal(newVariable, oldLiteral.isNegated());
+      }
+
+      // Size of the clause
+      size_t size = sizeof(Clause) + sizeof(Literal)*clause.size();
+      // Where to put the new clause
+      char* memory = allocate(size, memoryNew, sizeNew, capacityNew);
+      // Copy the content
+      memcpy(memoryNew, &clause, size);
+      // New reference
+      CRef newClauseRef(memory - memoryNew, d_id);
+      clauseRelocationInfo.add(oldClauseRef, newClauseRef);
+      // Add to the list
+      clausesListNew.push_back(newClauseRef);
+    }
+  }
+
+  // Free the old memory
+  std::free(d_memory);
+
+  d_memory = memoryNew;
+  d_size = sizeNew;
+  d_capacity = capacityNew;
+  d_clausesList.swap(clausesListNew);
+
+  d_firstNotNotified = d_clausesList.size();
+}
+
+void ClauseRelocationInfo::add(CRef oldClause, CRef newClause) {
+  Assert(d_map.find(oldClause) == d_map.end());
+  d_map[oldClause] = newClause;
+}
+
+CRef ClauseRelocationInfo::relocate(CRef oldClause) const {
+  relocation_map::const_iterator find = d_map.find(oldClause);
+  if (find == d_map.end()) {
+    return CRef::null;
+  } else {
+    return find->second;
+  }
+}
+
+void ClauseRelocationInfo::relocate(std::vector<CRef>& clauses) const {
+  for (unsigned i = 0; i < clauses.size(); ++ i) {
+    clauses[i] = relocate(clauses[i]);
   }
 }

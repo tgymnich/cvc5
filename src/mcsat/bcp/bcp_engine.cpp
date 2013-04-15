@@ -323,3 +323,8 @@ void BCPEngine::notifyRestart() {
 void BCPEngine::gcMark(std::set<Variable>& varsToKeep, std::set<CRef>& clausesToKeep) {
   // BCP Doesn't create variables or clauses, so we don't mark anything
 }
+
+/** Relocation phase of the GC */
+void BCPEngine::gcRelocate(const VariableRelocationInfo& vReloc, const ClauseRelocationInfo& cReloc) {
+
+}

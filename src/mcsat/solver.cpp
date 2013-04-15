@@ -501,7 +501,7 @@ void Solver::performGC() {
   std::set<Variable> variablesToKeep;
 
   // Input variables
-  const std::vector<Variable>& inputVariables = d_variableRegister.getVariables();
+  std::vector<Variable>& inputVariables = d_variableRegister.getVariables();
   variablesToKeep.insert(inputVariables.begin(), inputVariables.end());
 
   // Learnt clauses we decide to keep
@@ -533,4 +533,23 @@ void Solver::performGC() {
     }
   }
 
+  // Do the variable GC
+  VariableRelocationInfo variableRelocationInfo;
+  d_variableDatabase.performGC(variablesToKeep, variableRelocationInfo);
+
+  // Do the clause GC
+  ClauseRelocationInfo clauseRelocationInfo;
+  d_clauseFarm.performGC(clausesToKeep, variableRelocationInfo, clauseRelocationInfo);
+
+  // Input variables
+  variableRelocationInfo.relocate(inputVariables);
+
+  // Clauses
+  clauseRelocationInfo.relocate(d_learntClauses);
+
+  // The trail
+  d_trail.gcRelocate(variableRelocationInfo, clauseRelocationInfo);
+  for (unsigned i = 0; i < d_plugins.size(); ++ i) {
+    d_plugins[i]-> gcRelocate(variableRelocationInfo, clauseRelocationInfo);
+  }
 }

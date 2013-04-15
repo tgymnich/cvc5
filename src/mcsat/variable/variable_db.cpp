@@ -118,6 +118,12 @@ Variable VariableRelocationInfo::relocate(Variable oldVar) const {
   }
 }
 
+void VariableRelocationInfo::relocate(std::vector<Variable>& variables) const {
+  for (unsigned i = 0; i < variables.size(); ++ i) {
+    variables[i] = relocate(variables[i]);
+  }
+}
+
 void VariableDatabase::performGC(const std::set<Variable>& varsToKeep, VariableRelocationInfo& relocationInfo) {
 
   // Clear any relocation info

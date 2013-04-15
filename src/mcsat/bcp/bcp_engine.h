@@ -100,6 +100,9 @@ public:
   /** Mark phase of the GC */
   void gcMark(std::set<Variable>& varsToKeep, std::set<CRef>& clausesToKeep);
 
+  /** Relocation phase of the GC */
+  void gcRelocate(const VariableRelocationInfo& vReloc, const ClauseRelocationInfo& cReloc);
+
   /** String representation */
   std::string toString() const { return "BCP Engine"; }
 };

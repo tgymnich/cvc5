@@ -102,6 +102,9 @@ public:
   /** Mark phase of the GC */
   virtual void gcMark(std::set<Variable>& varsToKeep, std::set<CRef>& clausesToKeep) = 0;
 
+  /** Relocation phase of the GC */
+  virtual void gcRelocate(const VariableRelocationInfo& vReloc, const ClauseRelocationInfo& cReloc) = 0;
+
 }; /* class SolverPlugin */
 
 inline std::ostream& operator << (std::ostream& out, const SolverPlugin& plugin) {

@@ -349,3 +349,7 @@ void SolverTrail::gcMark(std::set<Variable>& varsToKeep, std::set<CRef>& clauses
     }
   }
 }
+
+void SolverTrail::gcRelocate(const VariableRelocationInfo& vReloc, const ClauseRelocationInfo& cReloc) {
+
+}

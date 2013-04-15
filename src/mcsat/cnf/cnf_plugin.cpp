@@ -33,3 +33,7 @@ void CNFPlugin::gcMark(std::set<Variable>& varsToKeep, std::set<CRef>& clausesTo
   // CNF plugin creates all the CNF clauses so we add those (those also contain the variables we want to keep)
   clausesToKeep.insert(d_convertedClauses.begin(), d_convertedClauses.end());
 }
+
+void CNFPlugin::gcRelocate(const VariableRelocationInfo& vReloc, const ClauseRelocationInfo& cReloc) {
+
+}

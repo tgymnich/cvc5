@@ -37,6 +37,12 @@ public:
    * Returns the new variable corresponding to the old variables, or null if not relocated.
    */
   Variable relocate(Variable oldVar) const;
+
+
+  /**
+   * Reloacte a vector of variables.
+   */
+  void relocate(std::vector<Variable>& variables) const;
 };
 
 

@@ -204,7 +204,7 @@ private:
     void start(TNode node) {}
     void done(TNode node) {}
     
-    const std::vector<Variable>& getVariables() const {
+    std::vector<Variable>& getVariables() {
       return d_variables;
     }
   } d_variableRegister;

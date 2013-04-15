@@ -13,12 +13,48 @@
 #include "mcsat/clause/clause.h"
 #include "mcsat/clause/clause_ref.h"
 
+#include "mcsat/variable/variable_db.h"
+
 namespace CVC4 {
 namespace mcsat {
 
 namespace rules {
 class ProofRule;
 }
+
+/** Class containing all the information needed to relocate the variables. */
+class ClauseRelocationInfo {
+
+  typedef std::hash_map<CRef, CRef, CRefHashFunction> relocation_map;
+
+  /** Map from old variables to new variable */
+  relocation_map d_map;
+
+  friend class ClauseDatabase;
+
+  /** Add the map old -> new to the map */
+  void add(CRef oldClause, CRef newClause);
+
+public:
+
+  /**
+   * Clear any information.
+   */
+  void clear() {
+    d_map.clear();
+  }
+
+  /**
+   * Returns the new variable corresponding to the old variables, or null if not relocated.
+   */
+  CRef relocate(CRef oldClause) const;
+
+  /**
+   * Relocate a vector of clauses.
+   */
+  void relocate(std::vector<CRef>& clauses) const;
+};
+
 
 /** A database of clauses */
 class ClauseDatabase {
@@ -44,36 +80,30 @@ public:
     virtual void newClause(CRef cref) = 0;
   };
 
-  /** Relocation map for references */
-  typedef __gnu_cxx::hash_map<CRef, CRef> RellocationMap;
-
-  /** Notification interface for garbage collection */
-  class IGCNotify {
-  public:
-    virtual ~IGCNotify() {}
-    virtual void notify(const RellocationMap& relocationMap) = 0;
-  };
-
 private:
   
   /** Pointer to the memory */
   char* d_memory;
 
   /** Use of the current allocated memory */
-  unsigned d_size;
+  size_t d_size;
 
   /** Capacity of the current allocated memory */
-  unsigned d_capacity;
+  size_t d_capacity;
 
-  /** Wasted memory */
-  unsigned d_wasted;
-
-  inline unsigned align(unsigned size) {
+  inline static unsigned align(unsigned size) {
     return (size + 7) & ~((unsigned)7);
   }
 
-  /** Allocate new memory */
-  char* allocate(unsigned size) __attribute__ ((malloc));
+  /**
+   * Allocate new memory
+   * @param size the amount of bytes to allocate
+   * @param the memory to use
+   * @param the current used memory
+   * @param the current total memory capacity
+   * */
+
+  static char* allocate(size_t& size, char*& mem, size_t& memSize, size_t& memCapacity) __attribute__ ((malloc));
 
   friend class rules::ProofRule;
 
@@ -147,9 +177,7 @@ public:
     return *((Clause*) (d_memory + cRef.d_ref));
   }
 
-  /**
-   * Get the id of this database.
-   */
+  /** Get the id of this database. */
   size_t getDatabaseId() const {
     return d_id;
   }
@@ -164,15 +192,10 @@ public:
   void addNewClauseListener(INewClauseNotify* listener) const;
 
   /**
-   * Add a listener for the garbage collection (you are managing it). Garbage collection only happens at 0 context
-   * level.
+   * Perform garbage collection.
    */
-  void addGCListener(IGCNotify* listener);
+  void performGC(const std::set<CRef> clausesToKeep, const VariableRelocationInfo& variableRelocationInfo, ClauseRelocationInfo& clauseRelocationInfo);
 
-private:
-
-  /** List of all GC listeners */
-  std::vector<IGCNotify*> d_gcListeners;
 };
 
 class ClauseFarm {
@@ -212,6 +235,12 @@ public:
     return *d_databases[id];
   }
   
+  void performGC(const std::set<CRef> clausesToKeep, const VariableRelocationInfo& variableRelocationInfo, ClauseRelocationInfo& clauseRelocationInfo) {
+    for (unsigned i = 0; i < d_databases.size(); ++ i) {
+      d_databases[i]->performGC(clausesToKeep, variableRelocationInfo, clauseRelocationInfo);
+    }
+  }
+
   /**
    * Helper class to ensure scoped clause farm.
    */
