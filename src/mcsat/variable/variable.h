@@ -93,12 +93,16 @@ public:
 
   /** Comparison operator */
   bool operator < (const Variable& other) const {
-    return d_varId < other.d_varId;
+    if (d_typeId == other.d_typeId) {
+      return d_varId < other.d_varId;
+    } else {
+      return d_typeId < other.d_typeId;
+    }
   }
 
   /** Comparison operator */
   bool operator == (const Variable& other) const {
-    return d_varId == other.d_varId && d_typeId == other.d_typeId;
+    return d_typeId == other.d_typeId && d_varId == other.d_varId;
   }
 
   /** Comparison operator */
@@ -115,14 +119,6 @@ public:
   size_t typeIndex() const {
     return d_typeId;
   }
-
-  /** Swap with the given variable */
-  void swap(Variable& var) {
-    size_t tmp;
-    tmp = d_varId; d_varId = var.d_varId; var.d_varId = tmp;
-    tmp = d_typeId; d_typeId = var.d_typeId; var.d_typeId = tmp;
-  }
-
 };
 
 /** Output operator for variables */

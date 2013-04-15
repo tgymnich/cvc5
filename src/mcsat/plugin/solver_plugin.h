@@ -98,6 +98,10 @@ public:
 
   /** String representation of the plugin (for debug purposes mainly) */
   virtual std::string toString() const = 0;
+
+  /** Mark phase of the GC */
+  virtual void gcMark(std::set<Variable>& varsToKeep, std::set<CRef>& clausesToKeep) = 0;
+
 }; /* class SolverPlugin */
 
 inline std::ostream& operator << (std::ostream& out, const SolverPlugin& plugin) {

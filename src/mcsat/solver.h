@@ -132,11 +132,20 @@ private:
   /** Has a restart been requested */
   bool d_restartRequested;
   
+  /** Has a GC run been requested */
+  bool d_gcRequested;
+
   /** Request a search restart */
   void requestRestart();
   
   /** Request a propagation round */
   void requestPropagate();
+
+  /** Request garbage collection at next restart */
+  void requestGC();
+
+  /** Perform garbage collection */
+  void performGC();
 
   friend class SolverPluginRequest;
 

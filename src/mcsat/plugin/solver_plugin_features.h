@@ -70,7 +70,6 @@ public:
   virtual void decide(SolverTrail::DecisionToken& out) {
     Unreachable("If you claim to implement, then reimplement");
   }
-
 };
 
 

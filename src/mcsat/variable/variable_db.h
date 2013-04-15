@@ -11,6 +11,35 @@
 namespace CVC4 {
 namespace mcsat {
 
+/** Class containing all the information needed to relocate the variables. */
+class VariableRelocationInfo {
+
+  typedef std::hash_map<Variable, Variable, VariableHashFunction> relocation_map;
+
+  /** Map from old variables to new variable */
+  relocation_map d_map;
+
+  friend class VariableDatabase;
+
+  /** Add the map old -> new to the map */
+  void add(Variable oldVar, Variable newVar);
+
+public:
+
+  /**
+   * Clear any information.
+   */
+  void clear() {
+    d_map.clear();
+  }
+
+  /**
+   * Returns the new variable corresponding to the old variables, or null if not relocated.
+   */
+  Variable relocate(Variable oldVar) const;
+};
+
+
 /**
  * Database of variables, both Boolean and non-Boolean. The variables are preferred
  * to nodes as they provide contiguous ids for important nodes (variables and 
@@ -45,8 +74,8 @@ private:
   std::vector<TypeNode> d_variableTypes;
 
   /** Map from Types to type-id */
-  typedef std::hash_map<TypeNode, size_t, TypeNodeHashFunction> typenode_to_variable_map;
-  typenode_to_variable_map d_typenodeToVariableMap;
+  typedef std::hash_map<TypeNode, size_t, TypeNodeHashFunction> typenode_to_id_map;
+  typenode_to_id_map d_typenodeToIdMap;
 
   /** Nodes of the variables */
   std::vector< std::vector<Node> > d_variableNodes;
@@ -70,8 +99,6 @@ private:
 
   /** Context dependent notify subscribers */
   std::vector<INewVariableNotify*> d_cd_notifySubscribers;
-
-  /** Sizes of the variables created */
 
   /** Clause database we're using */
   static CVC4_THREADLOCAL(VariableDatabase*) s_current;
@@ -158,6 +185,11 @@ public:
       setCurrentDB(old);
     }
   };
+
+  /**
+   * Performs GC keeping the varsToKeep variables and filling in the relocationInfo for the user.
+   */
+  void performGC(const std::set<Variable>& varsToKeep, VariableRelocationInfo& relocationInfo);
 };
 
 }

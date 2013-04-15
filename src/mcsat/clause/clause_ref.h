@@ -17,10 +17,10 @@ class ClauseDatabase;
 class CRef {
 
   /** Number of bits kept for the reference */
-  static const size_t BITS_FOR_REFERENCE = 32;
+  static const size_t BITS_FOR_REFERENCE = 28;
   
   /** NUmber of bits kept for the database id */
-  static const size_t BITS_FOR_DATABASE  = 32;
+  static const size_t BITS_FOR_DATABASE  = 4;
 
   /** Null reference */
   static const size_t nullRef = boost::low_bits_mask_t<BITS_FOR_REFERENCE>::sig_bits;

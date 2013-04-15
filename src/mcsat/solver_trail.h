@@ -210,6 +210,9 @@ public:
     else return d_decisionTrail[level];
   }
 
+  /** Mark phase of the GC */
+  void gcMark(std::set<Variable>& varsToKeep, std::set<CRef>& clausesToKeep);
+
   /** Is the trail consistent */
   bool consistent() const {
     return d_inconsistentPropagations.empty();

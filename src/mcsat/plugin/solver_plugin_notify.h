@@ -21,13 +21,15 @@ enum NotificationType {
   NOTIFY_RESTART,
   /** Notify of a conflict */
   NOTIFY_CONFLICT,
-  /** Notify of a conflicr resolution step */
+  /** Notify of a conflict resolution step */
   NOTIFY_CONFLICT_RESOLUTION,
-  /** Notify of vaible being unset */
-  NOTIFY_BACKJUMP
+  /** Notify of backjump and unset of variabels */
+  NOTIFY_BACKJUMP,
 };
 
-/** Interface for plugin notificaiton */
+/**
+ * Interface for plugin notification.
+ */
 class SolverPluginNotify {
 
 public:
@@ -79,6 +81,7 @@ public:
   virtual void notifyBackjump(const std::vector<Variable>& unsetVariables) {
     Unreachable("If you subscribe, then reimplement");
   }
+
 };
 
 

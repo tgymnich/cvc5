@@ -39,6 +39,7 @@ Solver::Solver(context::UserContext* userContext, context::Context* searchContex
 , d_backtrackRequested(false)
 , d_backtrackLevel(0)
 , d_restartRequested(false)
+, d_gcRequested(false)
 , d_learntClausesScoreMax(1.0)
 , d_learntClausesScoreIncrease(1.0)
 , d_removeITE(userContext)
@@ -158,7 +159,13 @@ void Solver::processRequests() {
     d_notifyDispatch.notifyBackjump(variablesUnset);
     // Notify of the restart 
     d_notifyDispatch.notifyRestart();
+
+    if (d_gcRequested) {
+      performGC();
+    }
+
     d_restartRequested = false;
+    d_gcRequested = false;
     ++ d_stats.restarts;
   }
 
@@ -173,6 +180,10 @@ void Solver::requestRestart() {
 
 void Solver::requestPropagate() {
   d_request = true;
+}
+
+void Solver::requestGC() {
+  d_gcRequested = true;
 }
 
 
@@ -477,4 +488,49 @@ void Solver::shrinkLearnts() {
   learnt_cmp_by_score cmp(d_learntClausesScore);
   std::sort(d_learntClauses.begin(), d_learntClauses.end(), cmp);
   d_learntClauses.resize(d_learntClauses.size() / 2);
+}
+
+void Solver::performGC() {
+
+  // Shrink learnt clauses we care about
+  shrinkLearnts();
+
+  // List of clauses to keep
+  std::set<CRef> clausesToKeep;
+  // List of variables to keep
+  std::set<Variable> variablesToKeep;
+
+  // Input variables
+  const std::vector<Variable>& inputVariables = d_variableRegister.getVariables();
+  variablesToKeep.insert(inputVariables.begin(), inputVariables.end());
+
+  // Learnt clauses we decide to keep
+  clausesToKeep.insert(d_learntClauses.begin(), d_learntClauses.end());
+
+  // Ask the trail
+  d_trail.gcMark(variablesToKeep, clausesToKeep);
+
+  // Dispatch marking to the plugins
+  for(unsigned i = 0; i < d_plugins.size(); ++ i) {
+    // List of clauses to keep
+    std::set<CRef> p_clausesToKeep;
+    // List of variables to keep
+    std::set<Variable> p_variablesToKeep;
+    // Ask the plugin
+    d_plugins[i]->gcMark(p_variablesToKeep, p_clausesToKeep);
+    // Remember
+    variablesToKeep.insert(p_variablesToKeep.begin(), p_variablesToKeep.end());
+    clausesToKeep.insert(p_clausesToKeep.begin(), p_clausesToKeep.end());
+  }
+
+  // Go through the clauses and get the variables
+  std::set<CRef>::const_iterator c_it = clausesToKeep.begin();
+  std::set<CRef>::const_iterator c_it_end = clausesToKeep.end();
+  for (; c_it != c_it_end; ++ c_it) {
+    Clause& clause = (*c_it).getClause();
+    for (unsigned i = 0; i < clause.size(); ++ i) {
+      variablesToKeep.insert(clause[i].getVariable());
+    }
+  }
+
 }

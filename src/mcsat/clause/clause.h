@@ -13,9 +13,9 @@ namespace mcsat {
 class Clause {
 
   /** Size of the clause */
-  size_t d_size     : 32;
+  size_t d_size     : 28;
   /** Rule that produced this clause */
-  size_t d_ruleId   : 16;
+  size_t d_ruleId   : 4;
 
   /** The literals */
   Literal d_literals[0];

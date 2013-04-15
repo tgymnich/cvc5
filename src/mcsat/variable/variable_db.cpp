@@ -31,12 +31,12 @@ VariableDatabase::VariableDatabase(context::Context* context)
 }
 
 size_t VariableDatabase::getTypeIndex(TypeNode type) {
-  typenode_to_variable_map::const_iterator find_type = d_typenodeToVariableMap.find(type);
+  typenode_to_id_map::const_iterator find_type = d_typenodeToIdMap.find(type);
   size_t typeIndex;
-  if (find_type == d_typenodeToVariableMap.end()) {
+  if (find_type == d_typenodeToIdMap.end()) {
     typeIndex = d_variableTypes.size();
     Debug("mcsat::var_db") << "VariableDatabase::getTypeIndex(" << type << ") => " << typeIndex << std::endl;
-    d_typenodeToVariableMap[type] = typeIndex;
+    d_typenodeToIdMap[type] = typeIndex;
     d_variableTypes.push_back(type);
     d_variableNodes.resize(typeIndex + 1);
   } else {
@@ -76,6 +76,7 @@ Variable VariableDatabase::getVariable(TNode node) {
 
   Variable var(newVarId, typeIndex);
 
+  // Add to the node map
   d_nodeToVariableMap[node] = var;
   d_variables.push_back(var);
 
@@ -102,4 +103,51 @@ void VariableDatabase::addNewVariableListener(INewVariableNotify* listener) {
     d_cd_notifySubscribers.push_back(listener);
   }
   d_notifySubscribers.push_back(listener);
+}
+
+void VariableRelocationInfo::add(Variable oldVar, Variable newVar) {
+  Assert(d_map.find(oldVar) == d_map.end());
+  d_map[oldVar] = newVar;
+}
+
+Variable VariableRelocationInfo::relocate(Variable oldVar) const {
+  relocation_map::const_iterator find = d_map.find(oldVar);
+  if (find == d_map.end()) return Variable();
+  else {
+    return find->second;
+  }
+}
+
+void VariableDatabase::performGC(const std::set<Variable>& varsToKeep, VariableRelocationInfo& relocationInfo) {
+
+  // Clear any relocation info
+  relocationInfo.clear();
+
+  // The only ones we are actually relocating
+  std::vector< std::vector<Node> > variableNodesNew;
+  node_to_variable_map nodeToVariableMapNew;
+
+  // We don't GC Types, so the type-sizes stay
+  variableNodesNew.resize(d_variableNodes.size());
+
+  std::set<Variable>::const_iterator it = varsToKeep.begin();
+  std::set<Variable>::const_iterator it_end = varsToKeep.end();
+  for (; it != it_end; ++ it) {
+    Variable oldVar = *it;
+    Node oldVarNode = getNode(oldVar);
+    // Relocate
+    size_t typeIndex = oldVar.typeIndex();
+    size_t newVarId = variableNodesNew[typeIndex].size();
+    variableNodesNew[typeIndex].push_back(oldVarNode);
+    // New Variable
+    Variable newVar(newVarId, typeIndex);
+    // Node map info
+    nodeToVariableMapNew[oldVarNode] = newVar;
+    // Record
+    relocationInfo.add(oldVar, newVar);
+  }
+
+  // Finally swap out the old data with the new one
+  d_variableNodes.swap(variableNodesNew);
+  d_nodeToVariableMap.swap(nodeToVariableMapNew);
 }

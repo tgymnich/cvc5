@@ -28,3 +28,8 @@ void CNFPlugin::notifyAssertion(TNode assertion) {
   // Convert the assertion
   d_cnfStream.convert(assertion, false);
 }
+
+void CNFPlugin::gcMark(std::set<Variable>& varsToKeep, std::set<CRef>& clausesToKeep) {
+  // CNF plugin creates all the CNF clauses so we add those (those also contain the variables we want to keep)
+  clausesToKeep.insert(d_convertedClauses.begin(), d_convertedClauses.end());
+}

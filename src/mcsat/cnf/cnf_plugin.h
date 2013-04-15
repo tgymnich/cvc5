@@ -38,6 +38,9 @@ public:
   /** Notified by the solver of new assertions */
   void notifyAssertion(TNode assertion);
 
+  /** Mark phase of the GC */
+  void gcMark(std::set<Variable>& varsToKeep, std::set<CRef>& clausesToKeep);
+
   /** String represtentation */
   std::string toString() const;
 

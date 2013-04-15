@@ -122,6 +122,9 @@ public:
   /** Notification of unset variables */
   void notifyBackjump(const std::vector<Variable>& vars);
 
+  /** Mark phase of the GC */
+  void gcMark(std::set<Variable>& varsToKeep, std::set<CRef>& clausesToKeep);
+
 };
 
 // Register the plugin

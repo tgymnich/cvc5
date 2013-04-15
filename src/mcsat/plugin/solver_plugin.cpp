@@ -15,6 +15,12 @@ void SolverPluginRequest::propagate() {
   d_solver->requestPropagate();
 }
 
+void SolverPluginRequest::gc() {
+  d_solver->requestGC();
+}
+
 bool SolverPluginRequest::pending() const {
   return d_solver->d_request;
 }
+
+

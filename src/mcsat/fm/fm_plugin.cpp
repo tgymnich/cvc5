@@ -414,3 +414,7 @@ void FMPlugin::notifyBackjump(const std::vector<Variable>& vars) {
     }
   }
 }
+
+void FMPlugin::gcMark(std::set<Variable>& varsToKeep, std::set<CRef>& clausesToKeep) {
+  // We don't care about stuff, TODO: rethink this
+}

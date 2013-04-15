@@ -334,3 +334,18 @@ bool SolverTrail::checkConsistency() const {
 
   return true;
 }
+
+void SolverTrail::gcMark(std::set<Variable>& varsToKeep, std::set<CRef>& clausesToKeep) {
+  // The trail cares about variables in the trail and any clauses that are in the clausal reasons
+  for (unsigned i = 0; i < d_trail.size(); ++ i) {
+    Variable var = d_trail[i].var;
+    // No need to keep the variable, since we're keeping the clause and that will keep the variable
+    // Keep the reason if clausal
+    if (d_trail[i].hasReason()) {
+      Literal l(var, !isTrue(var));
+      if (d_reasonProviders[l] == &d_clauseReasons) {
+        clausesToKeep.insert(d_clauseReasons[l]);
+      }
+    }
+  }
+}

@@ -319,3 +319,7 @@ void BCPEngine::notifyRestart() {
   d_conflictsCount = 0;
   d_conflictsLimit = d_restartInit * pow(d_restartBase, luby(d_restartsCount));
 }
+
+void BCPEngine::gcMark(std::set<Variable>& varsToKeep, std::set<CRef>& clausesToKeep) {
+  // BCP Doesn't create variables or clauses, so we don't mark anything
+}

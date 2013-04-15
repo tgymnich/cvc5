@@ -97,6 +97,9 @@ public:
   /** Notification of restarts */
   void notifyRestart();
   
+  /** Mark phase of the GC */
+  void gcMark(std::set<Variable>& varsToKeep, std::set<CRef>& clausesToKeep);
+
   /** String representation */
   std::string toString() const { return "BCP Engine"; }
 };
