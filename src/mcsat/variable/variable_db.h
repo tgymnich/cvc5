@@ -14,6 +14,21 @@ namespace mcsat {
 /** Class containing all the information needed to relocate the variables. */
 class VariableRelocationInfo {
 
+public:
+
+  struct RelocationPair {
+    Variable oldVariable;
+    Variable newVariable;
+
+    RelocationPair(Variable oldVariable, Variable newVariable)
+    : oldVariable(oldVariable), newVariable(newVariable)
+    {}
+
+    RelocationPair() {}
+  };
+
+private:
+
   typedef std::hash_map<Variable, Variable, VariableHashFunction> relocation_map;
 
   /** Map from old variables to new variable */
@@ -24,25 +39,31 @@ class VariableRelocationInfo {
   /** Add the map old -> new to the map */
   void add(Variable oldVar, Variable newVar);
 
+  /** Old variables per type */
+  std::vector< std::vector<RelocationPair> > d_oldByType;
+
 public:
 
-  /**
-   * Clear any information.
-   */
+  /** Clear any information. */
   void clear() {
     d_map.clear();
   }
 
-  /**
-   * Returns the new variable corresponding to the old variables, or null if not relocated.
-   */
+  /** Returns the new variable corresponding to the old variables, or null if not relocated. */
   Variable relocate(Variable oldVar) const;
 
-
-  /**
-   * Reloacte a vector of variables.
-   */
+  /** Relocate a vector of variables. */
   void relocate(std::vector<Variable>& variables) const;
+
+  /** Iterator through the variables */
+  typedef std::vector<RelocationPair>::const_iterator const_iterator;
+
+  /** Iterator to */
+  const_iterator begin(size_t tyepIndex) const;
+
+  /** Iterator to */
+  const_iterator end(size_t tyepIndex) const;
+
 };
 
 

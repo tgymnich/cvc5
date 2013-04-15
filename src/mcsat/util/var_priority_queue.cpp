@@ -14,11 +14,16 @@ VariablePriorityQueue::VariablePriorityQueue()
 {
 }
 
-void VariablePriorityQueue::newVariable(Variable var) {
+void VariablePriorityQueue::newVariable(Variable var, double score) {
+
   // Insert a new score (max of the current scores)
-  d_variableScores.resize(var.index() + 1, d_variableScoresMax);
+  d_variableScores.resize(var.index() + 1, score);
   // Make sure that there is enough space for the pointer
   d_variableQueuePositions.resize(var.index() + 1);
+
+  if (score > d_variableScoresMax) {
+    d_variableScoresMax = score;
+  }
 
   // Enqueue the variable
   enqueue(var);
@@ -78,4 +83,26 @@ Variable VariablePriorityQueue::pop() {
 
 bool VariablePriorityQueue::empty() const {
   return d_variableQueue.empty();
+}
+
+void VariablePriorityQueue::gcRelocate(const VariableRelocationInfo& vReloc) {
+
+  std::vector<Variable> relocatedVariables;
+  std::vector<double> relocatedVariablesScores;
+
+  // We only care about the scores of the variables that are in the queue (this is 0-level)
+  while (!empty()) {
+    Variable oldVar = pop();
+    relocatedVariables.push_back(vReloc.relocate(oldVar));
+    relocatedVariablesScores.push_back(d_variableScores[oldVar.index()]);
+  }
+
+  d_variableScores.clear();
+  d_variableScoresMax = 0;
+  d_variableQueuePositions.clear();
+
+  for (unsigned i = 0; i < relocatedVariables.size(); ++ i) {
+    newVariable(relocatedVariables[i], relocatedVariablesScores[i]);
+  }
+
 }

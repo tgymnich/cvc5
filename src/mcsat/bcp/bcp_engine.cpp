@@ -133,17 +133,6 @@ void BCPEngine::newClause(CRef cRef) {
   }
 }
 
-void BCPEngine::newVariable(Variable var) {
-
-  Debug("mcsat::bcp") << "BCPEngine::newVariable(" << var << ")" << std::endl;
-
-  // New variable
-  d_variableValues.resize(var.index() + 1, false);
-
-  // Add to the queue
-  d_variableQueue.newVariable(var);
-}
-
 void BCPEngine::propagate(SolverTrail::PropagationToken& out) {
 
   Debug("mcsat::bcp") << "BCPEngine::propagate()" << std::endl;
@@ -322,9 +311,26 @@ void BCPEngine::notifyRestart() {
 
 void BCPEngine::gcMark(std::set<Variable>& varsToKeep, std::set<CRef>& clausesToKeep) {
   // BCP Doesn't create variables or clauses, so we don't mark anything
+  Assert(d_delayedPropagations.size() == 0);
 }
 
-/** Relocation phase of the GC */
-void BCPEngine::gcRelocate(const VariableRelocationInfo& vReloc, const ClauseRelocationInfo& cReloc) {
+void BCPEngine::newVariable(Variable var) {
+  Debug("mcsat::bcp") << "BCPEngine::newVariable(" << var << ")" << std::endl;
+  // New variable
+  d_variableValues.resize(var.index() + 1, false);
+  // Add to the queue
+  d_variableQueue.newVariable(var);
+}
 
+void BCPEngine::gcRelocate(const VariableRelocationInfo& vReloc, const ClauseRelocationInfo& cReloc) {
+  // Relocate the cached variable values
+  std::vector<bool> variableValuesNew(d_variableValues.size(), false);
+  VariableRelocationInfo::const_iterator v_it = vReloc.begin(d_boolTypeIndex);
+  VariableRelocationInfo::const_iterator v_it_end = vReloc.end(d_boolTypeIndex);
+  for (; v_it != v_it_end; ++ v_it) {
+    variableValuesNew[v_it->newVariable.index()] = d_variableValues[v_it->oldVariable.index()];
+  }
+  variableValuesNew.swap(d_variableValues);
+  // Relocate the variable queue
+  d_variableQueue.gcRelocate(vReloc);
 }

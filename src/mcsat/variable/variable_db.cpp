@@ -105,25 +105,6 @@ void VariableDatabase::addNewVariableListener(INewVariableNotify* listener) {
   d_notifySubscribers.push_back(listener);
 }
 
-void VariableRelocationInfo::add(Variable oldVar, Variable newVar) {
-  Assert(d_map.find(oldVar) == d_map.end());
-  d_map[oldVar] = newVar;
-}
-
-Variable VariableRelocationInfo::relocate(Variable oldVar) const {
-  relocation_map::const_iterator find = d_map.find(oldVar);
-  if (find == d_map.end()) return Variable();
-  else {
-    return find->second;
-  }
-}
-
-void VariableRelocationInfo::relocate(std::vector<Variable>& variables) const {
-  for (unsigned i = 0; i < variables.size(); ++ i) {
-    variables[i] = relocate(variables[i]);
-  }
-}
-
 void VariableDatabase::performGC(const std::set<Variable>& varsToKeep, VariableRelocationInfo& relocationInfo) {
 
   // Clear any relocation info
@@ -156,4 +137,39 @@ void VariableDatabase::performGC(const std::set<Variable>& varsToKeep, VariableR
   // Finally swap out the old data with the new one
   d_variableNodes.swap(variableNodesNew);
   d_nodeToVariableMap.swap(nodeToVariableMapNew);
+}
+
+void VariableRelocationInfo::add(Variable oldVar, Variable newVar) {
+  Assert(d_map.find(oldVar) == d_map.end());
+  d_map[oldVar] = newVar;
+  // Remember in the proper list
+  size_t typeIndex = oldVar.typeIndex();
+  if (typeIndex >= d_oldByType.size()) {
+    d_oldByType.resize(typeIndex + 1);
+  }
+  d_oldByType[typeIndex].push_back(RelocationPair(oldVar, newVar));
+}
+
+Variable VariableRelocationInfo::relocate(Variable oldVar) const {
+  relocation_map::const_iterator find = d_map.find(oldVar);
+  if (find == d_map.end()) return Variable();
+  else {
+    return find->second;
+  }
+}
+
+void VariableRelocationInfo::relocate(std::vector<Variable>& variables) const {
+  for (unsigned i = 0; i < variables.size(); ++ i) {
+    variables[i] = relocate(variables[i]);
+  }
+}
+
+/** Iterator to */
+VariableRelocationInfo::const_iterator VariableRelocationInfo::begin(size_t typeIndex) const {
+  return d_oldByType[typeIndex].begin();
+}
+
+/** Iterator to */
+VariableRelocationInfo::const_iterator VariableRelocationInfo::end(size_t typeIndex) const {
+  return d_oldByType[typeIndex].end();
 }

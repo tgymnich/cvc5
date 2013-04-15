@@ -1,6 +1,7 @@
 #pragma once
 
 #include "mcsat/variable/variable.h"
+#include "mcsat/variable/variable_db.h"
 
 #include <ext/pb_ds/priority_queue.hpp>
 
@@ -57,7 +58,12 @@ public:
   VariablePriorityQueue();
 
   /** Add new variable to track */
-  void newVariable(Variable var);
+  void newVariable(Variable var) {
+    newVariable(var, d_variableScoresMax);
+  }
+
+  /** Add new variable to track with the given score */
+  void newVariable(Variable var, double score);
 
   /** Get the top variable */
   Variable pop();
@@ -77,6 +83,8 @@ public:
   /** Get the score of a variable */
   double getScore(Variable var) const;
 
+  /** Relocates any the variable queue */
+  void gcRelocate(const VariableRelocationInfo& vReloc);
 };
 
 }
