@@ -120,7 +120,7 @@ public:
   std::string toString() const;
 
   /** Notification of unset variables */
-  void notifyVariableUnset(const std::vector<Variable>& vars);
+  void notifyBackjump(const std::vector<Variable>& vars);
 
 };
 

@@ -24,7 +24,7 @@ enum NotificationType {
   /** Notify of a conflicr resolution step */
   NOTIFY_CONFLICT_RESOLUTION,
   /** Notify of vaible being unset */
-  NOTIFY_VARIABLE_UNSET
+  NOTIFY_BACKJUMP
 };
 
 /** Interface for plugin notificaiton */
@@ -75,8 +75,8 @@ public:
     Unreachable("If you subscribe, then reimplement");
   }
   
-  /** Notification of unset variables */
-  virtual void notifyVariableUnset(const std::vector<Variable>& vars) {
+  /** Notification of a backjump */
+  virtual void notifyBackjump(const std::vector<Variable>& unsetVariables) {
     Unreachable("If you subscribe, then reimplement");
   }
 };
@@ -107,8 +107,8 @@ public:
   /** Nofification of a new conflict resolution step */
   void notifyConflictResolution(CRef clause);
   
-  /** Notification of unset variables */
-  void notifyVariableUnset(const std::vector<Variable>& vars);
+  /** Notification of a backjump */
+  void notifyBackjump(const std::vector<Variable>& unsetVars);
 };
 
 }

@@ -52,7 +52,7 @@ BCPEngine::BCPEngine(ClauseDatabase& clauseDb, const SolverTrail& trail, SolverP
   addNotification(NOTIFY_RESTART);
   addNotification(NOTIFY_CONFLICT);
   addNotification(NOTIFY_CONFLICT_RESOLUTION);
-  addNotification(NOTIFY_VARIABLE_UNSET);  
+  addNotification(NOTIFY_BACKJUMP);  
 
   Notice() << "mcsat::BCPEngine: Variable selection: " << (options::use_mcsat_bcp_var_heuristic() ? "on" : "off") << std::endl;
   Notice() << "mcsat::BCPEngine: Variable value by phase : " << (options::use_mcsat_bcp_value_phase_heuristic() ? "on" : "off") << std::endl;  
@@ -260,7 +260,7 @@ void BCPEngine::decide(SolverTrail::DecisionToken& out) {
   }
 }
 
-void BCPEngine::notifyVariableUnset(const std::vector<Variable>& vars) {
+void BCPEngine::notifyBackjump(const std::vector<Variable>& vars) {
   // Just add the Boolean variables to the queue
   for (unsigned i = 0; i < vars.size(); ++ i) {
     if (vars[i].typeIndex() == d_boolTypeIndex) {

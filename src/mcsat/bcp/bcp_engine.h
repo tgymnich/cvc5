@@ -92,7 +92,7 @@ public:
   void notifyConflictResolution(CRef clause);
   
   /** Notification of unset variables */
-  void notifyVariableUnset(const std::vector<Variable>& vars);
+  void notifyBackjump(const std::vector<Variable>& vars);
     
   /** Notification of restarts */
   void notifyRestart();

@@ -44,8 +44,8 @@ void NotificationDispatch::notifyConflictResolution(CRef clause) {
   }  
 }
   
-void NotificationDispatch::notifyVariableUnset(const std::vector<Variable>& vars) {
-  for(unsigned i = 0; i < d_toNotify[NOTIFY_VARIABLE_UNSET].size(); ++ i) {
-    d_toNotify[NOTIFY_VARIABLE_UNSET][i]->notifyVariableUnset(vars);
+void NotificationDispatch::notifyBackjump(const std::vector<Variable>& vars) {
+  for(unsigned i = 0; i < d_toNotify[NOTIFY_BACKJUMP].size(); ++ i) {
+    d_toNotify[NOTIFY_BACKJUMP][i]->notifyBackjump(vars);
   }  
 }

@@ -95,10 +95,8 @@ void Solver::processRequests() {
     std::vector<Variable> variablesUnset;
     d_trail.popToLevel(d_backtrackLevel, variablesUnset);
 
-    // Notify the plugins about the unset variables
-    if (variablesUnset.size() > 0) {
-      d_notifyDispatch.notifyVariableUnset(variablesUnset);
-    }
+    // Notify the plugins about the backjump variables
+    d_notifyDispatch.notifyBackjump(variablesUnset);
     
     // All backtrack clauses are to the same level, but some might propagate and some are decision inducing clauses.
     // If there any propagating clauses, we just do the propagations to ensure progress.
@@ -156,10 +154,8 @@ void Solver::processRequests() {
     std::vector<Variable> variablesUnset;
     // Restart to level 0
     d_trail.popToLevel(0, variablesUnset);
-    // Notify of any unset variables
-    if (variablesUnset.size() > 0) {
-      d_notifyDispatch.notifyVariableUnset(variablesUnset);
-    }
+    // Notify of backjump
+    d_notifyDispatch.notifyBackjump(variablesUnset);
     // Notify of the restart 
     d_notifyDispatch.notifyRestart();
     d_restartRequested = false;

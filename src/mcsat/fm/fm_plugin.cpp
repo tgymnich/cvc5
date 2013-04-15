@@ -51,7 +51,7 @@ FMPlugin::FMPlugin(ClauseDatabase& database, const SolverTrail& trail, SolverPlu
   addFeature(CAN_DECIDE);
 
   // Notifications we need
-  addNotification(NOTIFY_VARIABLE_UNSET);
+  addNotification(NOTIFY_BACKJUMP);
 
   // Types we care about
   VariableDatabase& db = *VariableDatabase::getCurrentDB();
@@ -382,7 +382,7 @@ void FMPlugin::decide(SolverTrail::DecisionToken& out) {
   }
 }
 
-void FMPlugin::notifyVariableUnset(const std::vector<Variable>& vars) {
+void FMPlugin::notifyBackjump(const std::vector<Variable>& vars) {
   for (unsigned i = 0; i < vars.size(); ++ i) {
     if (isArithmeticVariable(vars[i])) {
       // Go through the watch and mark the constraints
