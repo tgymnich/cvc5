@@ -21,7 +21,7 @@ private:
 
   friend class VariableDatabase;
 
-  /** Add the map old -> new to the map */
+  /** Mark the variable as collected */
   void add(Variable var);
 
   /** Old variables per type */

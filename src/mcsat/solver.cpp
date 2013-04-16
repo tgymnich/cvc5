@@ -154,9 +154,14 @@ void Solver::processRequests() {
       }
     }
 
-    // Clear the requests
+    // Clear the requests TODO: remove
     d_backtrackRequested = false;
     d_backtrackClauses.clear();
+
+    if (d_trail.decisionLevel() == 0) {
+      performGC();
+    }
+
   }
   
   if (d_restartRequested) {
@@ -503,6 +508,8 @@ void Solver::shrinkLearnts() {
 
 void Solver::performGC() {
 
+  ++ d_stats.gc;
+
   // Shrink learnt clauses we care about
   shrinkLearnts();
 
@@ -512,14 +519,21 @@ void Solver::performGC() {
   std::set<Variable> variablesToKeep;
 
   // Input variables
+  Debug("mcsat::gc") << "GC: adding input variables" << std::endl;
   std::vector<Variable>& inputVariables = d_variableRegister.getVariables();
   variablesToKeep.insert(inputVariables.begin(), inputVariables.end());
+  Assert(variablesToKeep.count(Variable::null) == 0);
 
   // Learnt clauses we decide to keep
+  Debug("mcsat::gc") << "GC: adding learnts" << std::endl;
   clausesToKeep.insert(d_learntClauses.begin(), d_learntClauses.end());
+  Assert(clausesToKeep.count(CRef::null) == 0);
 
   // Ask the trail
+  Debug("mcsat::gc") << "GC: marking with the trail" << std::endl;
   d_trail.gcMark(variablesToKeep, clausesToKeep);
+  Assert(variablesToKeep.count(Variable::null) == 0);
+  Assert(clausesToKeep.count(CRef::null) == 0);
 
   // Dispatch marking to the plugins
   for(unsigned i = 0; i < d_plugins.size(); ++ i) {
@@ -528,13 +542,17 @@ void Solver::performGC() {
     // List of variables to keep
     std::set<Variable> p_variablesToKeep;
     // Ask the plugin
+    Debug("mcsat::gc") << "GC: marking with" << *d_plugins[i] << std::endl;
     d_plugins[i]->gcMark(p_variablesToKeep, p_clausesToKeep);
     // Remember
     variablesToKeep.insert(p_variablesToKeep.begin(), p_variablesToKeep.end());
     clausesToKeep.insert(p_clausesToKeep.begin(), p_clausesToKeep.end());
+    Assert(variablesToKeep.count(Variable::null) == 0);
+    Assert(clausesToKeep.count(CRef::null) == 0);
   }
 
   // Go through the clauses and get the variables
+  Debug("mcsat::gc") << "GC: collecting variables from clauses" << std::endl;
   std::set<CRef>::const_iterator c_it = clausesToKeep.begin();
   std::set<CRef>::const_iterator c_it_end = clausesToKeep.end();
   for (; c_it != c_it_end; ++ c_it) {
@@ -543,21 +561,38 @@ void Solver::performGC() {
       variablesToKeep.insert(clause[i].getVariable());
     }
   }
+  Assert(variablesToKeep.count(Variable::null) == 0);
+  Assert(clausesToKeep.count(CRef::null) == 0);
+
+  // Do the clause GC
+  Debug("mcsat::gc") << "GC: clause database" << std::endl;
+  ClauseRelocationInfo clauseRelocationInfo;
+  d_clauseFarm.performGC(clausesToKeep, clauseRelocationInfo);
 
   // Do the variable GC
+  Debug("mcsat::gc") << "GC: variable database" << std::endl;
   VariableGCInfo variableRelocationInfo;
   d_variableDatabase.performGC(variablesToKeep, variableRelocationInfo);
 
-  // Do the clause GC
-  ClauseRelocationInfo clauseRelocationInfo;
-  d_clauseFarm.performGC(clausesToKeep, variableRelocationInfo, clauseRelocationInfo);
-
   // Clauses
   clauseRelocationInfo.relocate(d_learntClauses);
+  // Clause scores
+  std::hash_map<CRef, double, CRefHashFunction> learntClausesScoreNew;
+  std::hash_map<CRef, double, CRefHashFunction>::const_iterator s_it = d_learntClausesScore.begin();
+  std::hash_map<CRef, double, CRefHashFunction>::const_iterator s_it_end = d_learntClausesScore.end();
+  for (; s_it != s_it_end; ++ s_it) {
+    CRef refNew = clauseRelocationInfo.relocate(s_it->first);
+    if (!refNew.isNull()) {
+      learntClausesScoreNew[refNew] = s_it->second;
+    }
+  }
+  learntClausesScoreNew.swap(d_learntClausesScore);
 
   // The trail
+  Debug("mcsat::gc") << "GC: relocating trail" << std::endl;
   d_trail.gcRelocate(variableRelocationInfo, clauseRelocationInfo);
   for (unsigned i = 0; i < d_plugins.size(); ++ i) {
+    Debug("mcsat::gc") << "GC: relocating " << *d_plugins[i] << std::endl;
     d_plugins[i]-> gcRelocate(variableRelocationInfo, clauseRelocationInfo);
   }
 }

@@ -24,21 +24,26 @@ struct SolverStats {
   IntStat decisions;
   /** Number of restarts */
   IntStat restarts;
+  /** NUmber of GC calls */
+  IntStat gc;
   
   SolverStats() 
   : conflicts("mcsat::solver::conflicts", 0)
   , decisions("mcsat::solver::decisions", 0)
-  , restarts("mcsat::solver::restarts", 0)  
+  , restarts("mcsat::solver::restarts", 0)
+  , gc("mcsat::sovler::gc", 0)
   {
     StatisticsRegistry::registerStat(&conflicts);  
     StatisticsRegistry::registerStat(&decisions);  
-    StatisticsRegistry::registerStat(&restarts);  
+    StatisticsRegistry::registerStat(&restarts);
+    StatisticsRegistry::registerStat(&gc);
   }
   
   ~SolverStats() {
     StatisticsRegistry::unregisterStat(&conflicts);  
     StatisticsRegistry::unregisterStat(&decisions);  
-    StatisticsRegistry::unregisterStat(&restarts);  
+    StatisticsRegistry::unregisterStat(&restarts);
+    StatisticsRegistry::unregisterStat(&gc);
   }
 };
 

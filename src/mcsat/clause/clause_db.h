@@ -13,8 +13,6 @@
 #include "mcsat/clause/clause.h"
 #include "mcsat/clause/clause_ref.h"
 
-#include "mcsat/variable/variable_db.h"
-
 namespace CVC4 {
 namespace mcsat {
 
@@ -195,7 +193,7 @@ public:
   /**
    * Perform garbage collection.
    */
-  void performGC(const std::set<CRef> clausesToKeep, const VariableGCInfo& variableRelocationInfo, ClauseRelocationInfo& clauseRelocationInfo);
+  void performGC(const std::set<CRef>& clausesToKeep, ClauseRelocationInfo& clauseRelocationInfo);
 
 };
 
@@ -236,9 +234,9 @@ public:
     return *d_databases[id];
   }
   
-  void performGC(const std::set<CRef> clausesToKeep, const VariableGCInfo& variableRelocationInfo, ClauseRelocationInfo& clauseRelocationInfo) {
+  void performGC(const std::set<CRef>& clausesToKeep, ClauseRelocationInfo& clauseRelocationInfo) {
     for (unsigned i = 0; i < d_databases.size(); ++ i) {
-      d_databases[i]->performGC(clausesToKeep, variableRelocationInfo, clauseRelocationInfo);
+      d_databases[i]->performGC(clausesToKeep, clauseRelocationInfo);
     }
   }
 

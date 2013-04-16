@@ -160,7 +160,7 @@ CRef ClauseDatabase::adopt(CRef toAdopt) {
   return cRef;
 }
 
-void ClauseDatabase::performGC(const std::set<CRef> clausesToKeep, const VariableGCInfo& variableRelocationInfo, ClauseRelocationInfo& clauseRelocationInfo) {
+void ClauseDatabase::performGC(const std::set<CRef>& clausesToKeep, ClauseRelocationInfo& clauseRelocationInfo) {
 
   char* memoryNew = (char*)std::malloc(d_capacity);
   size_t capacityNew = d_capacity;
@@ -170,7 +170,10 @@ void ClauseDatabase::performGC(const std::set<CRef> clausesToKeep, const Variabl
 
   for (unsigned i = 0; i < d_clausesList.size(); ++ i) {
     CRef oldClauseRef = d_clausesList[i];
-    if (clausesToKeep.count(oldClauseRef) > 0) {
+    if (clausesToKeep.count(oldClauseRef) == 0) {
+
+      Debug("mcsat::gc") << "GC: collecting " << oldClauseRef << std::endl;
+
       // Old clause
       Clause& clause = oldClauseRef.getClause();
       // Size of the clause

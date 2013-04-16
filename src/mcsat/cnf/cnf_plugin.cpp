@@ -21,7 +21,10 @@ std::string CNFPlugin::toString() const  {
 
 void CNFPlugin::CnfListener::newClause(LiteralVector& clause) {
   CRef cRef = d_cnfPlugin.d_inputClauseRule.apply(clause);
-  d_cnfPlugin.d_convertedClauses.push_back(cRef);
+  // CRef can be null for clauses that are tautologies or true
+  if (!cRef.isNull()) {
+    d_cnfPlugin.d_convertedClauses.push_back(cRef);
+  }
 }
 
 void CNFPlugin::notifyAssertion(TNode assertion) {

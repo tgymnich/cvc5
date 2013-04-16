@@ -124,13 +124,17 @@ void VariableDatabase::performGC(const std::set<Variable>& varsToKeep, VariableG
   for (; current < d_variables.size(); ++ current) {
     Variable var = d_variables[current];
     if (varsToKeep.count(var) > 0) {
+      // We're keeping this one
       d_variables[lastToKeep ++] = var;
     } else {
+      Debug("mcsat::gc") << "GC: collecting " << var << std::endl;
       // Erase the node information
       d_nodeToVariableMap.erase(var.getNode());
       d_variableNodes[var.typeIndex()][var.index()] = Node::null();
       // Add to rectycle list
       d_variablesToRecycle[var.typeIndex()].push_back(var);
+      // Add to relocation info
+      relocationInfo.add(var);
     }
   }
   d_variables.resize(lastToKeep);
@@ -147,6 +151,16 @@ VariableGCInfo::const_iterator VariableGCInfo::begin(size_t typeIndex) const {
 /** Iterator to */
 VariableGCInfo::const_iterator VariableGCInfo::end(size_t typeIndex) const {
   return d_removedByType[typeIndex].end();
+}
+
+void VariableGCInfo::add(Variable var) {
+  Assert(d_removedVariables.find(var) == d_removedVariables.end());
+  d_removedVariables.insert(var);
+  size_t typeIndex = var.typeIndex();
+  if (typeIndex >= d_removedByType.size()) {
+    d_removedByType.resize(typeIndex + 1);
+  }
+  d_removedByType[typeIndex].push_back(var);
 }
 
 size_t VariableGCInfo::size(size_t typeIndex) const {
