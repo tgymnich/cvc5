@@ -32,6 +32,7 @@ public:
   /** Clear any information. */
   void clear() {
     d_removedVariables.clear();
+    d_removedByType.clear();
   }
 
   /** Returns true if the variable was collected */

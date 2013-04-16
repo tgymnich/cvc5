@@ -150,7 +150,11 @@ VariableGCInfo::const_iterator VariableGCInfo::end(size_t typeIndex) const {
 }
 
 size_t VariableGCInfo::size(size_t typeIndex) const {
-  return d_removedByType[typeIndex].size();
+  if (typeIndex >= d_removedByType.size()) {
+    return 0;
+  } else {
+    return d_removedByType[typeIndex].size();
+  }
 }
 
 void VariableGCInfo::collect(std::vector<Variable>& vars) const {

@@ -421,15 +421,17 @@ void FMPlugin::gcRelocate(const VariableGCInfo& vReloc, const ClauseRelocationIn
   size_t boolType = VariableDatabase::getCurrentDB()->getTypeIndex(NodeManager::currentNM()->booleanType());
   
   // Go throuth deleted constraints 
-  VariableGCInfo::const_iterator it = vReloc.begin(boolType);
-  VariableGCInfo::const_iterator it_end = vReloc.begin(boolType);
-  for (; it != it_end; ++ it) {
-    fm::var_to_constraint_map::iterator find = d_constraints.find(*it);
-    if (find != d_constraints.end()) {
-      // Remove from map: variables -> constraints 
-      d_constraints.erase(find);
-      // Set status to unknwon
-      d_constraintUnassignedStatus[it->index()] = UNASSIGNED_UNKNOWN;
+  if (vReloc.size(boolType) > 0) {
+    VariableGCInfo::const_iterator it = vReloc.begin(boolType);
+    VariableGCInfo::const_iterator it_end = vReloc.end(boolType);
+    for (; it != it_end; ++ it) {
+      fm::var_to_constraint_map::iterator find = d_constraints.find(*it);
+      if (find != d_constraints.end()) {
+        // Remove from map: variables -> constraints
+        d_constraints.erase(find);
+        // Set status to unknwon
+        d_constraintUnassignedStatus[it->index()] = UNASSIGNED_UNKNOWN;
+      }
     }
   }
 

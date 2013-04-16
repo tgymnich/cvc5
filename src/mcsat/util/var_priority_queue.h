@@ -10,7 +10,7 @@ namespace mcsat {
 namespace util {
 
 /**
- * A priority queue for the variables of certain types. Note: THIS IS ONLY FOR VARIABLES OF A SINGLE TYPE.
+ * A priority queue for the variables of certain types.
  */
 class VariablePriorityQueue {
 

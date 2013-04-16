@@ -111,9 +111,9 @@ void VariablePriorityQueue::clear() {
 void VariablePriorityQueue::gcRelocate(const VariableGCInfo& vReloc) {
 
   for (unsigned type = 0; type < d_variableScores.size(); ++ type) {
-    if (d_variableScores[type].size() > 0) {
+    if (d_variableScores[type].size() > 0 && vReloc.size(type) > 0) {
       VariableGCInfo::const_iterator it = vReloc.begin(type);
-      VariableGCInfo::const_iterator it_end = vReloc.begin(type);
+      VariableGCInfo::const_iterator it_end = vReloc.end(type);
 
       for (; it != it_end; ++ it) {
         Variable erased = *it;
