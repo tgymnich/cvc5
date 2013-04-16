@@ -14,23 +14,20 @@ namespace util {
  */
 class VariablePriorityQueue {
 
-  /** Type in this queue */
-  size_t d_typeIndex;
-
   /** Scores of variables */
-  std::vector<double> d_variableScores;
+  std::vector< std::vector<double> > d_variableScores;
 
   /** Max over the score of all the variables */
   double d_variableScoresMax;
 
   /** Compare variables according to their current score */
   class VariableScoreCmp {
-    std::vector<double>& d_variableScores;
+    std::vector< std::vector<double> >& d_variableScores;
   public:
-    VariableScoreCmp(std::vector<double>& variableScores)
+    VariableScoreCmp(std::vector< std::vector<double> >& variableScores)
     : d_variableScores(variableScores) {}
     bool operator() (const Variable& v1, const Variable& v2) const {
-      double cmp = d_variableScores[v1.index()] - d_variableScores[v2.index()];
+      double cmp = d_variableScores[v1.typeIndex()][v1.index()] - d_variableScores[v1.typeIndex()][v2.index()];
       if (cmp == 0) {
         return v1 < v2;
       } else {
@@ -47,7 +44,7 @@ class VariablePriorityQueue {
   variable_queue d_variableQueue;
 
   /** Position in the variable queue */
-  std::vector<variable_queue::point_iterator> d_variableQueuePositions;
+  std::vector< std::vector<variable_queue::point_iterator> > d_variableQueuePositions;
 
   /** How much to increase the score per bump */
   double d_variableScoreIncreasePerBump;
@@ -58,7 +55,7 @@ class VariablePriorityQueue {
 public:
 
   /** Construct a variable queue for variables of given type */
-  VariablePriorityQueue(size_t typeIndex);
+  VariablePriorityQueue();
 
   /** Add new variable to track */
   void newVariable(Variable var) {

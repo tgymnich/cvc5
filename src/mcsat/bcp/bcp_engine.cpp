@@ -31,7 +31,6 @@ BCPEngine::BCPEngine(ClauseDatabase& clauseDb, const SolverTrail& trail, SolverP
 , d_newClauseNotify(*this)
 , d_newVariableNotify(*this)
 , d_trailHead(d_trail.getSearchContext())
-, d_variableQueue(d_boolTypeIndex)
 , d_restartsCount(0)
 , d_restartBase(options::mcsat_bcp_restart_base())
 , d_restartInit(options::mcsat_bcp_restart_init())

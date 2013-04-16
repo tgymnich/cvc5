@@ -45,7 +45,7 @@ FMPlugin::FMPlugin(ClauseDatabase& database, const SolverTrail& trail, SolverPlu
 , d_trailHead(trail.getSearchContext(), 0)
 , d_bounds(trail.getSearchContext())
 , d_fmRule(database, trail)
-, d_variableQueue(d_realTypeIndex)
+, d_variableQueue()
 {
   Debug("mcsat::fm") << "FMPlugin::FMPlugin()" << std::endl;
 

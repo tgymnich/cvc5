@@ -171,7 +171,7 @@ void Solver::processRequests() {
     // Notify of the restart 
     d_notifyDispatch.notifyRestart();
 
-    if (d_gcRequested) {
+    if (true || d_gcRequested) {
       performGC();
     }
 
