@@ -6,6 +6,9 @@
 #include "mcsat/clause/literal_table.h"
 #include "mcsat/clause/clause_ref.h"
 
+#include "mcsat/variable/variable_db.h"
+#include "mcsat/clause/clause_db.h"
+
 namespace CVC4 {
 namespace mcsat {
   
@@ -83,6 +86,9 @@ public:
     Debug("mcsat::bcp::watch") << "WatchListManager::begin(" << l << "): in list: " << d_watchLists[l].size() << std::endl;
     return remove_iterator(d_watchLists, l.index());
   }
+
+  void gcRelocate(const VariableGCInfo& vReloc, const ClauseRelocationInfo& cReloc);
+
 };
 
 }

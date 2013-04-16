@@ -10,7 +10,8 @@ noinst_LTLIBRARIES = libmcsat_util.la
 libmcsat_util_la_SOURCES = \
 	var_priority_queue.h \
 	var_priority_queue.cpp \
-	assigned_watch_manager.h
+	assigned_watch_manager.h \
+	assigned_watch_manager.cpp
 	
 EXTRA_DIST = 
 

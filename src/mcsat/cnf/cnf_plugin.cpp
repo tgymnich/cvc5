@@ -34,6 +34,6 @@ void CNFPlugin::gcMark(std::set<Variable>& varsToKeep, std::set<CRef>& clausesTo
   clausesToKeep.insert(d_convertedClauses.begin(), d_convertedClauses.end());
 }
 
-void CNFPlugin::gcRelocate(const VariableRelocationInfo& vReloc, const ClauseRelocationInfo& cReloc) {
-
+void CNFPlugin::gcRelocate(const VariableGCInfo& vReloc, const ClauseRelocationInfo& cReloc) {
+  cReloc.relocate(d_convertedClauses);
 }

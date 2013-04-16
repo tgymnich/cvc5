@@ -53,9 +53,6 @@ class FMPlugin : public SolverPlugin {
   /** Map from variables to constraints */
   fm::var_to_constraint_map d_constraints;
 
-  /** Map from lists to constraint variables */
-  util::varlist_to_var_map d_varlistToVar;
-
   /** Returns true if variable is a registered linear arith constraint */
   bool isLinearConstraint(Variable var) const {
     return d_constraints.find(var) != d_constraints.end();
@@ -64,11 +61,6 @@ class FMPlugin : public SolverPlugin {
   const fm::LinearConstraint& getLinearConstraint(Variable var) const {
     Assert(isLinearConstraint(var));
     return d_constraints.find(var)->second;
-  }
-
-  Variable getLinearConstraint(util::VariableListReference list) const {
-    Assert(d_varlistToVar.find(list) != d_varlistToVar.end());
-    return d_varlistToVar.find(list)->second;
   }
 
   /** Is this variable an arithmetic variable */
@@ -126,7 +118,7 @@ public:
   void gcMark(std::set<Variable>& varsToKeep, std::set<CRef>& clausesToKeep);
 
   /** Relocation phase of the GC */
-  void gcRelocate(const VariableRelocationInfo& vReloc, const ClauseRelocationInfo& cReloc);
+  void gcRelocate(const VariableGCInfo& vReloc, const ClauseRelocationInfo& cReloc);
 
 };
 

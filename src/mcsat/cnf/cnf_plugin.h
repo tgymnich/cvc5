@@ -42,7 +42,7 @@ public:
   void gcMark(std::set<Variable>& varsToKeep, std::set<CRef>& clausesToKeep);
 
   /** Relocation phase of the GC */
-  void gcRelocate(const VariableRelocationInfo& vReloc, const ClauseRelocationInfo& cReloc);
+  void gcRelocate(const VariableGCInfo& vReloc, const ClauseRelocationInfo& cReloc);
 
   /** String represtentation */
   std::string toString() const;

@@ -4,8 +4,6 @@
 #include "mcsat/bcp/watch_list_manager.h"
 #include "mcsat/util/var_priority_queue.h"
 
-#include <ext/pb_ds/priority_queue.hpp>
-
 namespace CVC4 {
 namespace mcsat {
   
@@ -85,6 +83,9 @@ public:
   /** Perform a decision */
   void decide(SolverTrail::DecisionToken& out);
 
+  /** Perform a decision */
+  void decide(SolverTrail::DecisionToken& out, const LiteralVector& options);
+
   /** Notification of a new conflict */
   void notifyConflict();
   
@@ -101,7 +102,7 @@ public:
   void gcMark(std::set<Variable>& varsToKeep, std::set<CRef>& clausesToKeep);
 
   /** Relocation phase of the GC */
-  void gcRelocate(const VariableRelocationInfo& vReloc, const ClauseRelocationInfo& cReloc);
+  void gcRelocate(const VariableGCInfo& vReloc, const ClauseRelocationInfo& cReloc);
 
   /** String representation */
   std::string toString() const { return "BCP Engine"; }

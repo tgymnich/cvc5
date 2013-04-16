@@ -27,9 +27,11 @@ void BCPEngine::NewVariableNotify::newVariable(Variable var) {
 
 BCPEngine::BCPEngine(ClauseDatabase& clauseDb, const SolverTrail& trail, SolverPluginRequest& request)
 : SolverPlugin(clauseDb, trail, request)
+, d_boolTypeIndex(VariableDatabase::getCurrentDB()->getTypeIndex(NodeManager::currentNM()->booleanType()))
 , d_newClauseNotify(*this)
 , d_newVariableNotify(*this)
 , d_trailHead(d_trail.getSearchContext())
+, d_variableQueue(d_boolTypeIndex)
 , d_restartsCount(0)
 , d_restartBase(options::mcsat_bcp_restart_base())
 , d_restartInit(options::mcsat_bcp_restart_init())
@@ -40,13 +42,12 @@ BCPEngine::BCPEngine(ClauseDatabase& clauseDb, const SolverTrail& trail, SolverP
   clauseDb.addNewClauseListener(&d_newClauseNotify);
 
   // Listen to new variables
-  VariableDatabase& db = *VariableDatabase::getCurrentDB();
-  db.addNewVariableListener(&d_newVariableNotify);
-  d_boolTypeIndex = db.getTypeIndex(NodeManager::currentNM()->booleanType());
+  VariableDatabase::getCurrentDB()->addNewVariableListener(&d_newVariableNotify);
 
   // Features we provide
   addFeature(CAN_PROPAGATE);
-  addFeature(CAN_DECIDE);
+  addFeature(CAN_DECIDE_VALUES);
+  addFeature(CAN_DECIDE_LITERALS);
 
   // Notifications we care about 
   addNotification(NOTIFY_RESTART);
@@ -249,6 +250,21 @@ void BCPEngine::decide(SolverTrail::DecisionToken& out) {
   }
 }
 
+void BCPEngine::decide(SolverTrail::DecisionToken& out, const LiteralVector& options) {
+  Debug("mcsat::bcp") << "BCPEngine::decide()" << std::endl;
+  // Get the maximal value literal
+  Literal maxLiteral = options[0];
+  double maxScore = d_variableQueue.getScore(maxLiteral.getVariable());
+  for (unsigned i = 1; i < options.size(); ++ i) {
+    double score = d_variableQueue.getScore(options[i].getVariable());
+    if (score > maxScore) {
+      maxLiteral = options[i];
+      maxScore = score;
+    }
+  }
+  out(maxLiteral);
+}
+
 void BCPEngine::notifyBackjump(const std::vector<Variable>& vars) {
   // Just add the Boolean variables to the queue
   for (unsigned i = 0; i < vars.size(); ++ i) {
@@ -318,19 +334,14 @@ void BCPEngine::newVariable(Variable var) {
   Debug("mcsat::bcp") << "BCPEngine::newVariable(" << var << ")" << std::endl;
   // New variable
   d_variableValues.resize(var.index() + 1, false);
+  d_variableValues[var.index()] = false;
   // Add to the queue
   d_variableQueue.newVariable(var);
 }
 
-void BCPEngine::gcRelocate(const VariableRelocationInfo& vReloc, const ClauseRelocationInfo& cReloc) {
-  // Relocate the cached variable values
-  std::vector<bool> variableValuesNew(d_variableValues.size(), false);
-  VariableRelocationInfo::const_iterator v_it = vReloc.begin(d_boolTypeIndex);
-  VariableRelocationInfo::const_iterator v_it_end = vReloc.end(d_boolTypeIndex);
-  for (; v_it != v_it_end; ++ v_it) {
-    variableValuesNew[v_it->newVariable.index()] = d_variableValues[v_it->oldVariable.index()];
-  }
-  variableValuesNew.swap(d_variableValues);
+void BCPEngine::gcRelocate(const VariableGCInfo& vReloc, const ClauseRelocationInfo& cReloc) {
   // Relocate the variable queue
   d_variableQueue.gcRelocate(vReloc);
+  // Relocate the watch manager
+  d_watchManager.gcRelocate(vReloc, cReloc);
 }

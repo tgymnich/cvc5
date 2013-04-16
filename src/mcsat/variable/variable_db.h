@@ -12,58 +12,47 @@ namespace CVC4 {
 namespace mcsat {
 
 /** Class containing all the information needed to relocate the variables. */
-class VariableRelocationInfo {
-
-public:
-
-  struct RelocationPair {
-    Variable oldVariable;
-    Variable newVariable;
-
-    RelocationPair(Variable oldVariable, Variable newVariable)
-    : oldVariable(oldVariable), newVariable(newVariable)
-    {}
-
-    RelocationPair() {}
-  };
+class VariableGCInfo {
 
 private:
 
-  typedef std::hash_map<Variable, Variable, VariableHashFunction> relocation_map;
-
-  /** Map from old variables to new variable */
-  relocation_map d_map;
+  /** Removed variables */
+  VariableHashSet d_removedVariables;
 
   friend class VariableDatabase;
 
   /** Add the map old -> new to the map */
-  void add(Variable oldVar, Variable newVar);
+  void add(Variable var);
 
   /** Old variables per type */
-  std::vector< std::vector<RelocationPair> > d_oldByType;
-
+  std::vector< std::vector<Variable> > d_removedByType;
+  
 public:
 
   /** Clear any information. */
   void clear() {
-    d_map.clear();
+    d_removedVariables.clear();
   }
 
-  /** Returns the new variable corresponding to the old variables, or null if not relocated. */
-  Variable relocate(Variable oldVar) const;
+  /** Returns true if the variable was collected */
+  bool isCollected(Variable var) const {
+    return d_removedVariables.find(var) != d_removedVariables.end();
+  }
 
-  /** Relocate a vector of variables. */
-  void relocate(std::vector<Variable>& variables) const;
+  /** Remove collected variables from the vector */
+  void collect(std::vector<Variable>& vars) const;
 
-  /** Iterator through the variables */
-  typedef std::vector<RelocationPair>::const_iterator const_iterator;
+  /** Iterator through the removed variables of some types */
+  typedef std::vector<Variable>::const_iterator const_iterator;
 
-  /** Iterator to */
-  const_iterator begin(size_t tyepIndex) const;
+  /** Iterator begin */
+  const_iterator begin(size_t typeIndex) const;
 
-  /** Iterator to */
-  const_iterator end(size_t tyepIndex) const;
+  /** Iterator end */
+  const_iterator end(size_t typeIndex) const;
 
+  /** Size */
+  size_t size(size_t typeIndex) const;
 };
 
 
@@ -106,6 +95,9 @@ private:
 
   /** Nodes of the variables */
   std::vector< std::vector<Node> > d_variableNodes;
+
+  /** Recylcling of variables */
+  std::vector< std::vector<Variable> > d_variablesToRecycle;
 
   typedef std::hash_map<TNode, Variable, TNodeHashFunction> node_to_variable_map;
 
@@ -216,7 +208,7 @@ public:
   /**
    * Performs GC keeping the varsToKeep variables and filling in the relocationInfo for the user.
    */
-  void performGC(const std::set<Variable>& varsToKeep, VariableRelocationInfo& relocationInfo);
+  void performGC(const std::set<Variable>& varsToKeep, VariableGCInfo& relocationInfo);
 };
 
 }

@@ -130,16 +130,27 @@ void Solver::processRequests() {
       }
     } else {
       Debug("mcsat::solver") << "Solver::processBacktrackRequests(): we do a decision" << std::endl;
-      // Decide on the first clause
+      // Decision token
+      SolverTrail::DecisionToken decide(d_trail);
+      LiteralVector litOptions;
+
+      // Pick the literals for the decision
       Clause& c = d_backtrackClauses.begin()->getClause();
       for (unsigned i = 0; i < c.size(); ++ i) {
         if (d_trail.hasValue(c[i].getVariable())) {
           Assert(d_trail.isFalse(c[i]));
         } else {
-          SolverTrail::DecisionToken decide(d_trail);
-          decide(c[i]);
+          litOptions.push_back(c[i]);
 	  break;
         }
+      }
+      Assert(litOptions.size() > 0);
+
+      // Aks for a decision
+      d_featuresDispatch.decide(decide, litOptions);
+      if (!decide.used()) {
+        // If nobody decided, we decide
+        decide(litOptions[0]);
       }
     }
 
@@ -534,15 +545,12 @@ void Solver::performGC() {
   }
 
   // Do the variable GC
-  VariableRelocationInfo variableRelocationInfo;
+  VariableGCInfo variableRelocationInfo;
   d_variableDatabase.performGC(variablesToKeep, variableRelocationInfo);
 
   // Do the clause GC
   ClauseRelocationInfo clauseRelocationInfo;
   d_clauseFarm.performGC(clausesToKeep, variableRelocationInfo, clauseRelocationInfo);
-
-  // Input variables
-  variableRelocationInfo.relocate(inputVariables);
 
   // Clauses
   clauseRelocationInfo.relocate(d_learntClauses);

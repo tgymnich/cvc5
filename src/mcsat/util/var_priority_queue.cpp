@@ -5,8 +5,9 @@ using namespace CVC4;
 using namespace mcsat;
 using namespace util;
 
-VariablePriorityQueue::VariablePriorityQueue()
-: d_variableScoresMax(1)
+VariablePriorityQueue::VariablePriorityQueue(size_t typeIndex)
+: d_typeIndex(typeIndex)
+, d_variableScoresMax(1)
 , d_variableScoreCmp(d_variableScores)
 , d_variableQueue(d_variableScoreCmp)
 , d_variableScoreIncreasePerBump(1)
@@ -15,9 +16,11 @@ VariablePriorityQueue::VariablePriorityQueue()
 }
 
 void VariablePriorityQueue::newVariable(Variable var, double score) {
+  Assert(var.typeIndex() == d_typeIndex);
 
   // Insert a new score (max of the current scores)
   d_variableScores.resize(var.index() + 1, score);
+  d_variableScores[var.index()] = score;
   // Make sure that there is enough space for the pointer
   d_variableQueuePositions.resize(var.index() + 1);
 
@@ -30,10 +33,14 @@ void VariablePriorityQueue::newVariable(Variable var, double score) {
 }
 
 bool VariablePriorityQueue::inQueue(Variable var) const {
+  Assert(d_typeIndex == var.typeIndex());
+  Assert(var.index() < d_variableScores.size());
   return d_variableQueuePositions[var.index()] != variable_queue::point_iterator();
 }
 
 void VariablePriorityQueue::enqueue(Variable var) {
+  Assert(d_typeIndex == var.typeIndex());
+  Assert(var.index() < d_variableScores.size());
   // Add to the queue
   variable_queue::point_iterator it = d_variableQueue.push(var);
   d_variableQueuePositions[var.index()] = it;
@@ -41,7 +48,8 @@ void VariablePriorityQueue::enqueue(Variable var) {
 
 
 void VariablePriorityQueue::bumpVariable(Variable var) {
-
+  Assert(d_typeIndex == var.typeIndex());
+  Assert(var.index() < d_variableScores.size());
   // New heuristic value
   double newValue = d_variableScores[var.index()] + d_variableScoreIncreasePerBump;
   if (newValue > d_variableScoresMax) {
@@ -71,6 +79,8 @@ void VariablePriorityQueue::bumpVariable(Variable var) {
 }
 
 double VariablePriorityQueue::getScore(Variable var) const {
+  Assert(d_typeIndex == var.typeIndex());
+  Assert(var.index() < d_variableScores.size());
   return d_variableScores[var.index()];
 }
 
@@ -85,24 +95,25 @@ bool VariablePriorityQueue::empty() const {
   return d_variableQueue.empty();
 }
 
-void VariablePriorityQueue::gcRelocate(const VariableRelocationInfo& vReloc) {
-
-  std::vector<Variable> relocatedVariables;
-  std::vector<double> relocatedVariablesScores;
-
-  // We only care about the scores of the variables that are in the queue (this is 0-level)
-  while (!empty()) {
-    Variable oldVar = pop();
-    relocatedVariables.push_back(vReloc.relocate(oldVar));
-    relocatedVariablesScores.push_back(d_variableScores[oldVar.index()]);
-  }
-
+void VariablePriorityQueue::clear() {
   d_variableScores.clear();
   d_variableScoresMax = 0;
+  d_variableQueue.clear();
   d_variableQueuePositions.clear();
+}
 
-  for (unsigned i = 0; i < relocatedVariables.size(); ++ i) {
-    newVariable(relocatedVariables[i], relocatedVariablesScores[i]);
+void VariablePriorityQueue::gcRelocate(const VariableGCInfo& vReloc) {
+
+  VariableGCInfo::const_iterator it = vReloc.begin(d_typeIndex);
+  VariableGCInfo::const_iterator it_end = vReloc.begin(d_typeIndex);
+
+  for (; it != it_end; ++ it) {
+    Variable erased = *it;
+    if (inQueue(erased)) {
+      d_variableQueue.erase(d_variableQueuePositions[erased.index()]);
+      d_variableQueuePositions[erased.index()] = variable_queue::point_iterator();
+    }
+    d_variableScores[erased.index()] = 0;
   }
 
 }

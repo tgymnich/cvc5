@@ -39,6 +39,7 @@ size_t VariableDatabase::getTypeIndex(TypeNode type) {
     d_typenodeToIdMap[type] = typeIndex;
     d_variableTypes.push_back(type);
     d_variableNodes.resize(typeIndex + 1);
+    d_variablesToRecycle.resize(typeIndex + 1);
   } else {
     typeIndex = find_type->second;
   }
@@ -69,7 +70,15 @@ Variable VariableDatabase::getVariable(TNode node) {
   size_t typeIndex = getTypeIndex(type);
 
   // The id of the new variable
-  size_t newVarId = d_variableNodes[typeIndex].size();
+  size_t newVarId;
+  if (d_variablesToRecycle[typeIndex].size() > 0) {
+    // Recycle the variable
+    newVarId = d_variablesToRecycle[typeIndex].back().index();
+    d_variablesToRecycle.pop_back();
+  } else {
+    // Completely new variable
+    newVarId = d_variableNodes[typeIndex].size();
+  }
 
   // Add the information
   d_variableNodes[typeIndex].push_back(node);
@@ -105,71 +114,54 @@ void VariableDatabase::addNewVariableListener(INewVariableNotify* listener) {
   d_notifySubscribers.push_back(listener);
 }
 
-void VariableDatabase::performGC(const std::set<Variable>& varsToKeep, VariableRelocationInfo& relocationInfo) {
+void VariableDatabase::performGC(const std::set<Variable>& varsToKeep, VariableGCInfo& relocationInfo) {
 
   // Clear any relocation info
   relocationInfo.clear();
 
-  // The only ones we are actually relocating
-  std::vector< std::vector<Node> > variableNodesNew;
-  node_to_variable_map nodeToVariableMapNew;
-
-  // We don't GC Types, so the type-sizes stay
-  variableNodesNew.resize(d_variableNodes.size());
-
-  std::set<Variable>::const_iterator it = varsToKeep.begin();
-  std::set<Variable>::const_iterator it_end = varsToKeep.end();
-  for (; it != it_end; ++ it) {
-    Variable oldVar = *it;
-    Node oldVarNode = getNode(oldVar);
-    // Relocate
-    size_t typeIndex = oldVar.typeIndex();
-    size_t newVarId = variableNodesNew[typeIndex].size();
-    variableNodesNew[typeIndex].push_back(oldVarNode);
-    // New Variable
-    Variable newVar(newVarId, typeIndex);
-    // Node map info
-    nodeToVariableMapNew[oldVarNode] = newVar;
-    // Record
-    relocationInfo.add(oldVar, newVar);
+  unsigned current = 0;
+  unsigned lastToKeep = 0;
+  for (; current < d_variables.size(); ++ current) {
+    Variable var = d_variables[current];
+    if (varsToKeep.count(var) > 0) {
+      d_variables[lastToKeep ++] = var;
+    } else {
+      // Erase the node information
+      d_nodeToVariableMap.erase(var.getNode());
+      d_variableNodes[var.typeIndex()][var.index()] = Node::null();
+      // Add to rectycle list
+      d_variablesToRecycle[var.typeIndex()].push_back(var);
+    }
   }
+  d_variables.resize(lastToKeep);
 
-  // Finally swap out the old data with the new one
-  d_variableNodes.swap(variableNodesNew);
-  d_nodeToVariableMap.swap(nodeToVariableMapNew);
-}
+  d_variablesCountAtCurrentLevel = d_variables.size();
 
-void VariableRelocationInfo::add(Variable oldVar, Variable newVar) {
-  Assert(d_map.find(oldVar) == d_map.end());
-  d_map[oldVar] = newVar;
-  // Remember in the proper list
-  size_t typeIndex = oldVar.typeIndex();
-  if (typeIndex >= d_oldByType.size()) {
-    d_oldByType.resize(typeIndex + 1);
-  }
-  d_oldByType[typeIndex].push_back(RelocationPair(oldVar, newVar));
-}
-
-Variable VariableRelocationInfo::relocate(Variable oldVar) const {
-  relocation_map::const_iterator find = d_map.find(oldVar);
-  if (find == d_map.end()) return Variable();
-  else {
-    return find->second;
-  }
-}
-
-void VariableRelocationInfo::relocate(std::vector<Variable>& variables) const {
-  for (unsigned i = 0; i < variables.size(); ++ i) {
-    variables[i] = relocate(variables[i]);
-  }
 }
 
 /** Iterator to */
-VariableRelocationInfo::const_iterator VariableRelocationInfo::begin(size_t typeIndex) const {
-  return d_oldByType[typeIndex].begin();
+VariableGCInfo::const_iterator VariableGCInfo::begin(size_t typeIndex) const {
+  return d_removedByType[typeIndex].begin();
 }
 
 /** Iterator to */
-VariableRelocationInfo::const_iterator VariableRelocationInfo::end(size_t typeIndex) const {
-  return d_oldByType[typeIndex].end();
+VariableGCInfo::const_iterator VariableGCInfo::end(size_t typeIndex) const {
+  return d_removedByType[typeIndex].end();
 }
+
+size_t VariableGCInfo::size(size_t typeIndex) const {
+  return d_removedByType[typeIndex].size();
+}
+
+void VariableGCInfo::collect(std::vector<Variable>& vars) const {
+  unsigned current = 0;
+  unsigned lastToKeep = 0;
+  for (; current < vars.size(); ++ current) {
+    Variable var = vars[current];
+    if (!isCollected(var)) {
+      vars[lastToKeep++] = var;
+    }
+  }
+  vars.resize(lastToKeep);
+}
+

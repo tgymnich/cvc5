@@ -14,6 +14,9 @@ namespace util {
  */
 class VariablePriorityQueue {
 
+  /** Type in this queue */
+  size_t d_typeIndex;
+
   /** Scores of variables */
   std::vector<double> d_variableScores;
 
@@ -55,7 +58,7 @@ class VariablePriorityQueue {
 public:
 
   /** Construct a variable queue for variables of given type */
-  VariablePriorityQueue();
+  VariablePriorityQueue(size_t typeIndex);
 
   /** Add new variable to track */
   void newVariable(Variable var) {
@@ -71,6 +74,9 @@ public:
   /** Is the queue empty */
   bool empty() const;
 
+  /** Clear the information */
+  void clear();
+
   /** Enqueues the variable for decision making */
   void enqueue(Variable var);
 
@@ -84,7 +90,7 @@ public:
   double getScore(Variable var) const;
 
   /** Relocates any the variable queue */
-  void gcRelocate(const VariableRelocationInfo& vReloc);
+  void gcRelocate(const VariableGCInfo& vReloc);
 };
 
 }

@@ -1,13 +1,20 @@
 #pragma once
 
+#include "mcsat/variable/variable_db.h"
+#include "mcsat/variable/variable_table.h"
+
 #include <vector>
-#include <boost/integer_traits.hpp>
 #include <ext/hash_map>
+#include <boost/integer/integer_mask.hpp>
 
 namespace CVC4 {
 namespace mcsat {
 namespace util {
 
+/**
+ * A reference to a list of variables. The reference is just an index into a
+ * memory and the length of the list (> 0).
+ */
 class VariableListReference {
 
 protected:
@@ -36,36 +43,61 @@ protected:
 
 public:
 
+  /** Create a null list reference */
   VariableListReference()
   : d_index(nullRef)
   , d_size(0)
   {}
 
+  /** Create a reference from antoher reference */
   VariableListReference(const VariableListReference& other)
   : d_index(other.d_index)
   , d_size(other.d_size)
   {}
 
+  /** Assign this reference another reference */
   VariableListReference& operator = (const VariableListReference& other) {
     d_index = other.d_index;
     d_size = other.d_size;
     return *this;
   }
 
+  /** What is the index of this list in the memory */
   size_t index() const {
     return d_index;
   }
 
+  /** Is this a null reference */
+  bool isNull() const {
+    return d_index == +nullRef;
+  }
+  
+  /** What is the size of this list (>0) */
   size_t size() const {
     return d_size;
   }
 
+  /** Equality checking for two references */
   bool operator == (const VariableListReference& other) const {
     return d_index == other.d_index;
   }
 
 };
 
+/**
+ * This hash function is only apropriate for lists coming from the same memory.
+ */
+class VariableListReferenceHashFunction {
+public:
+  size_t operator () (const VariableListReference& varList) const {
+    return varList.index();
+  }
+};
+
+/**
+ * A variable list is a subsequence of a memory dedicated for lists of 
+ * variables. It is obtained from the memory using the list reference.
+ */
 class VariableList : public VariableListReference {
 
   std::vector<Variable>& d_memory;
@@ -82,14 +114,19 @@ public:
   , d_memory(other.d_memory)
   {}
 
+  /** Get the variable at the given index of the list */
   const Variable& operator [] (size_t i) const {
+    Assert(i < size());
     return d_memory[d_index + i];
   }
 
+  /** Swap two variables in this list */
   void swap(size_t i, size_t j) {
+    Assert(i < size() && j < size());
     std::swap(d_memory[d_index + i], d_memory[d_index + j]);
   }
 
+  /** Output the list */
   void toStream(std::ostream& out) const {
     out << "VariableList[";
     for (unsigned i = 0; i < d_size; ++ i) {
@@ -106,7 +143,13 @@ inline std::ostream& operator << (std::ostream& out, const VariableList& list) {
   return out;
 }
 
+/** 
+ * A manager of the lists of constraint variables. It contains the memory into 
+ * which the lists can index. Each list can be at attached to a variable.
+ */
 class AssignedWatchManager {
+
+  typedef __gnu_cxx::hash_map<VariableListReference, Variable, VariableListReferenceHashFunction> varlist_to_var_map;
 
   /** The list memory */
   std::vector<Variable> d_memory;
@@ -120,24 +163,43 @@ class AssignedWatchManager {
   /** Watchlist indexed by variables */
   watch_lists d_watchLists;
 
+  /** Map from lists to constraint variables */
+  varlist_to_var_map d_varlistToConstraint;
+
 public:
 
-  /** Adds a new list of variables to watch */
-  VariableListReference newListToWatch(const std::vector<Variable>& vars) {
+  /**
+   * Adds a new list of variables to watch and associate it with a constraint.
+   */
+  VariableListReference newListToWatch(const std::vector<Variable>& vars, Variable constraint) {
+    // Create the list
     VariableListReference ref(d_memory.size(), vars.size());
     for(unsigned i = 0; i < vars.size(); ++ i) {
       d_memory.push_back(vars[i]);
     }
+
+    // Record the map
+    d_varlistToConstraint[ref] = constraint;
+
     // The new clause
     return ref;
   }
+
+  /**
+   * Get the constraint associated with the variable list.
+   */
+  Variable getConstraint(util::VariableListReference list) const {
+    Assert(d_varlistToConstraint.find(list) != d_varlistToConstraint.end());
+    return d_varlistToConstraint.find(list)->second;
+  }
+
 
   /** Add list to the watchlist of var */
   void watch(Variable var, VariableListReference ref) {
     d_watchLists[var].push_back(ref);
   }
 
-  /** An iterator that can remove */
+  /** An iterator that can remove as it traverses a watchlist */
   class remove_iterator {
     
     friend class AssignedWatchManager;
@@ -197,19 +259,9 @@ public:
   VariableList get(VariableListReference ref) {
     return VariableList(d_memory, ref);
   }
-};
 
-/**
- * This hash function is only apropriate for lists coming from the same memory.
- */
-class VariableListReferenceHashFunction {
-public:
-  size_t operator () (const VariableListReference& varList) const {
-    return varList.index();
-  }
+  
 };
-
-typedef __gnu_cxx::hash_map<VariableListReference, Variable, VariableListReferenceHashFunction> varlist_to_var_map;
 
 }
 }

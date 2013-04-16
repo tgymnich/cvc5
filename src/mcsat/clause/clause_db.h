@@ -53,6 +53,7 @@ public:
    * Relocate a vector of clauses.
    */
   void relocate(std::vector<CRef>& clauses) const;
+
 };
 
 
@@ -194,7 +195,7 @@ public:
   /**
    * Perform garbage collection.
    */
-  void performGC(const std::set<CRef> clausesToKeep, const VariableRelocationInfo& variableRelocationInfo, ClauseRelocationInfo& clauseRelocationInfo);
+  void performGC(const std::set<CRef> clausesToKeep, const VariableGCInfo& variableRelocationInfo, ClauseRelocationInfo& clauseRelocationInfo);
 
 };
 
@@ -235,7 +236,7 @@ public:
     return *d_databases[id];
   }
   
-  void performGC(const std::set<CRef> clausesToKeep, const VariableRelocationInfo& variableRelocationInfo, ClauseRelocationInfo& clauseRelocationInfo) {
+  void performGC(const std::set<CRef> clausesToKeep, const VariableGCInfo& variableRelocationInfo, ClauseRelocationInfo& clauseRelocationInfo) {
     for (unsigned i = 0; i < d_databases.size(); ++ i) {
       d_databases[i]->performGC(clausesToKeep, variableRelocationInfo, clauseRelocationInfo);
     }

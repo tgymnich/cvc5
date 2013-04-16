@@ -40,26 +40,24 @@ void FMPlugin::NewVariableNotify::newVariable(Variable var) {
 FMPlugin::FMPlugin(ClauseDatabase& database, const SolverTrail& trail, SolverPluginRequest& request)
 : SolverPlugin(database, trail, request)
 , d_newVariableNotify(*this)
+, d_intTypeIndex(VariableDatabase::getCurrentDB()->getTypeIndex(NodeManager::currentNM()->integerType()))
+, d_realTypeIndex(VariableDatabase::getCurrentDB()->getTypeIndex(NodeManager::currentNM()->realType()))
 , d_trailHead(trail.getSearchContext(), 0)
 , d_bounds(trail.getSearchContext())
 , d_fmRule(database, trail)
+, d_variableQueue(d_realTypeIndex)
 {
   Debug("mcsat::fm") << "FMPlugin::FMPlugin()" << std::endl;
 
   // We decide values of variables and can detect conflicts
   addFeature(CAN_PROPAGATE);
-  addFeature(CAN_DECIDE);
+  addFeature(CAN_DECIDE_VALUES);
 
   // Notifications we need
   addNotification(NOTIFY_BACKJUMP);
 
-  // Types we care about
-  VariableDatabase& db = *VariableDatabase::getCurrentDB();
-  d_intTypeIndex = db.getTypeIndex(NodeManager::currentNM()->integerType());
-  d_realTypeIndex = db.getTypeIndex(NodeManager::currentNM()->realType());
-
   // Add the listener
-  db.addNewVariableListener(&d_newVariableNotify);
+  VariableDatabase::getCurrentDB()->addNewVariableListener(&d_newVariableNotify);
 }
 
 std::string FMPlugin::toString() const  {
@@ -123,7 +121,7 @@ void FMPlugin::newConstraint(Variable constraint) {
   std::sort(vars.begin(), vars.end(), cmp);
 
   // Add the variable list to the watch manager and watch the first two constraints
-  VariableListReference listRef = d_assignedWatchManager.newListToWatch(vars);
+  VariableListReference listRef = d_assignedWatchManager.newListToWatch(vars, constraint);
   VariableList list = d_assignedWatchManager.get(listRef);
   Debug("mcsat::fm") << "FMPlugin::newConstraint(" << constraint << "): new list " << list << std::endl;
 
@@ -134,8 +132,6 @@ void FMPlugin::newConstraint(Variable constraint) {
   
   // Remember the constraint
   d_constraints[constraint].swap(linearConstraint);
-  // Also remember that the list reference corresponds to this constraint
-  d_varlistToVar[listRef] = constraint;
   // Status of the constraint
   d_constraintUnassignedStatus.resize(constraint.index() + 1, UNASSIGNED_UNKNOWN);
 
@@ -200,7 +196,7 @@ void FMPlugin::propagate(SolverTrail::PropagationToken& out) {
           // We did not find a new watch so vars[1], ..., vars[n] are assigned, except maybe vars[0]
           if (d_trail.hasValue(variableList[0])) {
             // Even the first one is assigned, so we have a semantic propagation
-            Variable constraintVar = getLinearConstraint(variableListRef);
+            Variable constraintVar = d_assignedWatchManager.getConstraint(variableListRef);
             unsigned valueLevel;
             if (!d_trail.hasValue(constraintVar)) {
               const LinearConstraint& constraint = getLinearConstraint(constraintVar);
@@ -213,7 +209,7 @@ void FMPlugin::propagate(SolverTrail::PropagationToken& out) {
             d_constraintUnassignedStatus[constraintVar.index()] = UNASSIGNED_NONE;
           } else {
             // The first one is not assigned, so we have a new unit constraint
-            Variable constraintVar = getLinearConstraint(variableListRef);
+            Variable constraintVar = d_assignedWatchManager.getConstraint(variableListRef);
             d_constraintUnassignedStatus[constraintVar.index()] = UNASSIGNED_UNIT;
             // If the constraint was already asserted, then process it
             if (d_trail.hasValue(constraintVar)) {
@@ -392,7 +388,7 @@ void FMPlugin::notifyBackjump(const std::vector<Variable>& vars) {
       AssignedWatchManager::remove_iterator w = d_assignedWatchManager.begin(vars[i]);
       while (!w.done()) {
         // Get the current list where var appears
-        Variable constraintVar = getLinearConstraint(*w);
+        Variable constraintVar = d_assignedWatchManager.getConstraint(*w);
         switch (d_constraintUnassignedStatus[constraintVar.index()]) {
 	  case UNASSIGNED_NONE:
 	    d_constraintUnassignedStatus[constraintVar.index()] = UNASSIGNED_UNIT;
@@ -416,10 +412,27 @@ void FMPlugin::notifyBackjump(const std::vector<Variable>& vars) {
 }
 
 void FMPlugin::gcMark(std::set<Variable>& varsToKeep, std::set<CRef>& clausesToKeep) {
-  // We don't care about stuff, TODO: rethink this
+  // We don't care about stuff: TODO: rethink this
 }
 
-void FMPlugin::gcRelocate(const VariableRelocationInfo& vReloc, const ClauseRelocationInfo& cReloc) {
+void FMPlugin::gcRelocate(const VariableGCInfo& vReloc, const ClauseRelocationInfo& cReloc) {
 
+  // Type of constraints 
+  size_t boolType = VariableDatabase::getCurrentDB()->getTypeIndex(NodeManager::currentNM()->booleanType());
+  
+  // Go throuth deleted constraints 
+  VariableGCInfo::const_iterator it = vReloc.begin(boolType);
+  VariableGCInfo::const_iterator it_end = vReloc.begin(boolType);
+  for (; it != it_end; ++ it) {
+    fm::var_to_constraint_map::iterator find = d_constraints.find(*it);
+    if (find != d_constraints.end()) {
+      // Remove from map: variables -> constraints 
+      d_constraints.erase(find);
+      // Set status to unknwon
+      d_constraintUnassignedStatus[it->index()] = UNASSIGNED_UNKNOWN;
+    }
+  }
 }
+
+
 

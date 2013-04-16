@@ -160,7 +160,7 @@ CRef ClauseDatabase::adopt(CRef toAdopt) {
   return cRef;
 }
 
-void ClauseDatabase::performGC(const std::set<CRef> clausesToKeep, const VariableRelocationInfo& variableRelocationInfo, ClauseRelocationInfo& clauseRelocationInfo) {
+void ClauseDatabase::performGC(const std::set<CRef> clausesToKeep, const VariableGCInfo& variableRelocationInfo, ClauseRelocationInfo& clauseRelocationInfo) {
 
   char* memoryNew = (char*)std::malloc(d_capacity);
   size_t capacityNew = d_capacity;
@@ -173,15 +173,6 @@ void ClauseDatabase::performGC(const std::set<CRef> clausesToKeep, const Variabl
     if (clausesToKeep.count(oldClauseRef) > 0) {
       // Old clause
       Clause& clause = oldClauseRef.getClause();
-
-      // Realloc the literals
-      for (unsigned i = 0; i < clause.size(); ++ i) {
-        Literal oldLiteral = clause[i];
-        Variable oldVariable = oldLiteral.getVariable();
-        Variable newVariable = variableRelocationInfo.relocate(oldVariable);
-        clause.d_literals[i] = Literal(newVariable, oldLiteral.isNegated());
-      }
-
       // Size of the clause
       size_t size = sizeof(Clause) + sizeof(Literal)*clause.size();
       // Where to put the new clause
@@ -222,7 +213,13 @@ CRef ClauseRelocationInfo::relocate(CRef oldClause) const {
 }
 
 void ClauseRelocationInfo::relocate(std::vector<CRef>& clauses) const {
-  for (unsigned i = 0; i < clauses.size(); ++ i) {
-    clauses[i] = relocate(clauses[i]);
+  unsigned current = 0;
+  unsigned lastToKeep = 0;
+  for (; current < clauses.size(); ++ current) {
+    CRef newClause = relocate(clauses[current]);
+    if (!newClause.isNull()) {
+      clauses[lastToKeep ++] = newClause;
+    }
   }
+  clauses.resize(lastToKeep);
 }
