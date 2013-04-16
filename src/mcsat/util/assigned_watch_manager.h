@@ -166,6 +166,12 @@ class AssignedWatchManager {
   /** Map from lists to constraint variables */
   varlist_to_var_map d_varlistToConstraint;
 
+  /** List of all lists in creation order */
+  std::vector<VariableListReference> d_varlistList;
+
+  /** Set of watched variables */
+  std::set<Variable> d_watchedVariables;
+
 public:
 
   /**
@@ -177,11 +183,10 @@ public:
     for(unsigned i = 0; i < vars.size(); ++ i) {
       d_memory.push_back(vars[i]);
     }
-
-    // Record the map
+    // Record
     d_varlistToConstraint[ref] = constraint;
-
-    // The new clause
+    d_varlistList.push_back(ref);
+    // The new list reference
     return ref;
   }
 
@@ -197,6 +202,7 @@ public:
   /** Add list to the watchlist of var */
   void watch(Variable var, VariableListReference ref) {
     d_watchLists[var].push_back(ref);
+    d_watchedVariables.insert(var);
   }
 
   /** An iterator that can remove as it traverses a watchlist */
@@ -260,7 +266,8 @@ public:
     return VariableList(d_memory, ref);
   }
 
-  
+  /** Do garbage collection */
+  void gcRelocate(const VariableGCInfo& vReloc);
 };
 
 }

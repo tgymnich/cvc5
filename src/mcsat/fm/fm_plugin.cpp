@@ -432,6 +432,9 @@ void FMPlugin::gcRelocate(const VariableGCInfo& vReloc, const ClauseRelocationIn
       d_constraintUnassignedStatus[it->index()] = UNASSIGNED_UNKNOWN;
     }
   }
+
+  // Relocate the watch manager
+  d_assignedWatchManager.gcRelocate(vReloc);
 }
 
 
