@@ -115,7 +115,7 @@ CRef FourierMotzkinRule::resolveDisequality(Variable var, Literal varL, Literal 
   linear = LinearConstraint::parse(varU, varU_constraint);
   Debug("mcsat::fm") << "varU: " << varU_constraint << std::endl;
   Assert(linear);
-  Assert(varU_constraint.getCoefficient(var) < 0 || varL_constraint.getKind() == kind::EQUAL);
+  Assert(varU_constraint.getCoefficient(var) < 0 || varU_constraint.getKind() == kind::EQUAL);
   
   LinearConstraint c1, c2;
 
