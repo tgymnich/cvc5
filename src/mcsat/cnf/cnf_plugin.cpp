@@ -32,9 +32,27 @@ void CNFPlugin::notifyAssertion(TNode assertion) {
   d_cnfStream.convert(assertion, false);
 }
 
+bool satisfies(const SolverTrail& trail, CRef cRef) {
+  Clause& clause = cRef.getClause();
+  for (unsigned i = 0; i < clause.size(); ++ i) {
+    if (trail.isTrue(clause[i])) {
+      return true;
+    }
+  }
+  return false;
+}
+
+
 void CNFPlugin::gcMark(std::set<Variable>& varsToKeep, std::set<CRef>& clausesToKeep) {
-  // CNF plugin creates all the CNF clauses so we add those (those also contain the variables we want to keep)
-  clausesToKeep.insert(d_convertedClauses.begin(), d_convertedClauses.end());
+  // Remove any satisfied clauses
+  unsigned keep = 0;
+  for (unsigned i = 0; i < d_convertedClauses.size(); ++ i) {
+    CRef clause = d_convertedClauses[i];
+    if (!satisfies(d_trail, clause)) {
+      d_convertedClauses[keep ++] = clause;
+      clausesToKeep.insert(clause);
+    }
+  }
 }
 
 void CNFPlugin::gcRelocate(const VariableGCInfo& vReloc, const ClauseRelocationInfo& cReloc) {

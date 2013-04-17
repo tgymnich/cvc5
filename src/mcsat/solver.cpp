@@ -157,11 +157,6 @@ void Solver::processRequests() {
     // Clear the requests TODO: remove
     d_backtrackRequested = false;
     d_backtrackClauses.clear();
-
-    if (d_trail.decisionLevel() == 0) {
-      performGC();
-    }
-
   }
   
   if (d_restartRequested) {
