@@ -133,7 +133,9 @@ void FMPlugin::newConstraint(Variable constraint) {
   // Remember the constraint
   d_constraints[constraint].swap(linearConstraint);
   // Status of the constraint
-  d_constraintUnassignedStatus.resize(constraint.index() + 1, UNASSIGNED_UNKNOWN);
+  if (constraint.index() >= d_constraintUnassignedStatus.size()) {
+    d_constraintUnassignedStatus.resize(constraint.index() + 1, UNASSIGNED_UNKNOWN);
+  }
 
   // Check if anything to do immediately
   if (!d_trail.hasValue(vars[0])) {

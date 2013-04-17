@@ -353,5 +353,14 @@ void SolverTrail::gcMark(std::set<Variable>& varsToKeep, std::set<CRef>& clauses
 }
 
 void SolverTrail::gcRelocate(const VariableGCInfo& vReloc, const ClauseRelocationInfo& cReloc) {
-
+  // The trail cares about variables in the trail and any clauses that are in the clausal reasons
+  for (unsigned i = 0; i < d_trail.size(); ++ i) {
+    Variable var = d_trail[i].var;
+    if (d_trail[i].hasReason()) {
+      Literal l(var, !isTrue(var));
+      if (d_reasonProviders[l] == &d_clauseReasons) {
+        d_clauseReasons[l] = cReloc.relocate(d_clauseReasons[l]);
+      }
+    }
+  }
 }

@@ -71,9 +71,6 @@ public:
   /** Is the queue empty */
   bool empty() const;
 
-  /** Clear the information */
-  void clear();
-
   /** Enqueues the variable for decision making */
   void enqueue(Variable var);
 

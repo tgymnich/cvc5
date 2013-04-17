@@ -35,7 +35,6 @@ size_t VariableDatabase::getTypeIndex(TypeNode type) {
   size_t typeIndex;
   if (find_type == d_typenodeToIdMap.end()) {
     typeIndex = d_variableTypes.size();
-    Debug("mcsat::var_db") << "VariableDatabase::getTypeIndex(" << type << ") => " << typeIndex << std::endl;
     d_typenodeToIdMap[type] = typeIndex;
     d_variableTypes.push_back(type);
     d_variableNodes.resize(typeIndex + 1);
@@ -43,6 +42,7 @@ size_t VariableDatabase::getTypeIndex(TypeNode type) {
   } else {
     typeIndex = find_type->second;
   }
+  Debug("mcsat::var_db") << "VariableDatabase::getTypeIndex(" << type << ") => " << typeIndex << std::endl;
   return typeIndex;
 }
 
@@ -74,14 +74,14 @@ Variable VariableDatabase::getVariable(TNode node) {
   if (d_variablesToRecycle[typeIndex].size() > 0) {
     // Recycle the variable
     newVarId = d_variablesToRecycle[typeIndex].back().index();
-    d_variablesToRecycle.pop_back();
+    d_variablesToRecycle[typeIndex].pop_back();
+    d_variableNodes[typeIndex][newVarId] = node;
   } else {
     // Completely new variable
     newVarId = d_variableNodes[typeIndex].size();
+    // Add the information
+    d_variableNodes[typeIndex].push_back(node);
   }
-
-  // Add the information
-  d_variableNodes[typeIndex].push_back(node);
 
   Variable var(newVarId, typeIndex);
 

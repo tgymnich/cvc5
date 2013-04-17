@@ -166,29 +166,29 @@ void ClauseDatabase::performGC(const std::set<CRef>& clausesToKeep, ClauseReloca
   size_t capacityNew = d_capacity;
   size_t sizeNew = 0;
 
-  std::vector<CRef> clausesListNew;
-
+  unsigned keep = 0;
   for (unsigned i = 0; i < d_clausesList.size(); ++ i) {
     CRef oldClauseRef = d_clausesList[i];
-    if (clausesToKeep.count(oldClauseRef) == 0) {
-
-      Debug("mcsat::gc") << "GC: collecting " << oldClauseRef << std::endl;
-
+    if (clausesToKeep.count(oldClauseRef) > 0) {
+      Debug("mcsat::gc") << "GC: keeping " << oldClauseRef << std::endl;
       // Old clause
       Clause& clause = oldClauseRef.getClause();
       // Size of the clause
-      size_t size = sizeof(Clause) + sizeof(Literal)*clause.size();
+      size_t clauseSize = sizeof(Clause) + sizeof(Literal)*clause.size();
       // Where to put the new clause
-      char* memory = allocate(size, memoryNew, sizeNew, capacityNew);
+      char* clauseMemory = allocate(clauseSize, memoryNew, sizeNew, capacityNew);
       // Copy the content
-      memcpy(memoryNew, &clause, size);
+      memcpy(clauseMemory, &clause, clauseSize);
       // New reference
-      CRef newClauseRef(memory - memoryNew, d_id);
+      CRef newClauseRef(clauseMemory - memoryNew, d_id);
       clauseRelocationInfo.add(oldClauseRef, newClauseRef);
       // Add to the list
-      clausesListNew.push_back(newClauseRef);
+      d_clausesList[keep ++] = newClauseRef;
+    } else {
+      Debug("mcsat::gc") << "GC: collecting " << oldClauseRef << std::endl;
     }
   }
+  d_clausesList.resize(keep);
 
   // Free the old memory
   std::free(d_memory);
@@ -196,7 +196,6 @@ void ClauseDatabase::performGC(const std::set<CRef>& clausesToKeep, ClauseReloca
   d_memory = memoryNew;
   d_size = sizeNew;
   d_capacity = capacityNew;
-  d_clausesList.swap(clausesListNew);
 
   d_firstNotNotified = d_clausesList.size();
 }

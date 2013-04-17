@@ -102,7 +102,7 @@ public:
 
   /** Compare two references */
   bool operator == (const CRef& other) const {
-    return d_ref == other.d_ref;
+    return d_db == other.d_db && d_ref == other.d_ref;
   }
 
   /** Compare two references (by pointer value) */

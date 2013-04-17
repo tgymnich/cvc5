@@ -23,10 +23,11 @@ void VariablePriorityQueue::newVariable(Variable var, double score) {
   }
 
   // Insert a new score (max of the current scores)
-  d_variableScores[typeIndex].resize(var.index() + 1, score);
+  if (var.index() >= d_variableScores[typeIndex].size()) {
+    d_variableScores[typeIndex].resize(var.index() + 1, score);
+    d_variableQueuePositions[typeIndex].resize(var.index() + 1);
+  }
   d_variableScores[typeIndex][var.index()] = score;
-  // Make sure that there is enough space for the pointer
-  d_variableQueuePositions[typeIndex].resize(var.index() + 1);
 
   if (score > d_variableScoresMax) {
     d_variableScoresMax = score;
@@ -75,12 +76,12 @@ void VariablePriorityQueue::bumpVariable(Variable var) {
     // This preserves the order, we're fine
     for (unsigned type = 0; type < d_variableScores.size(); ++ type) {
       for (unsigned i = 0; i < d_variableScores[type].size(); ++ i) {
-        d_variableScores[type][i] *= d_maxScoreBeforeScaling;
+        d_variableScores[type][i] /= d_maxScoreBeforeScaling;
       }
     }
     // TODO: decay activities
     // variableHeuristicIncrease *= 1e-100;
-    d_variableScoresMax *= d_maxScoreBeforeScaling;
+    d_variableScoresMax /= d_maxScoreBeforeScaling;
   }
 }
 
@@ -99,13 +100,6 @@ Variable VariablePriorityQueue::pop() {
 
 bool VariablePriorityQueue::empty() const {
   return d_variableQueue.empty();
-}
-
-void VariablePriorityQueue::clear() {
-  d_variableScores.clear();
-  d_variableScoresMax = 0;
-  d_variableQueue.clear();
-  d_variableQueuePositions.clear();
 }
 
 void VariablePriorityQueue::gcRelocate(const VariableGCInfo& vReloc) {
