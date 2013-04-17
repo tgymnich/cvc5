@@ -27,7 +27,9 @@ void WatchListManager::gcRelocate(const VariableGCInfo& vReloc, const ClauseRelo
   }
   // Clean the rest of the lists
   for (unsigned i = 0; i < d_watchLists.size(); ++ i) {
-    cReloc.relocate(d_watchLists[i]);
+    if (d_watchLists[i].size() > 0) {
+      cReloc.relocate(d_watchLists[i]);
+    }
   }
 
 }

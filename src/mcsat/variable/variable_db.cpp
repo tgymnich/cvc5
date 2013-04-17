@@ -137,6 +137,7 @@ void VariableDatabase::performGC(const std::set<Variable>& varsToKeep, VariableG
       relocationInfo.add(var);
     }
   }
+  Assert(d_variables.size() >= lastToKeep);
   d_variables.resize(lastToKeep);
 
   d_variablesCountAtCurrentLevel = d_variables.size();
@@ -180,6 +181,7 @@ void VariableGCInfo::collect(std::vector<Variable>& vars) const {
       vars[lastToKeep++] = var;
     }
   }
+  Assert(vars.size() >= lastToKeep);
   vars.resize(lastToKeep);
 }
 

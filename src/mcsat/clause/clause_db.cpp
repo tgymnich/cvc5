@@ -189,6 +189,7 @@ void ClauseDatabase::performGC(const std::set<CRef>& clausesToKeep, ClauseReloca
       Debug("mcsat::gc") << "GC: collecting " << oldClauseRef << std::endl;
     }
   }
+  Assert(d_clausesList.size() >= keep);
   d_clausesList.resize(keep);
 
   // The new size
@@ -224,5 +225,6 @@ void ClauseRelocationInfo::relocate(std::vector<CRef>& clauses) const {
       clauses[lastToKeep ++] = newClause;
     }
   }
+  Assert(clauses.size() >= lastToKeep);
   clauses.resize(lastToKeep);
 }

@@ -145,7 +145,7 @@ void FMPlugin::newConstraint(Variable constraint) {
       Debug("mcsat::fm") << "FMPlugin::newConstraint(" << constraint << "): unit " << std::endl;
     }
   } else {
-    // All variables are unassigned
+    // All variables are unassigned    
     d_constraintUnassignedStatus[constraint.index()] = UNASSIGNED_NONE;
     Debug("mcsat::fm") << "FMPlugin::newConstraint(" << constraint << "): all assigned " << std::endl;
     // Propagate later
@@ -157,7 +157,7 @@ void FMPlugin::propagate(SolverTrail::PropagationToken& out) {
   Debug("mcsat::fm") << "FMPlugin::propagate()" << std::endl;
 
   unsigned i = d_trailHead;
-  for (; i < d_trail.size(); ++ i) {
+  for (; i < d_trail.size() && d_trail.consistent(); ++ i) {
     Variable var = d_trail[i].var;
 
     if (isArithmeticVariable(var)) {
@@ -381,6 +381,8 @@ void FMPlugin::decide(SolverTrail::DecisionToken& out) {
 }
 
 void FMPlugin::notifyBackjump(const std::vector<Variable>& vars) {
+  d_delayedPropagations.clear();
+
   for (unsigned i = 0; i < vars.size(); ++ i) {
     if (isArithmeticVariable(vars[i])) {
       // Go through the watch and mark the constraints
@@ -408,12 +410,15 @@ void FMPlugin::notifyBackjump(const std::vector<Variable>& vars) {
       }
 
       // Also mark to be decided later
-      d_variableQueue.enqueue(vars[i]);
+      if (!d_variableQueue.inQueue(vars[i])) {
+        d_variableQueue.enqueue(vars[i]);
+      }
     }
   }
 }
 
 void FMPlugin::gcMark(std::set<Variable>& varsToKeep, std::set<CRef>& clausesToKeep) {
+  Assert(d_delayedPropagations.size() == 0);
   // We don't care about stuff: TODO: rethink this
 }
 

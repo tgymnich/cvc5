@@ -53,6 +53,7 @@ void CNFPlugin::gcMark(std::set<Variable>& varsToKeep, std::set<CRef>& clausesTo
       clausesToKeep.insert(clause);
     }
   }
+  Assert(d_convertedClauses.size() >= keep);
   d_convertedClauses.resize(keep);
 }
 

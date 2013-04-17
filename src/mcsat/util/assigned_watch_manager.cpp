@@ -36,7 +36,9 @@ void AssignedWatchManager::gcRelocate(const VariableGCInfo& vReloc) {
       d_varlistList[list_to_keep ++] = newList;
     }
   }
+  Assert(d_memory.size() >= memIndex);
   d_memory.resize(memIndex);
+  Assert(d_varlistList.size() >= list_to_keep);
   d_varlistList.resize(list_to_keep);
 
   // If no lists were relocated, we need not do anything
@@ -54,6 +56,7 @@ void AssignedWatchManager::gcRelocate(const VariableGCInfo& vReloc) {
       varlistToConstraintNew[find->second] = l_it->second;
     }
   }
+  Assert(d_varlistToConstraint.size() >= varlistToConstraintNew.size());
   d_varlistToConstraint.swap(varlistToConstraintNew);
 
   // Watchlists
@@ -71,6 +74,7 @@ void AssignedWatchManager::gcRelocate(const VariableGCInfo& vReloc) {
         list[keep ++] = find->second;
       }
     }
+    Assert(list.size() >= keep);
     list.resize(keep);
     if (keep == 0) {
       unwatchedVariables.push_back(*v_it);

@@ -25,7 +25,7 @@ void VariablePriorityQueue::newVariable(Variable var, double score) {
   // Insert a new score (max of the current scores)
   if (var.index() >= d_variableScores[typeIndex].size()) {
     d_variableScores[typeIndex].resize(var.index() + 1, score);
-    d_variableQueuePositions[typeIndex].resize(var.index() + 1);
+    d_variableQueuePositions[typeIndex].resize(var.index() + 1, variable_queue::point_iterator());
   }
   d_variableScores[typeIndex][var.index()] = score;
 
@@ -46,6 +46,8 @@ bool VariablePriorityQueue::inQueue(Variable var) const {
 void VariablePriorityQueue::enqueue(Variable var) {
   Assert(var.typeIndex() < d_variableScores.size());
   Assert(var.index() < d_variableScores[var.typeIndex()].size());
+  Assert(!inQueue(var));
+
   // Add to the queue
   variable_queue::point_iterator it = d_variableQueue.push(var);
   d_variableQueuePositions[var.typeIndex()][var.index()] = it;
@@ -64,6 +66,7 @@ void VariablePriorityQueue::bumpVariable(Variable var) {
   if (inQueue(var)) {
     // If the variable is in the queue, erase it first
     d_variableQueue.erase(d_variableQueuePositions[var.typeIndex()][var.index()]);
+    d_variableQueuePositions[var.typeIndex()][var.index()] = variable_queue::point_iterator();
     d_variableScores[var.typeIndex()][var.index()] = newValue;
     enqueue(var);
   } else {

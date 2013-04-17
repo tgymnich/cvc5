@@ -77,6 +77,7 @@ public:
       while (!done()) {
 	next_and_keep();
       }
+      Assert(d_watchLists.size() >= d_end_of_keep);
       d_watchLists[d_literal].resize(d_end_of_keep);
     }
   };

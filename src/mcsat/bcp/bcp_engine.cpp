@@ -268,10 +268,11 @@ void BCPEngine::notifyBackjump(const std::vector<Variable>& vars) {
   // Just add the Boolean variables to the queue
   for (unsigned i = 0; i < vars.size(); ++ i) {
     if (vars[i].typeIndex() == d_boolTypeIndex) {
-      d_variableQueue.enqueue(vars[i]);
+      if (!d_variableQueue.inQueue(vars[i])) {
+        d_variableQueue.enqueue(vars[i]);
+      }
     }
   }
-
   // Clear any delayed propagations
   d_delayedPropagations.clear();
 }
