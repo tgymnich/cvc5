@@ -210,7 +210,16 @@ public:
    * Performs GC keeping the varsToKeep variables and filling in the relocationInfo for the user.
    */
   void performGC(const std::set<Variable>& varsToKeep, VariableGCInfo& relocationInfo);
+
+  /** Debug info to stream */
+  void toStream(std::ostream& out) const;
+  
 };
+
+inline std::ostream& operator << (std::ostream& out, const VariableDatabase& db) {
+  db.toStream(out);
+  return out;
+}
 
 }
 }

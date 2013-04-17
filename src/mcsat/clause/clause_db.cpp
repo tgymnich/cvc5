@@ -162,8 +162,7 @@ CRef ClauseDatabase::adopt(CRef toAdopt) {
 
 void ClauseDatabase::performGC(const std::set<CRef>& clausesToKeep, ClauseRelocationInfo& clauseRelocationInfo) {
 
-  char* memoryNew = (char*)std::malloc(d_capacity);
-  size_t capacityNew = d_capacity;
+  /** The new size of the clause */
   size_t sizeNew = 0;
 
   unsigned keep = 0;
@@ -176,11 +175,13 @@ void ClauseDatabase::performGC(const std::set<CRef>& clausesToKeep, ClauseReloca
       // Size of the clause
       size_t clauseSize = sizeof(Clause) + sizeof(Literal)*clause.size();
       // Where to put the new clause
-      char* clauseMemory = allocate(clauseSize, memoryNew, sizeNew, capacityNew);
-      // Copy the content
-      memcpy(clauseMemory, &clause, clauseSize);
+      char* clauseMemory = allocate(clauseSize, d_memory, sizeNew, d_capacity);
+      // Copy the content 
+      if ((void*)clauseMemory != (void*) &clause) {
+	memmove(clauseMemory, &clause, clauseSize);
+      }
       // New reference
-      CRef newClauseRef(clauseMemory - memoryNew, d_id);
+      CRef newClauseRef(clauseMemory - d_memory, d_id);
       clauseRelocationInfo.add(oldClauseRef, newClauseRef);
       // Add to the list
       d_clausesList[keep ++] = newClauseRef;
@@ -190,14 +191,14 @@ void ClauseDatabase::performGC(const std::set<CRef>& clausesToKeep, ClauseReloca
   }
   d_clausesList.resize(keep);
 
-  // Free the old memory
-  std::free(d_memory);
-
-  d_memory = memoryNew;
+  // The new size
   d_size = sizeNew;
-  d_capacity = capacityNew;
 
   d_firstNotNotified = d_clausesList.size();
+}
+
+void ClauseDatabase::toStream(std::ostream& out) const {
+  out << "clauses = " << d_clausesList.size() << ", size = " << d_size << ", capacity = " << d_capacity;
 }
 
 void ClauseRelocationInfo::add(CRef oldClause, CRef newClause) {

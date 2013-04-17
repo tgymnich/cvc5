@@ -183,3 +183,6 @@ void VariableGCInfo::collect(std::vector<Variable>& vars) const {
   vars.resize(lastToKeep);
 }
 
+void VariableDatabase::toStream(std::ostream& out) const {
+  out << "vars = " << d_variables.size();
+}

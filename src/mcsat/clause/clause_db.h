@@ -195,7 +195,15 @@ public:
    */
   void performGC(const std::set<CRef>& clausesToKeep, ClauseRelocationInfo& clauseRelocationInfo);
 
+  /** Some debug info */
+  void toStream(std::ostream& out) const;
+  
 };
+
+inline std::ostream& operator << (std::ostream& out, const ClauseDatabase& db) {
+  db.toStream(out);
+  return out;
+}
 
 class ClauseFarm {
 

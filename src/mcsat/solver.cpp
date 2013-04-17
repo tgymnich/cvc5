@@ -160,9 +160,7 @@ void Solver::processRequests() {
   }
   
   if (d_restartRequested) {
-    
-    Notice() << "mcsat::Solver: Restarting at " << d_stats.conflicts.getData() << " conflicts" << std::endl;
-    
+        
     std::vector<Variable> variablesUnset;
     // Restart to level 0
     d_trail.popToLevel(0, variablesUnset);
@@ -171,10 +169,17 @@ void Solver::processRequests() {
     // Notify of the restart 
     d_notifyDispatch.notifyRestart();
 
-    if (true || d_gcRequested) {
+    Notice() << "mcsat::Solver: Restarting at " << d_stats.conflicts.getData() << " conflicts" << std::endl;
+    Notice() << "Vars: " << d_variableDatabase << std::endl;
+    Notice() << "Clauses: " << d_clauseDatabase << std::endl;
+
+    if (d_gcRequested) {
       performGC();
     }
 
+    Notice() << "Vars: " << d_variableDatabase << std::endl;
+    Notice() << "Clauses: " << d_clauseDatabase << std::endl;
+    
     d_restartRequested = false;
     d_gcRequested = false;
     ++ d_stats.restarts;
