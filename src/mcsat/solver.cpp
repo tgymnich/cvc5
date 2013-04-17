@@ -173,7 +173,7 @@ void Solver::processRequests() {
     Notice() << "Vars: " << d_variableDatabase << std::endl;
     Notice() << "Clauses: " << d_clauseDatabase << std::endl;
 
-    if (d_gcRequested) {
+    if (true || d_gcRequested) {
       performGC();
     }
 

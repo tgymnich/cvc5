@@ -27,7 +27,7 @@ class VariablePriorityQueue {
     VariableScoreCmp(std::vector< std::vector<double> >& variableScores)
     : d_variableScores(variableScores) {}
     bool operator() (const Variable& v1, const Variable& v2) const {
-      double cmp = d_variableScores[v1.typeIndex()][v1.index()] - d_variableScores[v1.typeIndex()][v2.index()];
+      double cmp = d_variableScores[v1.typeIndex()][v1.index()] - d_variableScores[v2.typeIndex()][v2.index()];
       if (cmp == 0) {
         return v1 < v2;
       } else {
