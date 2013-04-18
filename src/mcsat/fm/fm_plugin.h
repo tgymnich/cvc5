@@ -50,6 +50,12 @@ class FMPlugin : public SolverPlugin {
   /** Map from constraints to their status */
   std::vector<UnassignedStatus> d_constraintUnassignedStatus;
 
+  /** List of fixed variables to use for decisions x = c assertion */
+  context::CDList<Variable> d_fixedVariables;
+
+  /** Index of the last fixed variable */
+  context::CDO<unsigned> d_fixedVariablesIndex;
+
   /** Map from variables to constraints */
   fm::var_to_constraint_map d_constraints;
 

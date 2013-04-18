@@ -194,11 +194,11 @@ public:
   /** Construct it */
   CDBoundsModel(context::Context* context);
   
-  /** Update the lower bound */
-  void updateLowerBound(Variable var, const BoundInfo& info);
+  /** Update the lower bound, returns true if variable is now fixed */
+  bool updateLowerBound(Variable var, const BoundInfo& info);
 
-  /** Update the upper bound */
-  void updateUpperBound(Variable var, const BoundInfo& info);
+  /** Update the upper bound, returns true if variable is now fixed */
+  bool updateUpperBound(Variable var, const BoundInfo& info);
 
   /** Adds the value to the list of values that a variable must be disequal from */
   void addDisequality(Variable var, const DisequalInfo& info);

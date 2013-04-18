@@ -88,7 +88,7 @@ void CDBoundsModel::addDisequality(Variable var, const DisequalInfo& info) {
   }
 }
 
-void CDBoundsModel::updateLowerBound(Variable var, const BoundInfo& lBound) {
+bool CDBoundsModel::updateLowerBound(Variable var, const BoundInfo& lBound) {
   // Update if better than the current one
   if (!hasLowerBound(var) || lBound.improvesLowerBound(getLowerBoundInfo(var))) {  
     
@@ -126,12 +126,16 @@ void CDBoundsModel::updateLowerBound(Variable var, const BoundInfo& lBound) {
           d_variablesInConflict.insert(var);
           Debug("mcsat::fm") << "CDBoundsModel::updateLowerBound(" << var << ", " << lBound << "): bound and diseq conflict" << std::endl;
         }
+        // Value for var is now fixed
+        return true;
       }
     }
   }
+
+  return false;
 }
 
-void CDBoundsModel::updateUpperBound(Variable var, const BoundInfo& uBound) {
+bool CDBoundsModel::updateUpperBound(Variable var, const BoundInfo& uBound) {
   if (!hasUpperBound(var) || uBound.improvesUpperBound(getUpperBoundInfo(var))) {
 
     Debug("mcsat::fm") << "CDBoundsModel::updateUpperBound(" << var << ", " << uBound << ")" << std::endl;
@@ -168,9 +172,13 @@ void CDBoundsModel::updateUpperBound(Variable var, const BoundInfo& uBound) {
           d_variablesInConflict.insert(var);
           Debug("mcsat::fm") << "CDBoundsModel::updateUpperBound(" << var << ", " << uBound << "): bound and diseq conflict" << std::endl;
         }
+        // Value for var is now fixed
+        return true;
       }
     }
   }  
+
+  return false;
 }
 
 bool CDBoundsModel::hasLowerBound(Variable var) const {
@@ -336,7 +344,6 @@ const DisequalInfo& CDBoundsModel::getDisequalInfo(Variable var, Rational value)
 
   disequal_map::const_iterator find = d_disequalValues.find(var);
   if (find != d_disequalValues.end()) {
-    bool forced = false;
     // Go through all the values and check for the value
     Debug("mcsat::fm") << var << " !=";
     DisequalInfoIndex it = find->second;

@@ -40,6 +40,8 @@ void FMPlugin::NewVariableNotify::newVariable(Variable var) {
 FMPlugin::FMPlugin(ClauseDatabase& database, const SolverTrail& trail, SolverPluginRequest& request)
 : SolverPlugin(database, trail, request)
 , d_newVariableNotify(*this)
+, d_fixedVariables(trail.getSearchContext())
+, d_fixedVariablesIndex(trail.getSearchContext(), 0)
 , d_intTypeIndex(VariableDatabase::getCurrentDB()->getTypeIndex(NodeManager::currentNM()->integerType()))
 , d_realTypeIndex(VariableDatabase::getCurrentDB()->getTypeIndex(NodeManager::currentNM()->realType()))
 , d_trailHead(trail.getSearchContext(), 0)
@@ -297,30 +299,36 @@ void FMPlugin::processUnitConstraint(Variable constraint) {
   }
 
   // Do the work (assuming a > 0)
+  Rational value = -sum/a;
+  bool fixed = false;
   switch (kind) {
   case kind::GT:
   case kind::GEQ:
     // (ax + sum >= 0) <=> (x >= -sum/a)
-    d_bounds.updateLowerBound(x, BoundInfo(-sum/a, kind == kind::GT, constraint));
+    fixed = d_bounds.updateLowerBound(x, BoundInfo(value, kind == kind::GT, constraint));
     break;
   case kind::LT:
   case kind::LEQ:
     // (ax + sum <= 0) <=> (x <= -sum/a)
-    d_bounds.updateUpperBound(x, BoundInfo(-sum/a, kind == kind::LT, constraint));
+    fixed = d_bounds.updateUpperBound(x, BoundInfo(value, kind == kind::LT, constraint));
     break;
   case kind::EQUAL:
     // (ax + sum == 0) <=> (x >= -sum/a) and (x <= -sum/a)
-    d_bounds.updateLowerBound(x, BoundInfo(-sum/a, false, constraint));
-    d_bounds.updateUpperBound(x, BoundInfo(-sum/a, false, constraint));
+    d_bounds.updateLowerBound(x, BoundInfo(value, false, constraint));
+    d_bounds.updateUpperBound(x, BoundInfo(value, false, constraint));
+    fixed = true;
     break;
   case kind::DISTINCT:
     // (ax + sum != 0) <=> x != -sum/a
-    d_bounds.addDisequality(x, DisequalInfo(-sum/a, constraint));
+    d_bounds.addDisequality(x, DisequalInfo(value, constraint));
     break;
   default:
     Unreachable();
   }
 
+  if (fixed) {
+    d_fixedVariables.push_back(x);
+  }
 }
 
 void FMPlugin::processConflicts(SolverTrail::PropagationToken& out) {
@@ -376,17 +384,24 @@ void FMPlugin::processConflicts(SolverTrail::PropagationToken& out) {
 void FMPlugin::decide(SolverTrail::DecisionToken& out) {
   Debug("mcsat::fm") << "FMPlugin::decide()" << std::endl;
   Assert(d_trailHead == d_trail.size());
+
+  for (; d_fixedVariablesIndex < d_fixedVariables.size(); d_fixedVariablesIndex = d_fixedVariablesIndex + 1) {
+    Variable var = d_fixedVariables[d_fixedVariablesIndex];
+    if (!d_trail.hasValue(var)) {
+      Rational value = d_bounds.pick(var);
+      Debug("mcsat::fm") << "FMPlugin::decide(): " << var << " -> " << value << std::endl;
+      out(var, NodeManager::currentNM()->mkConst(value), true);
+      return;
+    }
+  }
+
   while (!d_variableQueue.empty()) {
     Variable var = d_variableQueue.pop();
 
     if (d_trail.value(var).isNull()) {
-
-      // Pick a value withing the bounds different from the disequality constrainted values
       Rational value = d_bounds.pick(var);
       Debug("mcsat::fm") << "FMPlugin::decide(): " << var << " -> " << value << std::endl;
       out(var, NodeManager::currentNM()->mkConst(value), true);
-
-      // Done
       return;
     }
   }

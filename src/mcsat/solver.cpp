@@ -504,7 +504,8 @@ struct learnt_cmp_by_score {
   {}
 
   bool operator () (const CRef& c1, const CRef& c2) const {
-    return d_scoreMap.find(c1)->second < d_scoreMap.find(c2)->second;
+    // Prefer better score
+    return d_scoreMap.find(c1)->second > d_scoreMap.find(c2)->second;
   }
 
 };
