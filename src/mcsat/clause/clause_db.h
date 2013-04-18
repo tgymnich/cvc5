@@ -176,6 +176,11 @@ public:
     return *((Clause*) (d_memory + cRef.d_ref));
   }
 
+  /** Number of clauses in the database */
+  size_t size() const {
+    return d_clausesList.size();
+  }
+
   /** Get the id of this database. */
   size_t getDatabaseId() const {
     return d_id;

@@ -8,7 +8,7 @@ using namespace CVC4;
 using namespace mcsat;
 using namespace fm;
 
-void LinearConstraint::getVariables(std::vector<Variable>& vars) {
+void LinearConstraint::getVariables(std::vector<Variable>& vars) const {
   var_to_rational_map::const_iterator it = d_coefficients.begin();
   var_to_rational_map::const_iterator it_end = d_coefficients.end();
   while (it != it_end) {

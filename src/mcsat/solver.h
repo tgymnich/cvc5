@@ -169,6 +169,12 @@ private:
   /** Heuristically remove some learnt clauses */
   void shrinkLearnts();
 
+  /** Limit for the learnt clauses */
+  unsigned d_learntsLimit;
+
+  /** Learn limit increase */
+  double d_learntsLimitInc;
+
   /** ITE Removal */
   RemoveITE d_removeITE;
 

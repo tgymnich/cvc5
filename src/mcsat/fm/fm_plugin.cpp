@@ -335,6 +335,7 @@ void FMPlugin::processConflicts(SolverTrail::PropagationToken& out) {
     const BoundInfo& lowerBound = d_bounds.getLowerBoundInfo(var);
     const BoundInfo& upperBound = d_bounds.getUpperBoundInfo(var);
 
+    CRef conflict;
     if (BoundInfo::inConflict(lowerBound, upperBound)) {
       // Clash of bounds
       Variable lowerBoundVariable = lowerBound.reason;
@@ -344,7 +345,7 @@ void FMPlugin::processConflicts(SolverTrail::PropagationToken& out) {
 
       d_fmRule.start(lowerBoundLiteral);
       d_fmRule.resolve(var, upperBoundLiteral);
-      d_fmRule.finish(out);
+      conflict = d_fmRule.finish(out);
     } else {
       // Bounds clash with a disequality
       Variable lowerBoundVariable = lowerBound.reason;
@@ -356,7 +357,18 @@ void FMPlugin::processConflicts(SolverTrail::PropagationToken& out) {
       const DisequalInfo& disequal = d_bounds.getDisequalInfo(var, lowerBound.value);
       Literal disequalityLiteral(disequal.reason, d_trail.isFalse(disequal.reason));
 
-      d_fmRule.resolveDisequality(var, lowerBoundLiteral, upperBoundLiteral, disequalityLiteral, out);
+      conflict = d_fmRule.resolveDisequality(var, lowerBoundLiteral, upperBoundLiteral, disequalityLiteral, out);
+    }
+
+    Clause& conflictClause = conflict.getClause();
+    std::vector<Variable> conflictVars;
+    for (unsigned i = 0; i < conflictClause.size(); ++ i) {
+      if (isLinearConstraint(conflictClause[i].getVariable())) {
+        getLinearConstraint(conflictClause[i].getVariable()).getVariables(conflictVars);
+      }
+    }
+    for (unsigned i = 0; i < conflictVars.size(); ++ i) {
+      d_variableQueue.bumpVariable(conflictVars[i]);
     }
   }
 }

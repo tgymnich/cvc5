@@ -42,6 +42,8 @@ Solver::Solver(context::UserContext* userContext, context::Context* searchContex
 , d_gcRequested(false)
 , d_learntClausesScoreMax(1.0)
 , d_learntClausesScoreIncrease(1.0)
+, d_learntsLimit(100)
+, d_learntsLimitInc(1.1)
 , d_removeITE(userContext)
 , d_variableRegister(d_variableDatabase)
 {
@@ -169,16 +171,20 @@ void Solver::processRequests() {
     // Notify of the restart 
     d_notifyDispatch.notifyRestart();
 
-    Notice() << "mcsat::Solver: Restarting at " << d_stats.conflicts.getData() << " conflicts" << std::endl;
-    Notice() << "Vars: " << d_variableDatabase << std::endl;
-    Notice() << "Clauses: " << d_clauseDatabase << std::endl;
-
-    if (d_gcRequested) {
-      performGC();
+    if (d_learntClauses.size() > d_learntsLimit) {
+      d_gcRequested = true;
+      d_learntsLimit *= d_learntsLimitInc;
     }
 
-    Notice() << "Vars: " << d_variableDatabase << std::endl;
-    Notice() << "Clauses: " << d_clauseDatabase << std::endl;
+    Notice() << "mcsat::Solver: Restarting at " << d_stats.conflicts.getData() << " conflicts" << std::endl;
+    if (d_gcRequested) {
+      Notice() << "Vars: " << d_variableDatabase << std::endl;
+      Notice() << "Clauses: " << d_clauseDatabase << std::endl;
+      performGC();
+      Notice() << "Vars: " << d_variableDatabase << std::endl;
+      Notice() << "Clauses: " << d_clauseDatabase << std::endl;
+    }
+
     
     d_restartRequested = false;
     d_gcRequested = false;
@@ -244,6 +250,9 @@ void Solver::propagate(SolverTrail::PropagationToken::Mode mode) {
 
 bool Solver::check() {
   
+  /** Initial limit on the number of learnt clauses */
+  d_learntsLimit = 0.3 * d_clauseDatabase.size();
+
   Debug("mcsat::solver::search") << "Solver::check()" << std::endl;
 
   // Search while not all variables assigned 

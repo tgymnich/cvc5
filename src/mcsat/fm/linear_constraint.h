@@ -51,7 +51,7 @@ public:
   }
 
   /** Get the variables of this constraint */
-  void getVariables(std::vector<Variable>& vars);
+  void getVariables(std::vector<Variable>& vars) const;
 
   /** Get the kind of the constraint */
   Kind getKind() const {
