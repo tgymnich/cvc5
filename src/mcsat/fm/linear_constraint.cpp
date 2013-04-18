@@ -43,6 +43,7 @@ int LinearConstraint::getEvaluationLevel(const SolverTrail& trail) const {
     }
   }
 
+  return level;
 }
 
 bool LinearConstraint::evaluate(const SolverTrail& trail, unsigned& level) const {
