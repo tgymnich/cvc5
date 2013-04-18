@@ -398,6 +398,10 @@ void FMPlugin::decide(SolverTrail::DecisionToken& out) {
   while (!d_variableQueue.empty()) {
     Variable var = d_variableQueue.pop();
 
+//    if (var.getNode().getKind() != kind::VARIABLE) {
+//      continue;
+//    }
+
     if (d_trail.value(var).isNull()) {
       Rational value = d_bounds.pick(var);
       Debug("mcsat::fm") << "FMPlugin::decide(): " << var << " -> " << value << std::endl;

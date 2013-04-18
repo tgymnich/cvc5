@@ -25,6 +25,26 @@ void LinearConstraint::swap(LinearConstraint& c) {
   std::swap(d_kind, c.d_kind);
 }
 
+int LinearConstraint::getEvaluationLevel(const SolverTrail& trail) const {
+
+  unsigned level = 0;
+
+  // Get the max level of all the variables
+  const_iterator it = begin();
+  const_iterator it_end = end();
+  for (; it != it_end; ++ it) {
+    Variable var = it->first;
+    if (!var.isNull()) {
+      if (trail.hasValue(var)) {
+        level = std::max(level, trail.decisionLevel(var));
+      } else {
+        return -1;
+      }
+    }
+  }
+
+}
+
 bool LinearConstraint::evaluate(const SolverTrail& trail, unsigned& level) const {
 
   level = 0;

@@ -70,6 +70,12 @@ public:
    */
   bool evaluate(const SolverTrail& trail, unsigned& level) const;
 
+  /**
+   * Returns the constraint evaluates, or -1 otherwise.
+   */
+  int getEvaluationLevel(const SolverTrail& trail) const;
+
+
   typedef var_to_rational_map::const_iterator const_iterator;
 
   /** Returns the cosfficient with the given variable */

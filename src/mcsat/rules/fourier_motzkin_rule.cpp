@@ -76,9 +76,8 @@ CRef FourierMotzkinRule::finish(SolverTrail::PropagationToken& propToken) {
   }
   
   // Evaluate 
-  unsigned evalLevel;
-  bool eval = d_resolvent.evaluate(d_trail, evalLevel);
-  Assert(!eval, "Must be false");
+  int evalLevel = d_resolvent.getEvaluationLevel(d_trail);
+  Assert(!evalLevel >= 0, "Must evaluate");
 
   // Propagate
   Literal resolventLiteral = d_resolvent.getLiteral();
