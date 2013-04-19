@@ -274,7 +274,7 @@ Rational CDBoundsModel::pick(Variable var) const {
       if (disequal.size() > 0) {
         max = std::max(max, *disequal.rbegin());
       }
-      return (max + 1).floor();
+      return (max + 10).floor();
     }
   } else {
     // No lower bound
@@ -285,7 +285,7 @@ Rational CDBoundsModel::pick(Variable var) const {
       if (disequal.size() > 0) {
         min = std::min(min, *disequal.begin());
       }
-      return (min - 1).ceiling();
+      return (min - 10).ceiling();
     } else {
       // No bounds at all, just find 0... thats not in diseq
       unsigned x = 0;
