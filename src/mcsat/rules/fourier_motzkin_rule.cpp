@@ -93,8 +93,8 @@ CRef FourierMotzkinRule::resolveDisequality(Variable var, Literal varL, Literal 
 
   Debug("mcsat::fm") << "FourierMotzkinRule::resolveDisequality(" << var << "):" << std::endl;
 
-  bool linear, eval;
-  unsigned evalLevel;
+  bool linear;
+  int evalLevel;
   d_assumptions.clear();
 
   LiteralVector lits;
@@ -133,8 +133,8 @@ CRef FourierMotzkinRule::resolveDisequality(Variable var, Literal varL, Literal 
   lits.push_back(l1);
 
   // Evaluate and propagate l1
-  eval = varL_constraint.evaluate(d_trail, evalLevel);
-  Assert(!eval, "Must be false");
+  evalLevel = varL_constraint.getEvaluationLevel(d_trail);
+  Assert(evalLevel >= 0, "Must be false");
   propToken(~l1, evalLevel);
 
   // Resolve A2 and c1 into A2
@@ -143,8 +143,8 @@ CRef FourierMotzkinRule::resolveDisequality(Variable var, Literal varL, Literal 
   lits.push_back(l2);
 
   // Evaluate and propagate l1
-  eval = varU_constraint.evaluate(d_trail, evalLevel);
-  Assert(!eval, "Must be false");
+  evalLevel = varU_constraint.getEvaluationLevel(d_trail);
+  Assert(evalLevel >= 0, "Must be false");
   propToken(~l2, evalLevel);
 
   return commit(lits);
