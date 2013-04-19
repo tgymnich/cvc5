@@ -265,6 +265,7 @@ void BCPEngine::decide(SolverTrail::DecisionToken& out, const LiteralVector& opt
 }
 
 void BCPEngine::notifyBackjump(const std::vector<Variable>& vars) {
+
   // Just add the Boolean variables to the queue
   for (unsigned i = 0; i < vars.size(); ++ i) {
     if (vars[i].typeIndex() == d_boolTypeIndex) {
@@ -273,8 +274,12 @@ void BCPEngine::notifyBackjump(const std::vector<Variable>& vars) {
       }
     }
   }
+
   // Clear any delayed propagations
   d_delayedPropagations.clear();
+  // Decay the variables scores
+  d_variableQueue.decayScores();
+
 }
 
 static unsigned luby(unsigned index) {
