@@ -8,9 +8,40 @@ using namespace CVC4;
 using namespace mcsat;
 using namespace fm;
 
+struct variable_search_cmp {
+  // Just compare the variables
+  bool operator () (const var_rational_pair& p1, const var_rational_pair& p2) {
+    return p1.first < p2.first;
+  }
+};
+
+void LinearConstraint::normalize(var_rational_pair_vector& coefficients) {
+  // Sort the coefficients
+  variable_search_cmp cmp;
+  std::sort(coefficients.begin(), coefficients.end(), cmp);
+
+  // Gather all same coefficients
+  unsigned head = 0;
+  for (unsigned i = 1; i < coefficients.size(); ++ i) {
+    if (coefficients[head].first != coefficients[i].first) {
+      if (coefficients[head].first.isNull() || coefficients[head].second != 0) {
+        // If the new element is with different variable, move keep
+        coefficients[++ head] = coefficients[i];
+      } else {
+        // Canceled out, so we overwrite it
+        coefficients[head] = coefficients[i];
+      }
+    } else {
+      // If we're with the same variable, just add up
+      coefficients[head].second += coefficients[i].second;
+    }
+  }
+  coefficients.resize(head + 1);
+}
+
 void LinearConstraint::getVariables(std::vector<Variable>& vars) const {
-  var_to_rational_map::const_iterator it = d_coefficients.begin();
-  var_to_rational_map::const_iterator it_end = d_coefficients.end();
+  var_rational_pair_vector::const_iterator it = d_coefficients.begin();
+  var_rational_pair_vector::const_iterator it_end = d_coefficients.end();
   while (it != it_end) {
     Variable var = it->first;
     if (!var.isNull()) {
@@ -118,12 +149,15 @@ bool LinearConstraint::parse(Literal constraint, LinearConstraint& out) {
     linear = parse(node[1], -m, out.d_coefficients);
   }
 
+  // Normalize
+  normalize(out.d_coefficients);
+
   Debug("mcsat::linear") << "LinearConstraint::parse(" << constraint << ") => " << out << std::endl;
 
   return linear;
 }
 
-bool LinearConstraint::parse(TNode term, Rational mult, var_to_rational_map& coefficientMap) {
+bool LinearConstraint::parse(TNode term, Rational mult, var_rational_pair_vector& coefficientMap) {
 
   Debug("mcsat::linear") << "LinearConstraint::parse(" << term << ")" << std::endl;
 
@@ -131,13 +165,13 @@ bool LinearConstraint::parse(TNode term, Rational mult, var_to_rational_map& coe
 
   switch (term.getKind()) {
     case kind::CONST_RATIONAL:
-      coefficientMap[Variable::null] += mult*term.getConst<Rational>();
+      coefficientMap.push_back(var_rational_pair(Variable::null, mult*term.getConst<Rational>()));
       break;
     case kind::VARIABLE:
     case kind::SKOLEM: {
       Assert(db.hasVariable(term));
       Variable var = db.getVariable(term);
-      coefficientMap[var] += mult;
+      coefficientMap.push_back(var_rational_pair(var, mult));
       break;
     }
     case kind::MULT: {
@@ -177,8 +211,8 @@ bool LinearConstraint::parse(TNode term, Rational mult, var_to_rational_map& coe
 
 void LinearConstraint::toStream(std::ostream& out) const {
   out << "LinearConstraint[" << d_kind << ", ";
-  fm::var_to_rational_map::const_iterator it = d_coefficients.begin();
-  fm::var_to_rational_map::const_iterator it_end = d_coefficients.end();
+  var_rational_pair_vector::const_iterator it = d_coefficients.begin();
+  var_rational_pair_vector::const_iterator it_end = d_coefficients.end();
   bool first = true;
   while (it != it_end) {
     out << (first ? "" : "+");
@@ -233,11 +267,14 @@ Kind LinearConstraint::flipKind(Kind kind) {
 }
 
 Rational LinearConstraint::getCoefficient(Variable var) const {
-  const_iterator find = d_coefficients.find(var);
+  variable_search_cmp cmp;
+  var_rational_pair_vector::const_iterator find = std::lower_bound(d_coefficients.begin(), d_coefficients.end(), var_rational_pair(var, 0), cmp);
   if (find == d_coefficients.end()) {
     return 0;
-  } else {
+  } else if (find->first == var) {
     return find->second;
+  } else {
+    return 0;
   }
 }
 
@@ -246,8 +283,8 @@ void LinearConstraint::multiply(Rational c) {
 
   Debug("mcsat::linear") << "LinearConstraint::multiply(): " << c << " * " << *this << std::endl;
 
-  var_to_rational_map::iterator it = d_coefficients.begin();
-  var_to_rational_map::iterator it_end = d_coefficients.end();
+  var_rational_pair_vector::iterator it = d_coefficients.begin();
+  var_rational_pair_vector::iterator it_end = d_coefficients.end();
   for (; it != it_end; ++ it) {
     it->second *= c;
   }
@@ -260,8 +297,8 @@ void LinearConstraint::flipEquality() {
   
   Debug("mcsat::linear") << "LinearConstraint::flipEquality(): " << -1 << " * " << *this << std::endl;
 
-  var_to_rational_map::iterator it = d_coefficients.begin();
-  var_to_rational_map::iterator it_end = d_coefficients.end();
+  var_rational_pair_vector::iterator it = d_coefficients.begin();
+  var_rational_pair_vector::iterator it_end = d_coefficients.end();
   for (; it != it_end; ++ it) {
     it->second *= -1;
   }
@@ -271,14 +308,14 @@ void LinearConstraint::flipEquality() {
 
 void LinearConstraint::splitDisequality(Variable x, LinearConstraint& other) {
   Assert(d_kind == kind::DISTINCT);
-  Assert(d_coefficients.find(x) != d_coefficients.end());
+  Assert(!x.isNull() && getCoefficient(x) != 0);
 
   // Make a copy
   other.d_coefficients = d_coefficients;
   other.d_kind = kind::DISTINCT;
 
   // Setup the coefficients
-  if (d_coefficients[x] < 0) {
+  if (getCoefficient(x) < 0) {
     flipEquality();
   } else {
     other.flipEquality();
@@ -318,19 +355,11 @@ void LinearConstraint::add(const LinearConstraint& other, Rational c) {
   const_iterator it = other.begin();
   const_iterator it_end = other.end();
   for (; it != it_end; ++ it) {
-    Rational newValue = (d_coefficients[it->first] += c*it->second);
+    d_coefficients.push_back(var_rational_pair(it->first, c*it->second));
   }
 
-  // Gather all 0 terms
-  std::vector<Variable> toErase;
-  for (it = begin(), it_end = end(); it != it_end; ++ it) {
-    if (it->second.isZero() && !it->first.isNull()) {
-      toErase.push_back(it->first);
-    }
-  }
-  for (unsigned i = 0; i < toErase.size(); ++ i) {
-    d_coefficients.erase(toErase[i]);
-  }
+  // Normalize
+  normalize(d_coefficients);
 
   Debug("mcsat::linear") << "LinearConstraint::add(): = " << *this << std::endl;
 

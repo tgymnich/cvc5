@@ -296,6 +296,12 @@ public:
     return !d_model[var].isNull();
   }
 
+  /** Returns true if the trail satisfies the clause */
+  bool satisfies(CRef cRef) const;
+
+  /** Removes all the satisfied clauses from the vector */
+  void removeSatisfied(std::vector<CRef>& clauses) const;
+
   /**
    * Add a listener for the creation of new clauses. A context independent listener will only be notified
    * once when the clause is created. If the listener is context dependent, it will be notified when the clause is

@@ -14,8 +14,13 @@ class SolverTrail;
 
 namespace fm {
 
+/** Pair of a variable and a rational */
+typedef std::pair<Variable, Rational> var_rational_pair;
+
 /** Map from variables to coefficients, null is the constant term */
 typedef std::hash_map<Variable, Rational, VariableHashFunction> var_to_rational_map;
+
+typedef std::vector<var_rational_pair> var_rational_pair_vector;
 
 /**
  * A generic linear constraint (t op 0) is just a map from variables to coefficients
@@ -24,24 +29,27 @@ typedef std::hash_map<Variable, Rational, VariableHashFunction> var_to_rational_
  */
 class LinearConstraint {
 
-  /** Map from variables to coefficients */
-  var_to_rational_map d_coefficients;
+  /** Coefficients and variables */
+  var_rational_pair_vector d_coefficients;
+
   /** The kind of constraint >=, ... */
   Kind d_kind;
 
-  static bool parse(TNode constraint, Rational mult, var_to_rational_map& coefficientMap);
+  static void normalize(var_rational_pair_vector& coefficients);
+
+  static bool parse(TNode constraint, Rational mult, var_rational_pair_vector& coefficientMap);
 
 public:
 
   /** Default constructor */
   LinearConstraint(): d_kind(kind::LAST_KIND) {
-    d_coefficients[Variable::null] = 0;
+    d_coefficients.push_back(var_rational_pair(Variable::null, 0));
   }
 
   /** Clears the constraint */
   void clear() {
     d_coefficients.clear();
-    d_coefficients[Variable::null] = 0;
+    d_coefficients.push_back(var_rational_pair(Variable::null, 0));
     d_kind = kind::LAST_KIND;
   }
 
@@ -76,7 +84,7 @@ public:
   int getEvaluationLevel(const SolverTrail& trail) const;
 
 
-  typedef var_to_rational_map::const_iterator const_iterator;
+  typedef var_rational_pair_vector::const_iterator const_iterator;
 
   /** Returns the cosfficient with the given variable */
   Rational getCoefficient(Variable var) const;

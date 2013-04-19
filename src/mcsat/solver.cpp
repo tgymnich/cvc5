@@ -513,9 +513,18 @@ struct learnt_cmp_by_score {
 };
 
 void Solver::shrinkLearnts() {
+  d_trail.removeSatisfied(d_learntClauses);
   learnt_cmp_by_score cmp(d_learntClausesScore);
   std::sort(d_learntClauses.begin(), d_learntClauses.end(), cmp);
-  d_learntClauses.resize(d_learntClauses.size() / 2);
+  // Keep all clauses in size/2 + clauses of size <= 2
+  unsigned toKeep = d_learntClauses.size()/2;
+  for (unsigned i = toKeep; i < d_learntClauses.size(); ++ i) {
+    Clause& clause = d_learntClauses[i].getClause();
+    if (clause.size() <= 2) {
+      d_learntClauses[toKeep ++] = d_learntClauses[i];
+    }
+  }
+  d_learntClauses.resize(toKeep);
 }
 
 void Solver::performGC() {

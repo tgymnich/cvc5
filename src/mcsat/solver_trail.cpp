@@ -364,3 +364,23 @@ void SolverTrail::gcRelocate(const VariableGCInfo& vReloc, const ClauseRelocatio
     }
   }
 }
+
+bool SolverTrail::satisfies(CRef cRef) const {
+  Clause& clause = cRef.getClause();
+  for (unsigned i = 0; i < clause.size(); ++ i) {
+    if (isTrue(clause[i])) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void SolverTrail::removeSatisfied(std::vector<CRef>& clauses) const {
+  unsigned toKeep = 0;
+  for (unsigned i = 0; i < clauses.size(); ++ i) {
+    if (!satisfies(clauses[i])) {
+      clauses[toKeep ++] = clauses[i];
+    }
+  }
+  clauses.resize(toKeep);
+}
