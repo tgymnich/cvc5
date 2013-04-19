@@ -176,6 +176,9 @@ public:
   /** Returns the number of variables of a given type */
   size_t size(size_t typeIndex) const;
 
+  /** Returns the total number of variables */
+  size_t size() const { return d_variables.size(); }
+
   /**
    * Get the current clause database
    */

@@ -175,6 +175,9 @@ private:
   /** Learn limit increase */
   double d_learntsLimitInc;
 
+  /** Output a status line */
+  void outputStatusLine(bool header) const;
+
   /** ITE Removal */
   RemoveITE d_removeITE;
 

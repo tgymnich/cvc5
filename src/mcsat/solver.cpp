@@ -165,7 +165,9 @@ void Solver::processRequests() {
   }
   
   if (d_restartRequested) {
-        
+
+    outputStatusLine(false);
+
     std::vector<Variable> variablesUnset;
     // Restart to level 0
     d_trail.popToLevel(0, variablesUnset);
@@ -179,15 +181,9 @@ void Solver::processRequests() {
       d_learntsLimit *= d_learntsLimitInc;
     }
 
-    Notice() << "mcsat::Solver: Restarting at " << d_stats.conflicts.getData() << " conflicts" << std::endl;
     if (d_gcRequested) {
-      Notice() << "Vars: " << d_variableDatabase << std::endl;
-      Notice() << "Clauses: " << d_clauseDatabase << std::endl;
       performGC();
-      Notice() << "Vars: " << d_variableDatabase << std::endl;
-      Notice() << "Clauses: " << d_clauseDatabase << std::endl;
     }
-
     
     d_restartRequested = false;
     d_gcRequested = false;
@@ -253,6 +249,8 @@ void Solver::propagate(SolverTrail::PropagationToken::Mode mode) {
 
 bool Solver::check() {
   
+  outputStatusLine(true);
+
   /** Initial limit on the number of learnt clauses */
   d_learntsLimit = 0.3 * d_clauseDatabase.size();
 
@@ -468,6 +466,7 @@ void Solver::analyzeConflicts() {
     if (resolvent.getClause().getRuleId() == d_rule_Resolution.getRuleId()) {
       // If this is a new clause, so we manage it's deletion
       d_learntClausesScore[resolvent] = d_learntClausesScoreMax;
+      d_learntClauses.push_back(resolvent);
     } 
     
     // If number of variables in the resolvent is > 1, it must be that these 
@@ -608,4 +607,21 @@ void Solver::performGC() {
     Debug("mcsat::gc") << "GC: relocating " << *d_plugins[i] << std::endl;
     d_plugins[i]-> gcRelocate(variableRelocationInfo, clauseRelocationInfo);
   }
+}
+
+void Solver::outputStatusLine(bool header) const {
+  if (header) {
+    Notice()
+        << setw(10) << "Variables"
+        << setw(10) << "Clauses"
+        << setw(10) << "Restarts"
+        << setw(10) << "Conflicts"
+        << std::endl;
+  }
+  Notice()
+    << setw(10) << d_variableDatabase.size()
+    << setw(10) << d_clauseDatabase.size()
+    << setw(10) << d_stats.restarts.getData()
+    << setw(10) << d_stats.conflicts.getData()
+    << std::endl;
 }
