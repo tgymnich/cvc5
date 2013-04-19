@@ -17,8 +17,13 @@ static unsigned parent(unsigned i)     { Assert(i > 0); return (i-1)/2; }
 VariablePriorityQueue::VariablePriorityQueue()
 : d_variableScoresMax(1)
 , d_variableScoreIncreasePerBump(1)
+, d_variableScoreDecayFactor(0.95)
 , d_maxScoreBeforeScaling(1e100)
 {}
+
+void VariablePriorityQueue::decayScores() {
+  d_variableScoreIncreasePerBump /= d_variableScoreDecayFactor;
+}
 
 void VariablePriorityQueue::newVariable(Variable var, double score) {
 
@@ -120,11 +125,11 @@ void VariablePriorityQueue::bumpVariable(Variable var) {
     // This should preserve the order, we're fine
     for (unsigned type = 0; type < d_variableScores.size(); ++ type) {
       for (unsigned i = 0; i < d_variableScores[type].size(); ++ i) {
-        d_variableScores[type][i] /= newValue;
+        d_variableScores[type][i] /= d_maxScoreBeforeScaling;
       }
     }
-    // TODO: decay activities
-    d_variableScoresMax /= newValue;
+    d_variableScoresMax /= d_maxScoreBeforeScaling;
+    d_variableScoreIncreasePerBump /= d_maxScoreBeforeScaling;
   }
 }
 

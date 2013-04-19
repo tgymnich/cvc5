@@ -422,7 +422,14 @@ void FMPlugin::decide(SolverTrail::DecisionToken& out) {
 }
 
 void FMPlugin::notifyBackjump(const std::vector<Variable>& vars) {
+
+  Debug("mcsat::fm") << "FMPlugin::notifyBackjump(): " << d_trail.decisionLevel() << std::endl;
+
+  // Clear the delayed stuff
   d_delayedPropagations.clear();
+
+  // Decay the scores in the queue
+  d_variableQueue.decayScores();
 
   for (unsigned i = 0; i < vars.size(); ++ i) {
     if (isArithmeticVariable(vars[i])) {

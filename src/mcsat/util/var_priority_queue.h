@@ -74,6 +74,9 @@ class VariablePriorityQueue {
   /** How much to increase the score per bump */
   double d_variableScoreIncreasePerBump;
 
+  /** The decay factor */
+  double d_variableScoreDecayFactor;
+
   /** Max score before we scale everyone back */
   double d_maxScoreBeforeScaling;
 
@@ -107,6 +110,9 @@ public:
 
   /** Bump the score of the variable */
   void bumpVariable(Variable var);
+
+  /** Decay the scores of variables */
+  void decayScores();
 
   /** Get the score of a variable */
   double getScore(Variable var) const;
