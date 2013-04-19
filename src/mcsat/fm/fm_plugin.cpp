@@ -1,4 +1,5 @@
 #include "mcsat/fm/fm_plugin.h"
+#include "mcsat/options.h"
 
 using namespace CVC4;
 using namespace mcsat;
@@ -396,8 +397,17 @@ void FMPlugin::decide(SolverTrail::DecisionToken& out) {
   }
 
   while (!d_variableQueue.empty()) {
-    Variable var = d_variableQueue.pop();
-
+  
+    Variable var; 
+    
+    // Do we select randomly 
+    double selectRand = ((double)rand()) / RAND_MAX;
+    if (selectRand < options::mcsat_fm_random_select()) {
+      var = d_variableQueue.popRandom();
+    } else {
+      var = d_variableQueue.pop();
+    }
+    
 //    if (var.getNode().getKind() != kind::VARIABLE) {
 //      continue;
 //    }

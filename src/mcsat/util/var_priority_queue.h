@@ -3,7 +3,7 @@
 #include "mcsat/variable/variable.h"
 #include "mcsat/variable/variable_db.h"
 
-#include <ext/pb_ds/priority_queue.hpp>
+#include <boost/integer_traits.hpp>
 
 namespace CVC4 {
 namespace mcsat {
@@ -14,38 +14,63 @@ namespace util {
  */
 class VariablePriorityQueue {
 
+  /** The heap elements */
+  std::vector<Variable> d_heapElements;
+  
   /** Scores of variables */
   std::vector< std::vector<double> > d_variableScores;
 
-  /** Max over the score of all the variables */
+  double& var_score(Variable var) {
+    return d_variableScores[var.typeIndex()][var.index()];
+  }
+
+  double var_score(Variable var) const {
+    return d_variableScores[var.typeIndex()][var.index()];
+  }
+
+  /** Null index in the heap */
+  static const unsigned null_index = boost::integer_traits<unsigned>::const_max;
+  
+  /** Positions of the variables in the heap */
+  std::vector< std::vector<unsigned> > d_variableIndices;
+
+  unsigned& var_index(Variable var) {
+    return d_variableIndices[var.typeIndex()][var.index()];
+  }
+
+  unsigned var_index(Variable var) const {
+    return d_variableIndices[var.typeIndex()][var.index()];
+  }
+
+  /**
+   * Max over the score of all the variables (even the ones not currently in
+   * the queue).
+   */
   double d_variableScoresMax;
 
-  /** Compare variables according to their current score */
-  class VariableScoreCmp {
-    std::vector< std::vector<double> >& d_variableScores;
-  public:
-    VariableScoreCmp(std::vector< std::vector<double> >& variableScores)
-    : d_variableScores(variableScores) {}
-    bool operator() (const Variable& v1, const Variable& v2) const {
-      double cmp = d_variableScores[v1.typeIndex()][v1.index()] - d_variableScores[v2.typeIndex()][v2.index()];
-      if (cmp == 0) {
-        return v1 < v2;
-      } else {
-        return cmp < 0;
-      }
+  /** Percolate the given variable up */
+  void percolateUp(Variable var);
 
+  /** Percolate the given variable down */
+  void percolateDown(Variable var);
+  
+  /** Remove the variable */
+  void remove(Variable var);
+  
+  /** 
+   * Compare variables according to their current score 
+   * @return true if v1 > v2
+   */
+  bool cmp(const Variable& v1, const Variable& v2) const {
+    double v1_score = var_score(v1);
+    double v2_score = var_score(v2);
+    if (v1_score == v2_score) {
+      return v1 < v2;
+    } else {
+      return v1_score > v2_score;
     }
-  } d_variableScoreCmp;
-
-  /** Priority queue type we'll be using to keep the variables to pick */
-  typedef __gnu_pbds::priority_queue<Variable, VariableScoreCmp> variable_queue;
-
-  /** Priority queue for the variables */
-  variable_queue d_variableQueue;
-
-  /** Position in the variable queue */
-  std::vector< std::vector<variable_queue::point_iterator> > d_variableQueuePositions;
-
+  } 
+  
   /** How much to increase the score per bump */
   double d_variableScoreIncreasePerBump;
 
@@ -68,6 +93,9 @@ public:
   /** Get the top variable */
   Variable pop();
 
+  /** Get a random variable off the queue */
+  Variable popRandom();
+  
   /** Is the queue empty */
   bool empty() const;
 

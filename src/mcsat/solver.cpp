@@ -47,6 +47,9 @@ Solver::Solver(context::UserContext* userContext, context::Context* searchContex
 , d_removeITE(userContext)
 , d_variableRegister(d_variableDatabase)
 {
+  // Repeatable
+  srand(0);
+
   // Add some engines
   addPlugin("CVC4::mcsat::CNFPlugin");
   addPlugin("CVC4::mcsat::FMPlugin");

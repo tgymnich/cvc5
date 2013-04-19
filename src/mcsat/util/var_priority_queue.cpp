@@ -1,34 +1,45 @@
 #include "mcsat/util/var_priority_queue.h"
 #include "mcsat/variable/variable_db.h"
 
+#include <limits>
+
 using namespace CVC4;
 using namespace mcsat;
 using namespace util;
 
+/*
+  see http://en.wikipedia.org/wiki/Binary_heap\
+*/
+static unsigned leftChild(unsigned i)  { return 2*i+1; }
+static unsigned rightChild(unsigned i) { return 2*i+2; }
+static unsigned parent(unsigned i)     { Assert(i > 0); return (i-1)/2; }
+
 VariablePriorityQueue::VariablePriorityQueue()
 : d_variableScoresMax(1)
-, d_variableScoreCmp(d_variableScores)
-, d_variableQueue(d_variableScoreCmp)
 , d_variableScoreIncreasePerBump(1)
 , d_maxScoreBeforeScaling(1e100)
-{
-}
+{}
 
 void VariablePriorityQueue::newVariable(Variable var, double score) {
 
+  // Make sure there is space for the type 
   size_t typeIndex = var.typeIndex();
   if (typeIndex >= d_variableScores.size()) {
     d_variableScores.resize(typeIndex + 1);
-    d_variableQueuePositions.resize(typeIndex + 1);
+    d_variableIndices.resize(typeIndex + 1);
   }
 
-  // Insert a new score (max of the current scores)
+  // Insert a new score
   if (var.index() >= d_variableScores[typeIndex].size()) {
-    d_variableScores[typeIndex].resize(var.index() + 1, score);
-    d_variableQueuePositions[typeIndex].resize(var.index() + 1, variable_queue::point_iterator());
+    d_variableScores[typeIndex].resize(var.index() + 1, 0);
+    d_variableIndices[typeIndex].resize(var.index() + 1, null_index);
   }
-  d_variableScores[typeIndex][var.index()] = score;
 
+  // Set the data
+  var_score(var) = score;
+  var_index(var) = null_index;
+
+  // See if it's the max score
   if (score > d_variableScoresMax) {
     d_variableScoresMax = score;
   }
@@ -40,7 +51,7 @@ void VariablePriorityQueue::newVariable(Variable var, double score) {
 bool VariablePriorityQueue::inQueue(Variable var) const {
   Assert(var.typeIndex() < d_variableScores.size());
   Assert(var.index() < d_variableScores[var.typeIndex()].size());
-  return d_variableQueuePositions[var.typeIndex()][var.index()] != variable_queue::point_iterator();
+  return var_index(var) != null_index;
 }
 
 void VariablePriorityQueue::enqueue(Variable var) {
@@ -49,77 +60,178 @@ void VariablePriorityQueue::enqueue(Variable var) {
   Assert(!inQueue(var));
 
   // Add to the queue
-  variable_queue::point_iterator it = d_variableQueue.push(var);
-  d_variableQueuePositions[var.typeIndex()][var.index()] = it;
+  unsigned index = d_heapElements.size();
+  var_index(var) = index;
+  d_heapElements.push_back(var);
+  
+  // Push the new variable up
+  percolateUp(var);
 }
 
+void VariablePriorityQueue::percolateUp(Variable var) {
+  
+  // The variable we're moving
+  unsigned i = var_index(var);
+  
+  // While we're bigger than the parent swap them
+  do {
+    // We're at the top
+    if (i == 0) break;
+    // The parent
+    Variable parent_var = d_heapElements[parent(i)];
+    // If we're bigger than the parent, swp
+    if (cmp(var, parent_var)) {
+      // parent -> current
+      d_heapElements[i]	= parent_var;  
+      var_index(parent_var) = i;
+      // current -> parent
+      i = parent(i);
+    } else {
+      // Done
+      break;
+    }
+  } while (true);
+        
+  // Remember the variable and index
+  d_heapElements[i] = var;
+  var_index(var) = i;
+}
 
 void VariablePriorityQueue::bumpVariable(Variable var) {
   Assert(var.typeIndex() < d_variableScores.size());
   Assert(var.index() < d_variableScores[var.typeIndex()].size());
+  
   // New heuristic value
-  double newValue = d_variableScores[var.typeIndex()][var.index()] + d_variableScoreIncreasePerBump;
+  double newValue = var_score(var) + d_variableScoreIncreasePerBump;
   if (newValue > d_variableScoresMax) {
     d_variableScoresMax = newValue;
   }
 
+  // Update the value
+  var_score(var) = newValue;
+  
+  // If the variable is in queue, push it up
   if (inQueue(var)) {
-    // If the variable is in the queue, erase it first
-    d_variableQueue.erase(d_variableQueuePositions[var.typeIndex()][var.index()]);
-    d_variableQueuePositions[var.typeIndex()][var.index()] = variable_queue::point_iterator();
-    d_variableScores[var.typeIndex()][var.index()] = newValue;
-    enqueue(var);
-  } else {
-    // Otherwise just update the value
-    d_variableScores[var.typeIndex()][var.index()] = newValue;
-  }
-
+    percolateUp(var);
+  } 
+  
   // If the new value is too big, update all the values
   if (newValue > d_maxScoreBeforeScaling) {
-    // This preserves the order, we're fine
+    // This should preserve the order, we're fine
     for (unsigned type = 0; type < d_variableScores.size(); ++ type) {
       for (unsigned i = 0; i < d_variableScores[type].size(); ++ i) {
-        d_variableScores[type][i] /= d_maxScoreBeforeScaling;
+        d_variableScores[type][i] /= newValue;
       }
     }
     // TODO: decay activities
-    // variableHeuristicIncrease *= 1e-100;
-    d_variableScoresMax /= d_maxScoreBeforeScaling;
+    d_variableScoresMax /= newValue;
   }
 }
 
 double VariablePriorityQueue::getScore(Variable var) const {
   Assert(var.typeIndex() < d_variableScores.size());
   Assert(var.index() < d_variableScores[var.typeIndex()].size());
-  return d_variableScores[var.typeIndex()][var.index()];
+  return var_score(var);
 }
 
 Variable VariablePriorityQueue::pop() {
-  Variable var = d_variableQueue.top();
-  d_variableQueue.pop();
-  d_variableQueuePositions[var.typeIndex()][var.index()] = variable_queue::point_iterator();
+  Assert(d_heapElements.size() > 0);
+  
+  // The element we're popping
+  Variable var = d_heapElements[0];
+  var_index(var) = null_index;
+  
+  // Put the last element in the first place
+  if (d_heapElements.size() > 1) {
+    Variable toMove = d_heapElements.back();
+    d_heapElements[0] = toMove;
+    var_index(toMove) = 0;
+    d_heapElements.pop_back();
+    percolateDown(toMove);
+  } else {
+    d_heapElements.pop_back();
+  }
+  
+  return var;
+}
+
+void VariablePriorityQueue::percolateDown(Variable var) {
+  
+  // The variable we're moving
+  unsigned i = var_index(var);
+  
+  // While we're smaller than one of the children push down
+  do {
+    // If no more children, we're done
+    if (leftChild(i) >= d_heapElements.size()) break;
+    
+    // Get the larger child 
+    unsigned largerChild = leftChild(i);
+    Variable largerVar = d_heapElements[largerChild];    
+    if (rightChild(i) < d_heapElements.size()) {
+      Variable rightVar = d_heapElements[rightChild(i)];
+      if (cmp(rightVar, largerVar)) {
+	largerChild = rightChild(i);
+	largerVar = rightVar;
+      } 
+    } 
+    
+    // If we're not smaller than the larger child, we're in the right spot
+    if (!cmp(largerVar, var)) break;
+    
+    // Swap with the larger child
+    d_heapElements[i] = largerVar;
+    var_index(largerVar) = i;
+    
+    // Continue
+    i = largerChild;
+  } while (true);
+        
+  // Remember the variable and index
+  d_heapElements[i] = var;
+  var_index(var) = i;
+}
+
+Variable VariablePriorityQueue::popRandom() {
+  // Get a random variable from the queue
+  unsigned i = (rand() % d_heapElements.size());
+  Variable var = d_heapElements[i];
+  // Remove it
+  remove(var);
+  // Return it
   return var;
 }
 
 bool VariablePriorityQueue::empty() const {
-  return d_variableQueue.empty();
+  return d_heapElements.empty();
+}
+
+void VariablePriorityQueue::remove(Variable var) {
+  
+  double maxScore = d_variableScoresMax;
+
+  // Make the variable largest
+  double oldScore = d_variableScores[var.typeIndex()][var.index()];
+  var_score(var) = std::numeric_limits<double>::max();
+  percolateUp(var);
+  Variable largest = pop();
+  Assert(largest == var);
+  var_score(var) = oldScore;
+  
+  d_variableScoresMax = maxScore;
 }
 
 void VariablePriorityQueue::gcRelocate(const VariableGCInfo& vReloc) {
-
-  for (unsigned type = 0; type < d_variableScores.size(); ++ type) {
-    if (d_variableScores[type].size() > 0 && vReloc.size(type) > 0) {
-      VariableGCInfo::const_iterator it = vReloc.begin(type);
-      VariableGCInfo::const_iterator it_end = vReloc.end(type);
-
-      for (; it != it_end; ++ it) {
-        Variable erased = *it;
-        if (inQueue(erased)) {
-          d_variableQueue.erase(d_variableQueuePositions[erased.typeIndex()][erased.index()]);
-          d_variableQueuePositions[erased.typeIndex()][erased.index()] = variable_queue::point_iterator();
-        }
-        d_variableScores[erased.typeIndex()][erased.index()] = 0;
-      }
-    }
+  std::vector<Variable> toDelete;
+  // Get the variables to delete
+  for (unsigned i = 0; i < d_heapElements.size(); ++ i) {
+    Variable var = d_heapElements[i];
+    if (vReloc.isCollected(var)) {
+      toDelete.push_back(var);
+    }    
+  }
+  // Remove the variables
+  for (unsigned i = 0; i < toDelete.size(); ++ i) {
+    remove(toDelete[i]);
   }
 }

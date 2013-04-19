@@ -21,5 +21,8 @@ option mcsat_bcp_restart_init --mcsat-bcp-restart-init=N unsigned :default 50
 
 option mcsat_bcp_attach_limit --mcsat-bcp-attach-limit=N unsigned :default 0 
  maximal number of literals that a learnt clause can have so that we use it in BCP (0 = inf)
+
+option mcsat_fm_random_select --mcsat-fm-random-select=N double :default 0.05
+ the percent of variables that are randomly selected 
  
 endmodule
