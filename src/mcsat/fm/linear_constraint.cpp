@@ -95,19 +95,20 @@ bool LinearConstraint::evaluate(const SolverTrail& trail, unsigned& level) const
     }
   }
 
+  int sgn = lhsValue.sgn();
   switch (d_kind) {
   case kind::LT:
-      return lhsValue < 0;
+      return sgn < 0;
     case kind::LEQ:
-      return lhsValue <= 0;
+      return sgn <= 0;
     case kind::GT:
-      return lhsValue > 0;
+      return sgn > 0;
     case kind::GEQ:
-      return lhsValue >= 0;
+      return sgn >= 0;
     case kind::EQUAL:
-      return lhsValue == 0;
+      return sgn == 0;
     case kind::DISTINCT:
-      return lhsValue != 0;
+      return sgn != 0;
     default:
       Unreachable();
       break;
