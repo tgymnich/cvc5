@@ -87,7 +87,7 @@ public:
 
   /** Add new variable to track */
   void newVariable(Variable var) {
-    newVariable(var, 0);
+    newVariable(var, d_variableScoresMax);
   }
 
   /** Add new variable to track with the given score */

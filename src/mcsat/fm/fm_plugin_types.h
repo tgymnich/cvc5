@@ -103,6 +103,12 @@ class CDBoundsModel : public context::ContextNotifyObj {
   
   /** Upper bounds map */
   bound_map d_upperBounds;
+
+  /** Map from variables to their cached values */
+  typedef std::hash_map<Variable, Rational, VariableHashFunction> var_to_rational_map;
+  
+  /** Cache of values */
+  var_to_rational_map d_valueCache;
   
   /** Bound update trail (this is where the actual bounds are) */
   std::vector<BoundInfo> d_boundTrail;
@@ -177,6 +183,11 @@ class CDBoundsModel : public context::ContextNotifyObj {
    */
   bool inRange(Variable var, Rational value, bool& onlyOption) const;
 
+  bool inRange(Variable var, Rational value) const {
+    bool onlyOption;
+    return inRange(var, value, onlyOption);
+  }
+  
   /**
    * Check whether variable is asserted to be different from the given constant.
    */
@@ -210,7 +221,7 @@ public:
   bool hasUpperBound(Variable var) const;
   
   /** Pick a value for a variable */
-  Rational pick(Variable var) const;
+  Rational pick(Variable var, bool useCache);
 
   /** Get the current lower bound info */
   const BoundInfo& getLowerBoundInfo(Variable var) const;

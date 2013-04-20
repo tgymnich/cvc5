@@ -45,6 +45,7 @@ FMPlugin::FMPlugin(ClauseDatabase& database, const SolverTrail& trail, SolverPlu
 , d_realTypeIndex(VariableDatabase::getCurrentDB()->getTypeIndex(NodeManager::currentNM()->realType()))
 , d_fixedVariables(trail.getSearchContext())
 , d_fixedVariablesIndex(trail.getSearchContext(), 0)
+, d_fixedVariablesDecided(trail.getSearchContext(), 0)
 , d_trailHead(trail.getSearchContext(), 0)
 , d_bounds(trail.getSearchContext())
 , d_fmRule(database, trail)
@@ -389,13 +390,21 @@ void FMPlugin::decide(SolverTrail::DecisionToken& out) {
   for (; d_fixedVariablesIndex < d_fixedVariables.size(); d_fixedVariablesIndex = d_fixedVariablesIndex + 1) {
     Variable var = d_fixedVariables[d_fixedVariablesIndex];
     if (!d_trail.hasValue(var)) {
-      Rational value = d_bounds.pick(var);
-      Debug("mcsat::fm") << "FMPlugin::decide(): " << var << "[" << d_variableQueue.getScore(var) << "] -> " << value << std::endl;
+      Rational value = d_bounds.pick(var, false);
+      Debug("mcsat::fm") << "FMPlugin::decide(): [f] " << var << "[" << d_variableQueue.getScore(var) << "] -> " << value << std::endl;
+      Debug("mcsat::fm::decide") << "FMPlugin::decide(): " << var << " fixed at " << d_trail.decisionLevel() << std::endl;
       out(var, NodeManager::currentNM()->mkConst(value), true);
+      d_fixedVariablesDecided = d_fixedVariablesDecided + 1;
       return;
     }
   }
 
+  if (Debug.isOn("mcsat::fm::decide")) {
+    if (d_fixedVariablesDecided == d_trail.decisionLevel()) {
+      Debug("mcsat::fm::decide") << "FMPlugin::decide(): initially fixed " << d_trail.decisionLevel() << std::endl; 
+    }
+  }
+  
   while (!d_variableQueue.empty()) {
   
     Variable var; 
@@ -413,7 +422,7 @@ void FMPlugin::decide(SolverTrail::DecisionToken& out) {
 //    }
 
     if (d_trail.value(var).isNull()) {
-      Rational value = d_bounds.pick(var);
+      Rational value = d_bounds.pick(var, true);
       Debug("mcsat::fm") << "FMPlugin::decide(): " << var << "[" << d_variableQueue.getScore(var) << "] -> " << value << std::endl;
       out(var, NodeManager::currentNM()->mkConst(value), true);
       return;

@@ -242,7 +242,7 @@ bool CDBoundsModel::inRange(Variable var, Rational value, bool& onlyOption) cons
   return true;
 }
 
-Rational CDBoundsModel::pick(Variable var) const {
+Rational CDBoundsModel::pick(Variable var, bool useCache) {
 
   Debug("mcsat::fm") << "CDBoundsModel::pick(" << var << ")" << std::endl;
 
@@ -250,51 +250,80 @@ Rational CDBoundsModel::pick(Variable var) const {
   std::set<Rational> disequal;
   getDisequal(var, disequal);
 
+  Rational value;
+  
+  if (useCache) {
+    bool forced;
+    value = d_valueCache[var];
+    if (inRange(var, value, forced) && disequal.count(value) == 0) {
+      Debug("mcsat::fm") << "FMPlugin::decide(): [cache] " << var << std::endl;
+      return value;
+    }
+  }
+  
   if (hasLowerBound(var)) {
     const BoundInfo& lowerBound = getLowerBoundInfo(var);
     if (hasUpperBound(var)) {
       const BoundInfo& upperBound = getUpperBoundInfo(var);
+      Debug("mcsat::fm") << "FMPlugin::decide(): " << var << " in [" << lowerBound.value << ".." << upperBound.value << "]" << std::endl;
       // Both bounds present, go for middle
-      Rational value = (lowerBound.value + upperBound.value)/2;
+      value = (lowerBound.value + upperBound.value)/2;
+  
+      if (inRange(var, value.floor())) {
+	value = value.floor();
+      } else {
+	if (inRange(var, value.ceiling())) {
+	  value = value.ceiling();	  
+	}  
+      }
+
       std::set<Rational>::const_iterator find = disequal.find(value);
       while (find != disequal.end()) {
         if (value < upperBound.value) {
           value = (value + upperBound.value) / 2;
         } else if (value > lowerBound.value) {
-          value = (value = lowerBound.value) / 2;
+          value = (value + lowerBound.value) / 2;
         } else {
           Unreachable();
         }
         find = disequal.find(value);
       }
-      return value;
     } else {
+      Debug("mcsat::fm") << "FMPlugin::decide(): " << var << " in [" << lowerBound.value << "..]" << std::endl;
       // No upper bound, get max of (lower, diseq) and round up
       Rational max = lowerBound.value;
       if (disequal.size() > 0) {
         max = std::max(max, *disequal.rbegin());
       }
-      return (max + 10).floor();
+      value = (max + 10).floor();
     }
   } else {
     // No lower bound
     if (hasUpperBound(var)) {
       const BoundInfo& upperBound = getUpperBoundInfo(var);
+      Debug("mcsat::fm") << "FMPlugin::decide(): " << var << " in [.." << upperBound.value << "]" << std::endl;
       // No lower bound, get min of (upper, diseq) and round down
       Rational min = upperBound.value;
       if (disequal.size() > 0) {
         min = std::min(min, *disequal.begin());
       }
-      return (min - 10).ceiling();
+      value = (min - 10).ceiling();
     } else {
+      Debug("mcsat::fm") << "FMPlugin::decide(): [.] " << var << std::endl;
       // No bounds at all, just find 0... thats not in diseq
       unsigned x = 0;
       while (disequal.count(x) > 0) {
         x ++;
       }
-      return x;
+      value = x;
     }
   }
+
+  // Cache the values
+  d_valueCache[var] = value;
+  
+  // Return the value
+  return value;
 }
 
 bool CDBoundsModel::isDisequal(Variable var, Rational value) const {

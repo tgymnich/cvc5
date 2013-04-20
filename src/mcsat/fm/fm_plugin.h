@@ -56,6 +56,9 @@ class FMPlugin : public SolverPlugin {
   /** Index of the last fixed variable */
   context::CDO<unsigned> d_fixedVariablesIndex;
 
+  /** Number of fixed variable decisions */
+  context::CDO<unsigned> d_fixedVariablesDecided;
+
   /** Map from variables to constraints */
   fm::var_to_constraint_map d_constraints;
 
