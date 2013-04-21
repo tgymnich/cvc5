@@ -42,6 +42,8 @@ Solver::Solver(context::UserContext* userContext, context::Context* searchContex
 , d_gcRequested(false)
 , d_learntClausesScoreMax(1.0)
 , d_learntClausesScoreIncrease(1.0)
+, d_learntClausesScoreMaxBeforeScaling(1e20)
+, d_leanrtClausesScoreDecay(0.95)
 , d_learntsLimit(100)
 , d_learntsLimitInc(1.1)
 , d_removeITE(userContext)
@@ -272,6 +274,7 @@ bool Solver::check() {
       Debug("mcsat::trail") << d_trail << std::endl;
      
       ++ d_stats.conflicts;
+      decayClauseScores();
       
       // Notify of a new conflict situation
       d_notifyDispatch.notifyConflict();
@@ -432,6 +435,9 @@ void Solver::analyzeConflicts() {
       // Resolve the literal (propagations should always have first literal propagating)
       d_rule_Resolution.resolve(literalReason, 0);
       d_notifyDispatch.notifyConflictResolution(literalReason);
+      if (literalReasonClause.getRuleId() == d_rule_Resolution.getRuleId()) {
+        bumpClause(literalReason);
+      }
 
       // We removed one literal
       -- varsAtConflictLevel;
@@ -486,14 +492,18 @@ void Solver::bumpClause(CRef cRef) {
 
   find->second += d_learntClausesScoreIncrease;
 
-  if (find->second > 1e20) {
+  if (find->second > d_learntClausesScoreMax) {
+    d_learntClausesScoreMax = find->second;
+  }
+
+  if (find->second > d_learntClausesScoreMaxBeforeScaling) {
     std::hash_map<CRef, double, CRefHashFunction>::iterator it = d_learntClausesScore.begin();
     std::hash_map<CRef, double, CRefHashFunction>::iterator it_end = d_learntClausesScore.begin();
     for (; it != it_end; ++ it)  {
-      it->second = it->second * 1e-20;
+      it->second /= d_learntClausesScoreMaxBeforeScaling;
     }
-    // TODO: decay clause activities
-    // d_learntClausesScoreIncrease *= 1e-20;
+    d_learntClausesScoreMax /= d_learntClausesScoreMaxBeforeScaling;
+    d_learntClausesScoreIncrease /= 1e-20;
   }
 }
 

@@ -163,6 +163,14 @@ private:
   /** Increase per bump */
   double d_learntClausesScoreIncrease;
 
+  /** Maximal score before we scale */
+  double d_learntClausesScoreMaxBeforeScaling;
+
+  /** Decay of clause scores */
+  double d_leanrtClausesScoreDecay;
+
+  void decayClauseScores() { d_learntClausesScoreIncrease *= (1 / d_leanrtClausesScoreDecay); }
+
   /** Increase the clause heuristic */
   void bumpClause(CRef cRef);
 
