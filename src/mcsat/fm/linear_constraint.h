@@ -35,6 +35,12 @@ class LinearConstraint {
   /** The kind of constraint >=, ... */
   Kind d_kind;
 
+  /** Value cache for the variables */
+  std::vector<Rational> d_variablesValueCache;
+
+  /** Value of the constraint */
+  bool d_constraintValueCache;
+  
   static void normalize(var_rational_pair_vector& coefficients);
 
   static bool parse(TNode constraint, Rational mult, var_rational_pair_vector& coefficientMap);
@@ -42,15 +48,17 @@ class LinearConstraint {
 public:
 
   /** Default constructor */
-  LinearConstraint(): d_kind(kind::LAST_KIND) {
+  LinearConstraint(): d_kind(kind::LAST_KIND), d_constraintValueCache(false) {
     d_coefficients.push_back(var_rational_pair(Variable::null, 0));
   }
 
   /** Clears the constraint */
   void clear() {
     d_coefficients.clear();
+    d_variablesValueCache.clear();
     d_coefficients.push_back(var_rational_pair(Variable::null, 0));
     d_kind = kind::LAST_KIND;
+    d_constraintValueCache = false;
   }
 
   /** Returns the number of proper variables */

@@ -242,6 +242,49 @@ bool CDBoundsModel::inRange(Variable var, Rational value, bool& onlyOption) cons
   return true;
 }
 
+static Rational pickLowerInt(const BoundInfo& lowerBound, const std::set<Rational>& disequal) {
+  Rational value;
+
+  if (lowerBound.strict) {
+    // > 1 -> 1 + 1 -> 2
+    // > 0.9 -> 0.9 + 1 -> 1
+    value = (lowerBound.value + 1).floor();
+  } else {
+    // >= 1 -> 1
+    // >= 0.9 -> 1
+    value = lowerBound.value.ceiling();
+  }
+
+  // Increase until you find it
+  while (disequal.count(value) > 0) {
+    value = value + 1;
+  }
+
+  return value;
+}
+
+static Rational pickUpperInt(const BoundInfo& upperBound, const std::set<Rational>& disequal) {
+  Rational value;
+
+  if (upperBound.strict) {
+    // < -1 -> -2 -> -2
+    // < -0.9 -> -1.9 -> -1
+    value = (upperBound.value - 1).ceiling();
+  } else {
+    // <= -1 -> -1
+    // <= -0.9 -> -1
+    value = upperBound.value.floor();
+  }
+
+  // Decrease until you find it
+  while (disequal.count(value) > 0) {
+    value = value - 1;
+  }
+
+  return value;
+
+}
+
 Rational CDBoundsModel::pick(Variable var, bool useCache) {
 
   Debug("mcsat::fm") << "CDBoundsModel::pick(" << var << ")" << std::endl;
@@ -250,52 +293,80 @@ Rational CDBoundsModel::pick(Variable var, bool useCache) {
   std::set<Rational> disequal;
   getDisequal(var, disequal);
 
+  // How many integers in the disequal
+  unsigned disequalInts = 0;
+  std::set<Rational>::const_iterator d_it = disequal.begin();
+  std::set<Rational>::const_iterator d_it_end = disequal.end();
+  for (; d_it != d_it_end; ++ d_it) {
+    if (d_it->isIntegral()) {
+      disequalInts ++;
+    }
+  }
+
+  // Return value
   Rational value;
   
+  // Try the cached value
   if (useCache) {
-    bool forced;
     value = d_valueCache[var];
-    if (inRange(var, value, forced) && disequal.count(value) == 0) {
+    if (inRange(var, value) && disequal.count(value) == 0) {
       Debug("mcsat::fm") << "FMPlugin::decide(): [cache] " << var << std::endl;
       return value;
     }
   }
-  
+
   if (hasLowerBound(var)) {
     const BoundInfo& lowerBound = getLowerBoundInfo(var);
     if (hasUpperBound(var)) {
       const BoundInfo& upperBound = getUpperBoundInfo(var);
       Debug("mcsat::fm") << "FMPlugin::decide(): " << var << " in [" << lowerBound.value << ".." << upperBound.value << "]" << std::endl;
-      // Both bounds present, go for middle
-      value = (lowerBound.value + upperBound.value)/2;
-  
-      if (inRange(var, value.floor())) {
-	value = value.floor();
-      } else {
-	if (inRange(var, value.ceiling())) {
-	  value = value.ceiling();	  
-	}  
-      }
 
-      std::set<Rational>::const_iterator find = disequal.find(value);
-      while (find != disequal.end()) {
-        if (value < upperBound.value) {
-          value = (value + upperBound.value) / 2;
-        } else if (value > lowerBound.value) {
-          value = (value + lowerBound.value) / 2;
+      // Number of integers in the range
+      Rational intRange = upperBound.value.floor() - lowerBound.value.ceiling() + 1;
+      if (upperBound.strict) intRange = intRange - 1;
+      if (lowerBound.strict) intRange = intRange - 1;
+      Debug("mcsat::fm") << "FMPlugin::decide(): intRange = " << intRange << ", " << "disequalInt = " << disequalInts << std::endl;
+
+      // Can we select an integer
+      if (intRange > disequalInts) {
+        // Try integer starting value
+        if (lowerBound.value >= 0) {
+          // --0---[-----]---- : pick in the middle
+          value = (lowerBound.value + upperBound.value)/2;
+          value = value.floor();
+        } else if (upperBound.value <= 0) {
+          // --[----]----0---- : pick closer to zero
+          value = (lowerBound.value + upperBound.value)/2;
+          value = value.ceiling();
         } else {
-          Unreachable();
+          // Pick around 0
+          value = 0;
         }
-        find = disequal.find(value);
+      } else {
+        // No integer solution, go for middle
+        value = (lowerBound.value + upperBound.value)/2;
+        // Make sure it's not in the disequal set
+        std::set<Rational>::const_iterator find = disequal.find(value);
+        while (find != disequal.end()) {
+          if (value < upperBound.value) {
+            value = (value + upperBound.value) / 2;
+          } else if (value > lowerBound.value) {
+            value = (value + lowerBound.value) / 2;
+          } else {
+            Unreachable();
+          }
+          find = disequal.find(value);
+        }
       }
     } else {
       Debug("mcsat::fm") << "FMPlugin::decide(): " << var << " in [" << lowerBound.value << "..]" << std::endl;
-      // No upper bound, get max of (lower, diseq) and round up
-      Rational max = lowerBound.value;
-      if (disequal.size() > 0) {
-        max = std::max(max, *disequal.rbegin());
+      if (lowerBound.value >= 0) {
+        // --0---[---------: pick far
+        value = lowerBound.value + 100;
+      } else {
+        // if ----[--0----- try 0
+        value = 0;
       }
-      value = (max + 10).floor();
     }
   } else {
     // No lower bound
@@ -303,19 +374,34 @@ Rational CDBoundsModel::pick(Variable var, bool useCache) {
       const BoundInfo& upperBound = getUpperBoundInfo(var);
       Debug("mcsat::fm") << "FMPlugin::decide(): " << var << " in [.." << upperBound.value << "]" << std::endl;
       // No lower bound, get min of (upper, diseq) and round down
-      Rational min = upperBound.value;
-      if (disequal.size() > 0) {
-        min = std::min(min, *disequal.begin());
+      if (upperBound.value <= 0) {
+        // if -------]--0-- : pick far
+        value = upperBound.value - 100;
+      } else {
+        // if ------0--]--- try 0
+        value = 0;
       }
-      value = (min - 10).ceiling();
     } else {
-      Debug("mcsat::fm") << "FMPlugin::decide(): [.] " << var << std::endl;
-      // No bounds at all, just find 0... thats not in diseq
-      unsigned x = 0;
-      while (disequal.count(x) > 0) {
-        x ++;
+      // No bounds go for 0
+      value = 0;
+    }
+  }
+
+  Debug("mcsat::fm") << "FMPlugin::decide(): " << var << " around 0 " << std::endl;
+  if (!inRange(var, value) || disequal.count(value) > 0) {
+    Rational value_i = value + 1;
+    Rational value_d = value - 1;
+    while (true) {
+      if (inRange(var, value_i) && disequal.count(value_i) == 0) {
+        value = value_i;
+        break;
       }
-      value = x;
+      if (inRange(var, value_d) && disequal.count(value_d) == 0) {
+        value = value_d;
+        break;
+      }
+      value_i = value_i + 1;
+      value_d = value_d - 1;
     }
   }
 

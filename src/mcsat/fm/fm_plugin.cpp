@@ -232,7 +232,7 @@ void FMPlugin::propagate(SolverTrail::PropagationToken& out) {
 	Debug("mcsat::fm") << "FMPlugin::propagate(): processing " << var << " -> " << d_trail.value(var) << std::endl;
         processUnitConstraint(var);
       } else {
-	Debug("mcsat::fm") << "FMPlugin::propagate(): " << var << " not unit yet" << std::endl;
+	Debug("mcsat::fm") << "FMPlugin::propagate(): " << var << " not unit" << std::endl;
       }
     }
   }

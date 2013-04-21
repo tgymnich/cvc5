@@ -53,7 +53,9 @@ void LinearConstraint::getVariables(std::vector<Variable>& vars) const {
 
 void LinearConstraint::swap(LinearConstraint& c) {
   d_coefficients.swap(c.d_coefficients);
+  d_variablesValueCache.swap(c.d_variablesValueCache);
   std::swap(d_kind, c.d_kind);
+  std::swap(d_constraintValueCache, c.d_constraintValueCache);
 }
 
 int LinearConstraint::getEvaluationLevel(const SolverTrail& trail) const {
@@ -81,6 +83,30 @@ bool LinearConstraint::evaluate(const SolverTrail& trail, unsigned& level) const
 
   level = 0;
 
+  // Check if the cache is valid
+  bool cacheValid = true;
+  if (!d_variablesValueCache.empty()) {
+    Assert(d_variablesValueCache.size() == d_coefficients.size());
+    for (unsigned i = 0; i < d_variablesValueCache.size(); ++ i) {
+      Variable var = d_coefficients[i].first;
+      if (!var.isNull()) {
+        level = std::max(level, trail.decisionLevel(var));
+        if (trail.value(var).getConst<Rational>() != d_variablesValueCache[i]) {
+          cacheValid = false;
+        }
+      }
+    }
+  } else {
+    cacheValid = false;
+  }
+
+  if (cacheValid) {
+    return d_constraintValueCache;
+  }
+
+  // Make sure enough value for the cache
+  const_cast<LinearConstraint*>(this)->d_variablesValueCache.clear();
+
   Rational lhsValue;
   const_iterator it = begin();
   const_iterator it_end = end();
@@ -88,33 +114,47 @@ bool LinearConstraint::evaluate(const SolverTrail& trail, unsigned& level) const
     Variable var = it->first;
     if (var.isNull()) {
       lhsValue += it->second;
+      const_cast<LinearConstraint*>(this)->d_variablesValueCache.push_back(0);
     } else {
       Assert(trail.hasValue(var));
       level = std::max(level, trail.decisionLevel(var));
-      lhsValue += trail.value(var).getConst<Rational>() * it->second;
+      Rational value = trail.value(var).getConst<Rational>();
+      const_cast<LinearConstraint*>(this)->d_variablesValueCache.push_back(value);
+      lhsValue += value * it->second;
     }
   }
 
+  Assert(d_variablesValueCache.size() == d_coefficients.size());
+
   int sgn = lhsValue.sgn();
+  bool value;
   switch (d_kind) {
   case kind::LT:
-      return sgn < 0;
-    case kind::LEQ:
-      return sgn <= 0;
-    case kind::GT:
-      return sgn > 0;
-    case kind::GEQ:
-      return sgn >= 0;
-    case kind::EQUAL:
-      return sgn == 0;
-    case kind::DISTINCT:
-      return sgn != 0;
-    default:
-      Unreachable();
-      break;
-    }
+    value = (sgn < 0);
+    break;
+  case kind::LEQ:
+    value = (sgn <= 0);
+    break;
+  case kind::GT:
+    value = (sgn > 0);
+    break;
+  case kind::GEQ:
+    value = (sgn >= 0);
+    break;
+  case kind::EQUAL:
+    value = (sgn == 0);
+    break;
+  case kind::DISTINCT:
+    value = (sgn != 0);
+    break;
+  default:
+    Unreachable();
+    break;
+  }
 
-  return true;
+  const_cast<LinearConstraint*>(this)->d_constraintValueCache = value;
+
+  return value;
 }
 
 
@@ -229,6 +269,7 @@ void LinearConstraint::toStream(std::ostream& out) const {
 }
 
 Kind LinearConstraint::negateKind(Kind kind) {
+
   switch (kind) {
   case kind::LT:
     // not (a < b) = (a >= b)
@@ -249,10 +290,12 @@ Kind LinearConstraint::negateKind(Kind kind) {
     Unreachable();
     break;
   }
+
   return kind::LAST_KIND;
 }
 
 Kind LinearConstraint::flipKind(Kind kind) {
+
   switch (kind) {
   case kind::LT:
     return kind::GT;
@@ -311,6 +354,9 @@ void LinearConstraint::splitDisequality(Variable x, LinearConstraint& other) {
   Assert(d_kind == kind::DISTINCT);
   Assert(!x.isNull() && getCoefficient(x) != 0);
 
+  d_variablesValueCache.clear();
+  other.d_variablesValueCache.clear();
+
   // Make a copy
   other.d_coefficients = d_coefficients;
   other.d_kind = kind::DISTINCT;
@@ -330,6 +376,8 @@ void LinearConstraint::splitDisequality(Variable x, LinearConstraint& other) {
 void LinearConstraint::add(const LinearConstraint& other, Rational c) {
 
   Debug("mcsat::linear") << "LinearConstraint::add(): " << *this << " + " << c << " * " << other << std::endl;
+
+  d_variablesValueCache.clear();
 
   // Figure out the resulting kind
   switch (d_kind) {
