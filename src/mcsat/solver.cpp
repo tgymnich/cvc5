@@ -1,9 +1,12 @@
 #include "solver.h"
 
+#include "mcsat/options.h"
+#include "mcsat/rules/proof_rule.h"
+#include "mcsat/plugin/solver_plugin_factory.h"
+
 #include "theory/rewriter.h"
-#include "plugin/solver_plugin_factory.h"
-#include "rules/proof_rule.h"
 #include "util/node_visitor.h"
+
 
 #include <algorithm>
 
@@ -45,7 +48,7 @@ Solver::Solver(context::UserContext* userContext, context::Context* searchContex
 , d_learntClausesScoreMaxBeforeScaling(1e20)
 , d_leanrtClausesScoreDecay(0.95)
 , d_learntsLimit(100)
-, d_learntsLimitInc(1.1)
+, d_learntsLimitInc(options::mcsat_learnts_limit_inc())
 , d_removeITE(userContext)
 , d_variableRegister(d_variableDatabase)
 {

@@ -5,6 +5,9 @@
 
 module MCSAT "mcsat/options.h" MCSAT framework
 
+option mcsat_learnts_limit_inc --mcsat-learnts-limit-inc=N double :default 1.1 
+ sets the factor to increase the learnts size when needed  
+
 option use_mcsat_bcp_var_heuristic --enable-mcsat-bcp-var-heuristic/--disable-mcsat-bcp-var-heuristic bool :default true :read-write
  turns on the variable selection heurisic for the mcsat bcp layer
 /turns off the variable selection heurisic for the mcsat bcp layer
