@@ -220,7 +220,9 @@ void FMPlugin::propagate(SolverTrail::PropagationToken& out) {
             // If the constraint was already asserted, then process it
             if (d_trail.hasValue(constraintVar)) {
               processUnitConstraint(constraintVar);
-            }
+            } else {
+	      Debug("mcsat::fm::propagate") << "FMPlugin::propagate(): might propagate " << constraintVar << std::endl;
+	    }
           }
           // Keep the watch, and continue
           w.next_and_keep();

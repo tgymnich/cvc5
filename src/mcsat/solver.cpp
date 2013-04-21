@@ -171,8 +171,6 @@ void Solver::processRequests() {
   
   if (d_restartRequested) {
 
-    outputStatusLine(false);
-
     std::vector<Variable> variablesUnset;
     // Restart to level 0
     d_trail.popToLevel(0, variablesUnset);
@@ -193,6 +191,12 @@ void Solver::processRequests() {
     d_restartRequested = false;
     d_gcRequested = false;
     ++ d_stats.restarts;
+
+    outputStatusLine(false);
+
+    if (Debug.isOn("mcsat::solver::unit")) {
+      Debug("mcsat::solver::unit") << d_trail << std::endl;
+    }
   }
 
   // Requests have been processed
@@ -257,7 +261,7 @@ bool Solver::check() {
   outputStatusLine(true);
 
   /** Initial limit on the number of learnt clauses */
-  d_learntsLimit = 0.3 * d_clauseDatabase.size();
+  d_learntsLimit = d_clauseDatabase.size();
 
   Debug("mcsat::solver::search") << "Solver::check()" << std::endl;
 
@@ -472,7 +476,7 @@ void Solver::analyzeConflicts() {
     CRef resolvent = d_rule_Resolution.finish();
     Debug("mcsat::solver::analyze") << "Solver::analyzeConflicts(): resolvent: " << resolvent << std::endl;
 
-    if (resolvent.getClause().getRuleId() == d_rule_Resolution.getRuleId()) {
+    if (resolvent.getClause().size() > 1 && resolvent.getClause().getRuleId() == d_rule_Resolution.getRuleId()) {
       // If this is a new clause, so we manage it's deletion
       d_learntClausesScore[resolvent] = d_learntClausesScoreMax;
       d_learntClauses.push_back(resolvent);
@@ -491,7 +495,10 @@ void Solver::analyzeConflicts() {
 
 void Solver::bumpClause(CRef cRef) {
   std::hash_map<CRef, double, CRefHashFunction>::iterator find = d_learntClausesScore.find(cRef);
-  Assert(find != d_learntClausesScore.end());
+  
+  if (find == d_learntClausesScore.end()) {
+    return;
+  }
 
   find->second += d_learntClausesScoreIncrease;
 
@@ -506,7 +513,7 @@ void Solver::bumpClause(CRef cRef) {
       it->second /= d_learntClausesScoreMaxBeforeScaling;
     }
     d_learntClausesScoreMax /= d_learntClausesScoreMaxBeforeScaling;
-    d_learntClausesScoreIncrease /= 1e-20;
+    d_learntClausesScoreIncrease /= d_learntClausesScoreMaxBeforeScaling;
   }
 }
 
@@ -530,10 +537,18 @@ void Solver::shrinkLearnts() {
   learnt_cmp_by_score cmp(d_learntClausesScore);
   std::sort(d_learntClauses.begin(), d_learntClauses.end(), cmp);
   // Keep all clauses in size/2 + clauses of size <= 2
-  unsigned toKeep = d_learntClauses.size()/2;
-  for (unsigned i = toKeep; i < d_learntClauses.size(); ++ i) {
+  unsigned toKeep = d_learntClauses.size() * options::mcsat_learnts_keep_factor();
+  for (unsigned i = 0; i < d_learntClauses.size(); ++ i) {
     Clause& clause = d_learntClauses[i].getClause();
-    if (clause.size() <= 2) {
+    
+    bool keep = false;
+    if (i < toKeep && clause.size() > 1) {
+      toKeep = true;
+    } else if (clause.size() == 2) {
+      toKeep = true;
+    }
+    
+    if (keep) {
       d_learntClauses[toKeep ++] = d_learntClauses[i];
     }
   }
@@ -638,6 +653,8 @@ void Solver::outputStatusLine(bool header) const {
         << setw(10) << "Clauses"
         << setw(10) << "Restarts"
         << setw(10) << "Conflicts"
+        << setw(10) << "Trail"
+        << setw(10) << "T/V"
         << std::endl;
   }
   Notice()
@@ -645,5 +662,7 @@ void Solver::outputStatusLine(bool header) const {
     << setw(10) << d_clauseDatabase.size()
     << setw(10) << d_stats.restarts.getData()
     << setw(10) << d_stats.conflicts.getData()
+    << setw(10) << d_trail.size()
+    << setw(10) << setprecision(4) << (double)d_trail.size()/d_variableDatabase.size() 
     << std::endl;
 }
