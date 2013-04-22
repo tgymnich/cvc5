@@ -13,7 +13,9 @@ libmcsat_la_SOURCES = \
 	solver.h \
 	solver.cpp \
 	mcsat.h \
-	mcsat.cpp
+	mcsat.cpp \
+	prop_engine.h \
+	prop_engine.cpp
 
 libmcsat_la_LIBADD = \
 	@builddir@/clause/libmcsat_clause.la \

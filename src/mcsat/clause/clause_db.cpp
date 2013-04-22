@@ -106,7 +106,6 @@ CRef ClauseDatabase::newClause(const LiteralVector& literals, size_t ruleId) {
 }
 
 void ClauseDatabase::addNewClauseListener(INewClauseNotify* listener) const {
-  Assert(d_context->getLevel() == 0);
   ClauseDatabase* nonconst = const_cast<ClauseDatabase*>(this);
   if (listener->isContextDependent()) {
     nonconst->d_cd_notifySubscribers.push_back(listener);

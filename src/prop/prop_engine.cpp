@@ -63,7 +63,7 @@ public:
   }
 };
 
-PropEngine::PropEngine(TheoryEngine* te, DecisionEngine *de, Context* satContext, Context* userContext) :
+PropEngine::PropEngine(TheoryEngine* te, DecisionEngine *de, Context* satContext, UserContext* userContext) :
   d_inCheckSat(false),
   d_theoryEngine(te),
   d_decisionEngine(de),

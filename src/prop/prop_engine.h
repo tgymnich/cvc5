@@ -155,12 +155,12 @@ public:
   /**
    * Create a PropEngine with a particular decision and theory engine.
    */
-  PropEngine(TheoryEngine*, DecisionEngine*, context::Context* satContext, context::Context* userContext);
+  PropEngine(TheoryEngine*, DecisionEngine*, context::Context* satContext, context::UserContext* userContext);
 
   /**
    * Destructor.
    */
-  CVC4_PUBLIC ~PropEngine();
+  CVC4_PUBLIC virtual ~PropEngine();
 
   /**
    * This is called by SmtEngine, at shutdown time, just before
@@ -176,7 +176,7 @@ public:
    * The formula is asserted permanently for the current context.
    * @param node the formula to assert
    */
-  void assertFormula(TNode node);
+  virtual void assertFormula(TNode node);
 
   /**
    * Converts the given formula to CNF and assert the CNF to the SAT solver.
@@ -189,7 +189,7 @@ public:
    * @param removable whether this lemma can be quietly removed based
    * on an activity heuristic (or not)
    */
-  void assertLemma(TNode node, bool negated, bool removable);
+  virtual void assertLemma(TNode node, bool negated, bool removable);
 
   /**
    * If ever n is decided upon, it must be in the given phase.  This
@@ -200,7 +200,7 @@ public:
    * @param n the node in question; must have an associated SAT literal
    * @param phase the phase to use
    */
-  void requirePhase(TNode n, bool phase);
+  virtual void requirePhase(TNode n, bool phase);
 
   /**
    * Backtracks to and flips the most recent unflipped decision, and
@@ -230,7 +230,7 @@ public:
    * @param on input, resource the number of resource units permitted
    * for this call (0==off); on output, it is set to the resource used
    */
-  Result checkSat(unsigned long& millis, unsigned long& resource);
+  virtual Result checkSat(unsigned long& millis, unsigned long& resource);
 
   /**
    * Get the value of a boolean variable.
@@ -265,12 +265,12 @@ public:
   /**
    * Push the context level.
    */
-  void push();
+  virtual void push();
 
   /**
    * Pop the context level.
    */
-  void pop();
+  virtual void pop();
 
   /**
    * Get the assertion level of the SAT solver.

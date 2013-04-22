@@ -75,6 +75,9 @@
 #include "theory/quantifiers/macros.h"
 #include "theory/datatypes/options.h"
 
+#include "mcsat/options.h"
+#include "mcsat/prop_engine.h"
+
 using namespace std;
 using namespace CVC4;
 using namespace CVC4::smt;
@@ -623,7 +626,11 @@ void SmtEngine::finishInit() {
   d_decisionEngine = new DecisionEngine(d_context, d_userContext);
   d_decisionEngine->init();   // enable appropriate strategies
 
-  d_propEngine = new PropEngine(d_theoryEngine, d_decisionEngine, d_context, d_userContext);
+  if (!options::mcsat()) {
+    d_propEngine = new PropEngine(d_theoryEngine, d_decisionEngine, d_context, d_userContext);
+  } else {
+    d_propEngine = new mcsat::PropEngine(d_theoryEngine, d_decisionEngine, d_context, d_userContext);
+  }
 
   d_theoryEngine->setPropEngine(d_propEngine);
   d_theoryEngine->setDecisionEngine(d_decisionEngine);

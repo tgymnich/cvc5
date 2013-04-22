@@ -5,6 +5,11 @@
 
 module MCSAT "mcsat/options.h" MCSAT framework
 
+option mcsat --enable-mcsat/--disable-mcsat bool :default false :read-write
+ turns on mcsat in the cvc4 main solver
+/turns off mcsat in the cvc4 main sovler
+
+
 option mcsat_learnts_limit_inc --mcsat-learnts-limit-inc=N double :default 1.1 
  sets the factor to increase the learnts size when needed  
 
