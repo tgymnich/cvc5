@@ -69,6 +69,12 @@ public:
   /** Get the variables of this constraint */
   void getVariables(std::vector<Variable>& vars) const;
 
+  /** Get the top variable */
+  Variable getTopVariable(const SolverTrail& trail) const;
+  
+  /** Get the first unassigned variable */
+  Variable getUnassignedVariable(const SolverTrail& trail) const;
+  
   /** Get the kind of the constraint */
   Kind getKind() const {
     return d_kind;

@@ -10,7 +10,10 @@ FourierMotzkinRule::FourierMotzkinRule(ClauseDatabase& clauseDB, const SolverTra
 {
 }
 
-/** Start the resolution */
+const LinearConstraint& FourierMotzkinRule::getCurrentResolvent() const {
+  return d_resolvent;    
+}
+
 void FourierMotzkinRule::start(Literal lit) {
   d_assumptions.clear();
   d_resolvent.clear();
@@ -24,6 +27,11 @@ void FourierMotzkinRule::start(Literal lit) {
 }
 
 void FourierMotzkinRule::resolve(Variable var, LinearConstraint& c1, LinearConstraint& c2) {
+
+  Debug("mcsat::fm::resolve") << "var: " << var << std::endl;
+  Debug("mcsat::fm::resolve") << "C1: " << c1 << std::endl;
+  Debug("mcsat::fm::resolve") << "C2: " << c2 << std::endl;
+
   // We know that both are one of >, >= so coefficients with var must be opposite
   Rational c1_C = c1.getCoefficient(var);
   Rational c2_C = c2.getCoefficient(var);

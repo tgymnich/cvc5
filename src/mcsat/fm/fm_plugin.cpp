@@ -242,22 +242,15 @@ bool FMPlugin::isUnitConstraint(Variable constraint) {
   return d_constraintUnassignedStatus[constraint.index()] == UNASSIGNED_UNIT;
 }
 
-void FMPlugin::processUnitConstraint(Variable constraint) {
-  Debug("mcsat::fm") << "FMPlugin::processUnitConstraint(" << constraint << ")" << std::endl;
-  Assert(isLinearConstraint(constraint));
-  Assert(isUnitConstraint(constraint));
-
-  // Get the constraint
-  const LinearConstraint& c = getLinearConstraint(constraint);
-  Debug("mcsat::fm") << "FMPlugin::processUnitConstraint(): " << c << " with value " << d_trail.value(constraint) << std::endl;
-
+Variable FMPlugin::tryBound(const LinearConstraint& c, Variable x, Variable constraint) {
+  
+  Debug("mcsat::fm::resolve") << "bounding " << x << " with " << c << "(" << constraint << ")" << std::endl;
+	  
   // Compute ax + sum:
   // * the sum of the linear term that evaluates
-  // * the single variable that is unassigned
+  // * the single variable that is unassigned (or top in decision order)
   // * coefficient of the variable
-  Rational sum;
-  Rational a;
-  Variable x;
+  Rational a, sum;
 
   LinearConstraint::const_iterator it = c.begin();
   LinearConstraint::const_iterator it_end = c.end();
@@ -267,24 +260,27 @@ void FMPlugin::processUnitConstraint(Variable constraint) {
     if (var.isNull()) {
       sum += it->second;
       continue;
-    }
-    // Assigned variable
-    if (d_trail.hasValue(var)) {
+    }    
+    // Variable to bound 
+    if (x == var) {
+      a = it->second;
+    } else {
+      Assert(d_trail.hasValue(var));
       Rational varValue = d_trail.value(var).getConst<Rational>();
       sum += it->second * varValue;
-    } else {
-      Assert(x.isNull());
-      x = var;
-      a = it->second;
-    }
+    } 
   }
 
   // The constraint kind
   Kind kind = c.getKind();
-  if (d_trail.isFalse(constraint)) {
+  
+  // If the constraint is asserted, it might be negated
+  if (!constraint.isNull() && d_trail.isFalse(constraint)) {
     // If the constraint is negated, negate the kind
     kind = LinearConstraint::negateKind(kind);
   }
+ 
+  // If a < 0 we flip 
   if (a < 0) {
     // If a is negative flip the kind
     kind = LinearConstraint::flipKind(kind);
@@ -292,37 +288,82 @@ void FMPlugin::processUnitConstraint(Variable constraint) {
     sum = -sum;
   }
 
+  Debug("mcsat::fm::resolve") << a << "*" << x << " + " << sum << " " << kind << " 0" << std::endl;
+  
   // Do the work (assuming a > 0)
   Rational value = -sum/a;
-  bool fixed = false;
-  switch (kind) {
-  case kind::GT:
-  case kind::GEQ:
-    // (ax + sum >= 0) <=> (x >= -sum/a)
-    fixed = d_bounds.updateLowerBound(x, BoundInfo(value, kind == kind::GT, constraint));
-    break;
-  case kind::LT:
-  case kind::LEQ:
-    // (ax + sum <= 0) <=> (x <= -sum/a)
-    fixed = d_bounds.updateUpperBound(x, BoundInfo(value, kind == kind::LT, constraint));
-    break;
-  case kind::EQUAL:
-    // (ax + sum == 0) <=> (x >= -sum/a) and (x <= -sum/a)
-    d_bounds.updateLowerBound(x, BoundInfo(value, false, constraint));
-    d_bounds.updateUpperBound(x, BoundInfo(value, false, constraint));
-    fixed = true;
-    break;
-  case kind::DISTINCT:
-    // (ax + sum != 0) <=> x != -sum/a
-    d_bounds.addDisequality(x, DisequalInfo(value, constraint));
-    break;
-  default:
-    Unreachable();
-  }
+  bool strict = kind == kind::GT || kind == kind::LT;
+  BoundInfo info(value, strict, constraint);
+  
+  if (!constraint.isNull()) {
+    // Assert the bound
+    bool fixed = false;
+    switch (kind) {
+      case kind::GT:
+      case kind::GEQ:
+	// (ax + sum >= 0) <=> (x >= -sum/a)
+	fixed = d_bounds.updateLowerBound(x, info);
+	break;
+      case kind::LT:
+      case kind::LEQ:
+	// (ax + sum <= 0) <=> (x <= -sum/a)
+	fixed = d_bounds.updateUpperBound(x, info);
+	break;
+      case kind::EQUAL:
+	// (ax + sum == 0) <=> (x >= -sum/a) and (x <= -sum/a)
+	d_bounds.updateLowerBound(x, info);
+	d_bounds.updateUpperBound(x, info);
+	fixed = true;
+	break;
+      case kind::DISTINCT:
+	// (ax + sum != 0) <=> x != -sum/a
+	d_bounds.addDisequality(x, DisequalInfo(value, constraint));
+	break;
+      default:
+	Unreachable();
+    }
+   
+    if (fixed) {
+      d_fixedVariables.push_back(x);
+    }  
 
-  if (fixed) {
-    d_fixedVariables.push_back(x);
+    return Variable::null;
+  } else {
+    // Don't assert, just compute, use inConflict(const BoundInfo& lower, const BoundInfo& upper)
+    if (kind == kind::GT || kind == kind::GEQ || kind == kind::EQUAL) {
+      if (d_bounds.hasUpperBound(x)) {
+	const BoundInfo& upperBound = d_bounds.getUpperBoundInfo(x);
+	if (BoundInfo::inConflict(info, upperBound)) {
+	  Debug("mcsat::fm::resolve") << "conflict with ub of " << x << " : " << upperBound.reason << std::endl;
+	  return upperBound.reason;
+	}
+      }
+    } 
+    if (kind == kind::LT || kind == kind::LEQ || kind == kind::EQUAL) {
+      if (d_bounds.hasLowerBound(x)) {
+	const BoundInfo& lowerBound = d_bounds.getLowerBoundInfo(x);
+	if (BoundInfo::inConflict(lowerBound, info)) {
+	  Debug("mcsat::fm::resolve") << "conflict with lb of " << x << " : " << lowerBound.reason << std::endl;
+	  return lowerBound.reason;
+	}
+      }
+    }   
+    return Variable::null;
   }
+}
+
+void FMPlugin::processUnitConstraint(Variable constraint) {
+  Debug("mcsat::fm") << "FMPlugin::processUnitConstraint(" << constraint << ")" << std::endl;
+  Assert(isLinearConstraint(constraint));
+  Assert(isUnitConstraint(constraint));
+
+  // Get the constraint
+  const LinearConstraint& c = getLinearConstraint(constraint);
+  Debug("mcsat::fm") << "FMPlugin::processUnitConstraint(): " << c << " with value " << d_trail.value(constraint) << std::endl;
+
+  // Do the bounding 
+  Variable var = c.getUnassignedVariable(d_trail);
+  tryBound(c, var, constraint);  
 }
 
 void FMPlugin::processConflicts(SolverTrail::PropagationToken& out) {
@@ -345,8 +386,43 @@ void FMPlugin::processConflicts(SolverTrail::PropagationToken& out) {
       Variable upperBoundVariable = upperBound.reason;
       Literal upperBoundLiteral(upperBoundVariable, d_trail.isFalse(upperBoundVariable));
 
+      // Do the initial resolution 
       d_fmRule.start(lowerBoundLiteral);
       d_fmRule.resolve(var, upperBoundLiteral);
+
+      if (options::mcsat_fm_cascade()) {
+	do {
+	  
+	  Debug("mcsat::fm") << d_trail << std::endl;
+	  
+	  // Get the current constraint and see if it breaks any current boudns
+	  const LinearConstraint& current = d_fmRule.getCurrentResolvent();
+	  
+	  // Get the top variable
+	  var = current.getTopVariable(d_trail);
+	  if (var.isNull()) {
+	    // great, we resolve to nothing
+	    break;
+	  }
+	  
+	  // Try to bound 
+	  Variable boundVariable = tryBound(current, var);
+	  
+	  // If there
+	  if (!boundVariable.isNull()) {
+	    // We got a bound conflict we can resolve further
+	    Assert(d_trail.hasValue(boundVariable));
+	    Literal boundLiteral(boundVariable, d_trail.isFalse(boundVariable));
+	    d_fmRule.resolve(var, boundLiteral);
+	  } else {
+	    // No conflict, break
+	    break;
+	  }
+	  
+	} while (true);
+      }
+      
+      // Finish up
       conflict = d_fmRule.finish(out);
     } else {
       // Bounds clash with a disequality
@@ -387,14 +463,16 @@ void FMPlugin::decide(SolverTrail::DecisionToken& out, Variable var) {
   Assert(d_trailHead == d_trail.size());
 
   // Do any fixed variables first
-  for (; d_fixedVariablesIndex < d_fixedVariables.size(); d_fixedVariablesIndex = d_fixedVariablesIndex + 1) {
-    Variable var = d_fixedVariables[d_fixedVariablesIndex];
-    if (!d_trail.hasValue(var)) {
-      Rational value = d_bounds.pick(var, false);
-      Debug("mcsat::fm::decide") << "FMPlugin::decide(): " << var << " fixed at " << d_trail.decisionLevel() << std::endl;
-      out(var, NodeManager::currentNM()->mkConst(value), true);
-      d_fixedVariablesDecided = d_fixedVariablesDecided + 1;
-      return;
+  if (options::mcsat_fm_decide_fixed()) {
+    for (; d_fixedVariablesIndex < d_fixedVariables.size(); d_fixedVariablesIndex = d_fixedVariablesIndex + 1) {
+      Variable var = d_fixedVariables[d_fixedVariablesIndex];
+      if (!d_trail.hasValue(var)) {
+        Rational value = d_bounds.pick(var, false);
+        Debug("mcsat::fm::decide") << "FMPlugin::decide(): " << var << " fixed at " << d_trail.decisionLevel() << std::endl;
+        out(var, NodeManager::currentNM()->mkConst(value), true);
+        d_fixedVariablesDecided = d_fixedVariablesDecided + 1;
+        return;
+      }
     }
   }
 
@@ -487,6 +565,5 @@ void FMPlugin::gcRelocate(const VariableGCInfo& vReloc, const ClauseRelocationIn
   // Relocate the watch manager
   d_assignedWatchManager.gcRelocate(vReloc);
 }
-
 
 

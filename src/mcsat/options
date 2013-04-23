@@ -39,5 +39,13 @@ option mcsat_fm_lemmas_keep_factor --mcsat-fm-lemmas-keep-factor=N double :defau
 
 option mcsat_fm_bump --mcsat-fm-bump=N unsigned :default 1 
  FM bump factor
- 
+
+option mcsat_fm_decide_fixed --enable-mcsat-fm-decide-fixed/--disable-mcsat-fm-decide-fixed bool :default true :read-write
+ decides fixed FM variables immediately 
+/does not decide fixed FM variable immediately
+
+option mcsat_fm_cascade --enable-mcsat-fm-cascade/--disable-mcsat-fm-cascade bool :default true :read-write
+ cascade FM resolution while possible
+/does not cascade FM resolution
+
 endmodule

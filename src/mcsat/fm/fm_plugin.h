@@ -95,6 +95,13 @@ class FMPlugin : public SolverPlugin {
    */
   void processUnitConstraint(Variable constraint);
 
+  /**
+   * Try the constraint for bounding. If constraint (reason of c) is not null, then 
+   * the bound is asserted. Otherwise, the bound si just checked for a conflict.
+   * In case of conflict the opposite bound reason is retured.
+   */
+  Variable tryBound(const fm::LinearConstraint& c, Variable var, Variable constraint = Variable::null);
+
   /** The Fourier-Motzkin rule we use for derivation */
   rules::FourierMotzkinRule d_fmRule;
 

@@ -58,6 +58,9 @@ public:
   /** Resolve with given inequality over the given variable. */
   void resolve(Variable var, Literal ineq);
 
+  /** Returns the current resolvent */
+  const fm::LinearConstraint& getCurrentResolvent() const;
+  
   /**
    * Finish the derivation. We need the prop token, since the newly created literal will evaluate at lower level.
    */

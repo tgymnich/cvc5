@@ -302,7 +302,7 @@ Kind LinearConstraint::flipKind(Kind kind) {
   case kind::LEQ:
     return kind::GEQ;
   case kind::GT:
-    return kind::GT;
+    return kind::LT;
   case kind::GEQ:
     return kind::LEQ;
   default:
@@ -465,4 +465,36 @@ Literal LinearConstraint::getLiteral() const {
 
   Debug("mcsat::linear") << "LinearConstraint::getLiteral(): " << result << std::endl;
   return result;
+}
+
+
+Variable LinearConstraint::getTopVariable(const SolverTrail& trail) const {
+  Variable var = Variable::null;
+  unsigned varLevel = 0;
+  const_iterator it = begin();
+  const_iterator it_end = end();
+  for(; it != it_end; ++ it) {
+    if (!it->first.isNull()) {
+      Variable current = it->first;
+      Assert(trail.hasValue(current));
+      unsigned currentLevel = trail.decisionLevel(current);
+      if (currentLevel > varLevel) {
+	var = current;
+	varLevel =  currentLevel;
+      }
+    }
+  }
+  Assert(var.isNull() || varLevel > 0);
+  return var;  
+}
+
+Variable LinearConstraint::getUnassignedVariable(const SolverTrail& trail) const {
+  const_iterator it = begin();
+  const_iterator it_end = end();
+  for(; it != it_end; ++ it) {    
+    if (!it->first.isNull() && !trail.hasValue(it->first)) {
+      return it->first;
+    } 
+  }
+  return Variable::null;  
 }
