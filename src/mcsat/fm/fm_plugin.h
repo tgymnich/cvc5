@@ -34,8 +34,8 @@ class FMPlugin : public SolverPlugin {
   /** Delayed constraints to propagate by value (value is propagated) */
   std::vector<Variable> d_delayedPropagations;
 
-  /** Called on new real variables */
-  void newVariable(Variable var);
+  /** The learned clauses */
+  std::vector<CRef> d_lemmasLearnt;
 
   /** Called on arithmetic constraints */
   void newConstraint(Variable constraint);
@@ -98,8 +98,8 @@ class FMPlugin : public SolverPlugin {
   /** The Fourier-Motzkin rule we use for derivation */
   rules::FourierMotzkinRule d_fmRule;
 
-  /** Priority queue for variable selection */
-  util::VariablePriorityQueue d_variableQueue;
+  /** The Fourier-Motzkin rule we use for derivation */
+  rules::FourierMotzkinRuleDiseq d_fmRuleDiseq;
 
   /**
    * Processes any conflicts.
@@ -115,7 +115,7 @@ public:
   void propagate(SolverTrail::PropagationToken& out);
 
   /** Perform a decision */
-  void decide(SolverTrail::DecisionToken& out);
+  void decide(SolverTrail::DecisionToken& out, Variable var);
 
   /** String representation of the plugin (for debug purposes mainly) */
   std::string toString() const;

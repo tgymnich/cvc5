@@ -46,6 +46,11 @@ public:
   void restart();
 
   /**
+   * Bump the variable.
+   */
+  void bump(Variable var, unsigned amount = 1);
+
+  /**
    * Ask for garbage collection. Garbage collection will be performed at next restart and the plugins will get notified
    * pre and post garbage collection.
    */
@@ -55,6 +60,7 @@ public:
    * Are there any pending requests. Meaning we can stop, and will be called back again.
    */
   bool pending() const;
+
 };
 
 /**

@@ -9,6 +9,8 @@ option mcsat --enable-mcsat/--disable-mcsat bool :default false :read-write
  turns on mcsat in the cvc4 main solver
 /turns off mcsat in the cvc4 main sovler
 
+option mcsat_var_random_select --mcsat-var-random-select=N double :default 0.05
+ the percent of variables that are randomly selected 
 
 option mcsat_learnts_limit_inc --mcsat-learnts-limit-inc=N double :default 1.1 
  sets the factor to increase the learnts size when needed  
@@ -16,13 +18,12 @@ option mcsat_learnts_limit_inc --mcsat-learnts-limit-inc=N double :default 1.1
 option mcsat_learnts_keep_factor --mcsat-learnts-keep-factor=N double :default 0.5 
  sets the factor of learnts to keep when collecting garbage
 
-option use_mcsat_bcp_var_heuristic --enable-mcsat-bcp-var-heuristic/--disable-mcsat-bcp-var-heuristic bool :default true :read-write
- turns on the variable selection heurisic for the mcsat bcp layer
-/turns off the variable selection heurisic for the mcsat bcp layer
-
 option use_mcsat_bcp_value_phase_heuristic --enable-mcsat-bcp-value-phase-heuristic/--disable-mcsat-bcp-value-phase-heuristic bool :default true :read-write
  turns on the variable value selection heurisic based on previous phase for the mcsat bcp layer
 /turns off the variable value selection heurisic based on previous phase for the mcsat bcp layer
+
+option mcsat_bcp_bump --mcsat-bcp-bump=N unsigned :default 1 
+ FM bump factor
 
 option mcsat_bcp_restart_base --mcsat-bcp-restart-base=N double :default 2.0
  sets the base for the restart computation via the luby sequence
@@ -33,7 +34,10 @@ option mcsat_bcp_restart_init --mcsat-bcp-restart-init=N unsigned :default 50
 option mcsat_bcp_attach_limit --mcsat-bcp-attach-limit=N unsigned :default 0 
  maximal number of literals that a learnt clause can have so that we use it in BCP (0 = inf)
 
-option mcsat_fm_random_select --mcsat-fm-random-select=N double :default 0.05
- the percent of variables that are randomly selected 
+option mcsat_fm_lemmas_keep_factor --mcsat-fm-lemmas-keep-factor=N double :default 0.1 
+ sets the factor of FM lemmas  to keep when collecting garbage
+
+option mcsat_fm_bump --mcsat-fm-bump=N unsigned :default 1 
+ FM bump factor
  
 endmodule

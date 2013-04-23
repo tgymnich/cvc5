@@ -89,13 +89,18 @@ CRef FourierMotzkinRule::finish(SolverTrail::PropagationToken& propToken) {
   return commit(lits);
 }
 
-CRef FourierMotzkinRule::resolveDisequality(Variable var, Literal varL, Literal varU, Literal D, SolverTrail::PropagationToken& propToken) {
+FourierMotzkinRuleDiseq::FourierMotzkinRuleDiseq(ClauseDatabase& clauseDB, const SolverTrail& trail)
+: ProofRule("mcsat::fourier_motzkin_rule_diseq", clauseDB, trail)
+{
+}
+
+
+CRef FourierMotzkinRuleDiseq::resolveDisequality(Variable var, Literal varL, Literal varU, Literal D, SolverTrail::PropagationToken& propToken) {
 
   Debug("mcsat::fm") << "FourierMotzkinRule::resolveDisequality(" << var << "):" << std::endl;
 
   bool linear;
   int evalLevel;
-  d_assumptions.clear();
 
   LiteralVector lits;
   lits.push_back(~varL);
@@ -128,7 +133,7 @@ CRef FourierMotzkinRule::resolveDisequality(Variable var, Literal varL, Literal 
   Debug("mcsat::fm") << "c2: " << c2 << std::endl;
 
   // Resolve A1 and c2 into A1
-  resolve(var, varL_constraint, c2);
+  FourierMotzkinRule::resolve(var, varL_constraint, c2);
   Literal l1 = varL_constraint.getLiteral();
   lits.push_back(l1);
 
@@ -138,7 +143,7 @@ CRef FourierMotzkinRule::resolveDisequality(Variable var, Literal varL, Literal 
   propToken(~l1, evalLevel);
 
   // Resolve A2 and c1 into A2
-  resolve(var, varU_constraint, c1);
+  FourierMotzkinRule::resolve(var, varU_constraint, c1);
   Literal l2 = varU_constraint.getLiteral();
   lits.push_back(l2);
 

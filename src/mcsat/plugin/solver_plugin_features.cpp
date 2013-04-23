@@ -47,21 +47,12 @@ void FeatureDispatch::propagate(SolverTrail::PropagationToken& out) {
   }
 }
 
-void FeatureDispatch::decide(SolverTrail::DecisionToken& out) {
+void FeatureDispatch::decide(SolverTrail::DecisionToken& out, Variable var) {
   ScopedReset<bool> interrupt(d_interrupt, false);
   for(unsigned i = 0; !out.used() && !d_interrupt && i < d_plugins[CAN_DECIDE_VALUES].size(); ++ i) {
     SolverPlugin* plugin = d_plugins[CAN_DECIDE_VALUES][i];
     Debug("mcsat::plugin") << "FeatureDispatch::decide(): " << *plugin << std::endl;
-    plugin->decide(out);
-  }
-}
-
-void FeatureDispatch::decide(SolverTrail::DecisionToken& out, const LiteralVector& options) {
-  ScopedReset<bool> interrupt(d_interrupt, false);
-  for(unsigned i = 0; !out.used() && !d_interrupt && i < d_plugins[CAN_DECIDE_LITERALS].size(); ++ i) {
-    SolverPlugin* plugin = d_plugins[CAN_DECIDE_LITERALS][i];
-    Debug("mcsat::plugin") << "FeatureDispatch::decide(): " << *plugin << std::endl;
-    plugin->decide(out, options);
+    plugin->decide(out, var);
   }
 }
 

@@ -21,8 +21,6 @@ enum PluginFeature {
   CAN_PROPAGATE,
   // The plugin does decisions
   CAN_DECIDE_VALUES,
-  // The plugin can decide given options of literals
-  CAN_DECIDE_LITERALS
 };
 
 inline std::ostream& operator << (std::ostream& out, PluginFeature feature) {
@@ -31,8 +29,6 @@ inline std::ostream& operator << (std::ostream& out, PluginFeature feature) {
       out << "CAN_PROPAGATE"; break;
     case CAN_DECIDE_VALUES:
       out << "CAN_DECIDE"; break;    
-    case CAN_DECIDE_LITERALS:
-      out << "CAN_DECIDE"; break;
   }
   return out;
 }
@@ -71,7 +67,7 @@ public:
   }
 
   /** Perform a decision */
-  virtual void decide(SolverTrail::DecisionToken& out) {
+  virtual void decide(SolverTrail::DecisionToken& out, Variable var) {
     Unreachable("If you claim to implement, then reimplement");
   }
 
@@ -110,13 +106,11 @@ public:
   void propagate(SolverTrail::PropagationToken& out);
 
   /** Perform a decision */
-  void decide(SolverTrail::DecisionToken& out);
-
-  /** Perform a decision from given decision options */
-  void decide(SolverTrail::DecisionToken& out, const LiteralVector& options);
+  void decide(SolverTrail::DecisionToken& out, Variable var);
 
   /** Interrupt it. No-op if nothing running, and as soon as any the method is done, interrupt is off */
   void interrupt();
+
 };
 
 }

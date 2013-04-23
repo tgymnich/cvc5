@@ -11,6 +11,8 @@
 #include "mcsat/clause/clause_db.h"
 #include "mcsat/plugin/solver_plugin.h"
 #include "mcsat/rules/resolution_rule.h"
+#include "mcsat/util/var_priority_queue.h"
+
 #include "util/ite_removal.h"
 
 namespace CVC4 {
@@ -31,7 +33,7 @@ struct SolverStats {
   : conflicts("mcsat::solver::conflicts", 0)
   , decisions("mcsat::solver::decisions", 0)
   , restarts("mcsat::solver::restarts", 0)
-  , gc("mcsat::sovler::gc", 0)
+  , gc("mcsat::solver::gc", 0)
   {
     StatisticsRegistry::registerStat(&conflicts);  
     StatisticsRegistry::registerStat(&decisions);  
@@ -153,6 +155,21 @@ private:
   void performGC();
 
   friend class SolverPluginRequest;
+
+  /** Priority queue for variable selection */
+  util::VariablePriorityQueue d_variableQueue;
+
+  class NewVariableNotify : public VariableDatabase::INewVariableNotify {
+    util::VariablePriorityQueue& d_queue;
+  public:
+    NewVariableNotify(util::VariablePriorityQueue& d_queue);
+    void newVariable(Variable var);
+  } d_newVariableNotify;
+
+  /** Bump the variable value */
+  void bump(Variable var, unsigned amount) {
+    d_variableQueue.bumpVariable(var, amount);
+  }
 
   /** Scores of learnt clauses */
   std::hash_map<CRef, double, CRefHashFunction> d_learntClausesScore;

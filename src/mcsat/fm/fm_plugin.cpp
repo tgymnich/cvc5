@@ -13,28 +13,23 @@ FMPlugin::NewVariableNotify::NewVariableNotify(FMPlugin& plugin)
 }
 
 void FMPlugin::NewVariableNotify::newVariable(Variable var) {
-  // Register new variables
-  if (d_plugin.isArithmeticVariable(var)) {
-    d_plugin.newVariable(var);
-  } else {
-    // Register arithmetic constraints
-    TNode varNode = var.getNode();
-    switch (varNode.getKind()) {
-      case kind::LT: 
-      case kind::LEQ:
-      case kind::GT:
-      case kind::GEQ:
-	// Arithmetic constraints
-	d_plugin.newConstraint(var);
-	break;
-      case kind::EQUAL:
-	// TODO: Only if both sides are arithmetic
-	d_plugin.newConstraint(var);
-	break;
-      default:
-	// Ignore
-	break;
-    }
+  // Register arithmetic constraints
+  TNode varNode = var.getNode();
+  switch(varNode.getKind()) {
+  case kind::LT:
+  case kind::LEQ:
+  case kind::GT:
+  case kind::GEQ:
+    // Arithmetic constraints
+    d_plugin.newConstraint(var);
+    break;
+  case kind::EQUAL:
+    // TODO: Only if both sides are arithmetic
+    d_plugin.newConstraint(var);
+    break;
+  default:
+    // Ignore
+    break;
   }
 }
 
@@ -49,7 +44,7 @@ FMPlugin::FMPlugin(ClauseDatabase& database, const SolverTrail& trail, SolverPlu
 , d_trailHead(trail.getSearchContext(), 0)
 , d_bounds(trail.getSearchContext())
 , d_fmRule(database, trail)
-, d_variableQueue()
+, d_fmRuleDiseq(database, trail)
 {
   Debug("mcsat::fm") << "FMPlugin::FMPlugin()" << std::endl;
 
@@ -66,11 +61,6 @@ FMPlugin::FMPlugin(ClauseDatabase& database, const SolverTrail& trail, SolverPlu
 
 std::string FMPlugin::toString() const  {
   return "Fourier-Motzkin Elimination (Model-Based)";
-}
-
-void FMPlugin::newVariable(Variable var) {
-  Debug("mcsat::fm") << "FMPlugin::newVariable(" << var << ")" << std::endl;
-  d_variableQueue.newVariable(var);
 }
 
 class var_assign_compare {
@@ -369,9 +359,10 @@ void FMPlugin::processConflicts(SolverTrail::PropagationToken& out) {
       const DisequalInfo& disequal = d_bounds.getDisequalInfo(var, lowerBound.value);
       Literal disequalityLiteral(disequal.reason, d_trail.isFalse(disequal.reason));
 
-      conflict = d_fmRule.resolveDisequality(var, lowerBoundLiteral, upperBoundLiteral, disequalityLiteral, out);
+      conflict = d_fmRuleDiseq.resolveDisequality(var, lowerBoundLiteral, upperBoundLiteral, disequalityLiteral, out);
     }
 
+    // Mark the variables as interesting
     Clause& conflictClause = conflict.getClause();
     std::vector<Variable> conflictVars;
     for (unsigned i = 0; i < conflictClause.size(); ++ i) {
@@ -380,20 +371,26 @@ void FMPlugin::processConflicts(SolverTrail::PropagationToken& out) {
       }
     }
     for (unsigned i = 0; i < conflictVars.size(); ++ i) {
-      d_variableQueue.bumpVariable(conflictVars[i]);
+      d_request.bump(conflictVars[i], options::mcsat_fm_bump());
     }
+
+    // If not a unit clause, remember it
+//    if (conflictClause.size() == 2) {
+//      d_lemmasLearnt.push_back(conflict);
+//    }
+
   }
 }
 
-void FMPlugin::decide(SolverTrail::DecisionToken& out) {
+void FMPlugin::decide(SolverTrail::DecisionToken& out, Variable var) {
   Debug("mcsat::fm") << "FMPlugin::decide(): level " << d_trail.decisionLevel() << std::endl;
   Assert(d_trailHead == d_trail.size());
 
+  // Do any fixed variables first
   for (; d_fixedVariablesIndex < d_fixedVariables.size(); d_fixedVariablesIndex = d_fixedVariablesIndex + 1) {
     Variable var = d_fixedVariables[d_fixedVariablesIndex];
     if (!d_trail.hasValue(var)) {
       Rational value = d_bounds.pick(var, false);
-      Debug("mcsat::fm") << "FMPlugin::decide(): [f] " << var << "[" << d_variableQueue.getScore(var) << "] -> " << value << std::endl;
       Debug("mcsat::fm::decide") << "FMPlugin::decide(): " << var << " fixed at " << d_trail.decisionLevel() << std::endl;
       out(var, NodeManager::currentNM()->mkConst(value), true);
       d_fixedVariablesDecided = d_fixedVariablesDecided + 1;
@@ -407,28 +404,10 @@ void FMPlugin::decide(SolverTrail::DecisionToken& out) {
     }
   }
   
-  while (!d_variableQueue.empty()) {
-  
-    Variable var; 
-    
-    // Do we select randomly 
-    double selectRand = ((double)rand()) / RAND_MAX;
-    if (selectRand < options::mcsat_fm_random_select()) {
-      var = d_variableQueue.popRandom();
-    } else {
-      var = d_variableQueue.pop();
-    }
-    
-//    if (var.getNode().getKind() != kind::VARIABLE) {
-//      continue;
-//    }
-
-    if (d_trail.value(var).isNull()) {
-      Rational value = d_bounds.pick(var, true);
-      Debug("mcsat::fm") << "FMPlugin::decide(): " << var << "[" << d_variableQueue.getScore(var) << "] -> " << value << std::endl;
-      out(var, NodeManager::currentNM()->mkConst(value), true);
-      return;
-    }
+  if (isArithmeticVariable(var)) {
+    Rational value = d_bounds.pick(var, true);
+    out(var, NodeManager::currentNM()->mkConst(value), true);
+    return;
   }
 }
 
@@ -438,9 +417,6 @@ void FMPlugin::notifyBackjump(const std::vector<Variable>& vars) {
 
   // Clear the delayed stuff
   d_delayedPropagations.clear();
-
-  // Decay the scores in the queue
-  d_variableQueue.decayScores();
 
   for (unsigned i = 0; i < vars.size(); ++ i) {
     if (isArithmeticVariable(vars[i])) {
@@ -467,18 +443,25 @@ void FMPlugin::notifyBackjump(const std::vector<Variable>& vars) {
 	}
 	w.next_and_keep();
       }
-
-      // Also mark to be decided later
-      if (!d_variableQueue.inQueue(vars[i])) {
-        d_variableQueue.enqueue(vars[i]);
-      }
     }
   }
 }
 
+struct lemma_cmp {
+  bool operator () (const CRef& c1, const CRef c2) {
+    Clause& clause1 = c1.getClause();
+    Clause& clause2 = c2.getClause();
+    if (clause1.size() == clause2.size()) {
+      // Random for now
+      return c1 < c2;
+    } else {
+      return clause1.size() < clause2.size();
+    }
+  }
+};
+
 void FMPlugin::gcMark(std::set<Variable>& varsToKeep, std::set<CRef>& clausesToKeep) {
-  Assert(d_delayedPropagations.size() == 0);
-  // We don't care about stuff: TODO: rethink this
+  // Noting so for
 }
 
 void FMPlugin::gcRelocate(const VariableGCInfo& vReloc, const ClauseRelocationInfo& cReloc) {

@@ -31,6 +31,15 @@ public:
   } 
 };
 
+Solver::NewVariableNotify::NewVariableNotify(util::VariablePriorityQueue& queue)
+: VariableDatabase::INewVariableNotify(false)
+, d_queue(queue)
+{}
+
+void Solver::NewVariableNotify::newVariable(Variable var) {
+  d_queue.newVariable(var);
+}
+
 Solver::Solver(context::UserContext* userContext, context::Context* searchContext) 
 : d_variableDatabase(searchContext)
 , d_clauseFarm(searchContext)
@@ -43,6 +52,7 @@ Solver::Solver(context::UserContext* userContext, context::Context* searchContex
 , d_backtrackLevel(0)
 , d_restartRequested(false)
 , d_gcRequested(false)
+, d_newVariableNotify(d_variableQueue)
 , d_learntClausesScoreMax(1.0)
 , d_learntClausesScoreIncrease(1.0)
 , d_learntClausesScoreMaxBeforeScaling(1e20)
@@ -54,6 +64,8 @@ Solver::Solver(context::UserContext* userContext, context::Context* searchContex
 {
   // Repeatable
   srand(0);
+
+  d_variableDatabase.addNewVariableListener(&d_newVariableNotify);
 
   // Add some engines
   addPlugin("CVC4::mcsat::CNFPlugin");
@@ -106,8 +118,19 @@ void Solver::processRequests() {
     std::vector<Variable> variablesUnset;
     d_trail.popToLevel(d_backtrackLevel, variablesUnset);
 
+    // Add the variables to the variable queue
+    for (unsigned i = 0; i < variablesUnset.size(); ++ i) {
+      Variable var = variablesUnset[i];
+      if (!d_variableQueue.inQueue(var)) {
+        d_variableQueue.enqueue(var);
+      }
+    }
+
     // Notify the plugins about the backjump variables
     d_notifyDispatch.notifyBackjump(variablesUnset);
+
+    // Decay the scores in the queue
+    d_variableQueue.decayScores();
     
     // All backtrack clauses are to the same level, but some might propagate and some are decision inducing clauses.
     // If there any propagating clauses, we just do the propagations to ensure progress.
@@ -142,26 +165,24 @@ void Solver::processRequests() {
       Debug("mcsat::solver") << "Solver::processBacktrackRequests(): we do a decision" << std::endl;
       // Decision token
       SolverTrail::DecisionToken decide(d_trail);
-      LiteralVector litOptions;
 
       // Pick the literals for the decision
+      Literal toDecide;
+      double toDecideScore = -1;
       Clause& c = d_backtrackClauses.begin()->getClause();
+
       for (unsigned i = 0; i < c.size(); ++ i) {
         if (d_trail.hasValue(c[i].getVariable())) {
           Assert(d_trail.isFalse(c[i]));
         } else {
-          litOptions.push_back(c[i]);
-	  break;
+          double score = d_variableQueue.getScore(c[i].getVariable());
+          if (score > toDecideScore) {
+            toDecideScore = score;
+            toDecide = c[i];
+          }
         }
       }
-      Assert(litOptions.size() > 0);
-
-      // Aks for a decision
-      d_featuresDispatch.decide(decide, litOptions);
-      if (!decide.used()) {
-        // If nobody decided, we decide
-        decide(litOptions[0]);
-      }
+      decide(toDecide);
     }
 
     // Clear the requests TODO: remove
@@ -178,6 +199,14 @@ void Solver::processRequests() {
     d_notifyDispatch.notifyBackjump(variablesUnset);
     // Notify of the restart 
     d_notifyDispatch.notifyRestart();
+
+    // Add the variables to the variable queue
+    for (unsigned i = 0; i < variablesUnset.size(); ++ i) {
+      Variable var = variablesUnset[i];
+      if (!d_variableQueue.inQueue(var)) {
+        d_variableQueue.enqueue(var);
+      }
+    }
 
     if (d_learntClauses.size() > d_learntsLimit) {
       d_gcRequested = true;
@@ -306,10 +335,37 @@ bool Solver::check() {
     // Clauses processed, propagators done, we're ready for a decision
     SolverTrail::DecisionToken decisionOut(d_trail);
     Debug("mcsat::solver::search") << "Solver::check(): trying decision" << std::endl;
-    d_featuresDispatch.decide(decisionOut);
 
-    // If no decisions were made we are done, do a completeness check
-    if (!decisionOut.used()) {
+
+
+    Variable toDecide;
+    while (!d_variableQueue.empty()) {
+
+      double selectRand = ((double)rand()) / RAND_MAX;
+
+      if (selectRand < options::mcsat_var_random_select()) {
+        toDecide = d_variableQueue.popRandom();
+      } else {
+        toDecide = d_variableQueue.pop();
+      }
+
+      if (!d_trail.hasValue(toDecide)) {
+        break;
+      } else {
+        toDecide = Variable::null;
+      }
+
+    }
+
+    if (!toDecide.isNull()) {
+      d_featuresDispatch.decide(decisionOut, toDecide);
+      Assert(decisionOut.used());
+      if (d_trail[d_trail.size() - 1].var != toDecide) {
+        d_variableQueue.enqueue(toDecide);
+      }
+      // We made a new decision
+      ++ d_stats.decisions;
+    } else {
       Debug("mcsat::solver::search") << "Solver::check(): no decisions, doing fullcheck" << std::endl;
       // Do complete propagation
       propagate(SolverTrail::PropagationToken::PROPAGATION_COMPLETE);
@@ -317,11 +373,7 @@ bool Solver::check() {
       if (!d_request) {
 	break;
       }
-    } else {
-      // We made a new decision
-      ++ d_stats.decisions;
     }
-    
   }
 
   // Since we're here, we're satisfiable
@@ -636,6 +688,9 @@ void Solver::performGC() {
     }
   }
   learntClausesScoreNew.swap(d_learntClausesScore);
+
+  // Relocate the variable queue
+  d_variableQueue.gcRelocate(variableRelocationInfo);
 
   // The trail
   Debug("mcsat::gc") << "GC: relocating trail" << std::endl;

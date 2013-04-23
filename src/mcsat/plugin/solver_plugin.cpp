@@ -19,6 +19,10 @@ void SolverPluginRequest::gc() {
   d_solver->requestGC();
 }
 
+void SolverPluginRequest::bump(Variable var, unsigned amount) {
+  d_solver->bump(var, amount);
+}
+
 bool SolverPluginRequest::pending() const {
   return d_solver->d_request;
 }

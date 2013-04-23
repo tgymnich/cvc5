@@ -51,9 +51,6 @@ class BCPEngine : public SolverPlugin {
   /** Head pointer into the trail */
   context::CDO<size_t> d_trailHead;
 
-  /** Priority queue for variable selection */
-  util::VariablePriorityQueue d_variableQueue;
-
   /** Values of variables */
   std::vector<bool> d_variableValues;
     
@@ -81,10 +78,7 @@ public:
   void propagate(SolverTrail::PropagationToken& out);
 
   /** Perform a decision */
-  void decide(SolverTrail::DecisionToken& out);
-
-  /** Perform a decision */
-  void decide(SolverTrail::DecisionToken& out, const LiteralVector& options);
+  void decide(SolverTrail::DecisionToken& out, Variable var);
 
   /** Notification of a new conflict */
   void notifyConflict();

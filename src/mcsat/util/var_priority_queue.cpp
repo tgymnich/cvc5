@@ -102,12 +102,12 @@ void VariablePriorityQueue::percolateUp(Variable var) {
   var_index(var) = i;
 }
 
-void VariablePriorityQueue::bumpVariable(Variable var) {
+void VariablePriorityQueue::bumpVariable(Variable var, unsigned amount) {
   Assert(var.typeIndex() < d_variableScores.size());
   Assert(var.index() < d_variableScores[var.typeIndex()].size());
   
   // New heuristic value
-  double newValue = var_score(var) + d_variableScoreIncreasePerBump;
+  double newValue = var_score(var) + d_variableScoreIncreasePerBump*amount;
   if (newValue > d_variableScoresMax) {
     d_variableScoresMax = newValue;
   }

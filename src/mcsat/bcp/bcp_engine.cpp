@@ -46,7 +46,6 @@ BCPEngine::BCPEngine(ClauseDatabase& clauseDb, const SolverTrail& trail, SolverP
   // Features we provide
   addFeature(CAN_PROPAGATE);
   addFeature(CAN_DECIDE_VALUES);
-  addFeature(CAN_DECIDE_LITERALS);
 
   // Notifications we care about 
   addNotification(NOTIFY_RESTART);
@@ -54,7 +53,6 @@ BCPEngine::BCPEngine(ClauseDatabase& clauseDb, const SolverTrail& trail, SolverP
   addNotification(NOTIFY_CONFLICT_RESOLUTION);
   addNotification(NOTIFY_BACKJUMP);  
 
-  Notice() << "mcsat::BCPEngine: Variable selection: " << (options::use_mcsat_bcp_var_heuristic() ? "on" : "off") << std::endl;
   Notice() << "mcsat::BCPEngine: Variable value by phase : " << (options::use_mcsat_bcp_value_phase_heuristic() ? "on" : "off") << std::endl;  
 }
 
@@ -223,63 +221,28 @@ void BCPEngine::propagate(SolverTrail::PropagationToken& out) {
 
 }
 
-void BCPEngine::decide(SolverTrail::DecisionToken& out) {
+void BCPEngine::decide(SolverTrail::DecisionToken& out, Variable var) {
   Debug("mcsat::bcp") << "BCPEngine::decide()" << std::endl;
   Assert(d_delayedPropagations.size() == 0 && d_trailHead == d_trail.size());
-  while (!d_variableQueue.empty()) {
-    Variable var = d_variableQueue.pop();
-
-    if (!d_trail.hasValue(var)) {
-      
-      // Phase heuristic
-      if (options::use_mcsat_bcp_value_phase_heuristic()) {
-	if (d_variableValues[var.index()]) {
-	  out(Literal(var, false));
-	} else {
-	  out(Literal(var, true));
-	}
-	return;
-      } 
-      
-      // No heuristic, just decide !var first
-      out(Literal(var, true));
-      
+  if (var.typeIndex() == d_boolTypeIndex) {
+    // Phase heuristic
+    if (options::use_mcsat_bcp_value_phase_heuristic()) {
+      if (d_variableValues[var.index()]) {
+        out(Literal(var, false));
+      } else {
+        out(Literal(var, true));
+      }
       return;
     }
+    // No heuristic, just decide !var first
+    out(Literal(var, true));
+    return;
   }
-}
-
-void BCPEngine::decide(SolverTrail::DecisionToken& out, const LiteralVector& options) {
-  Debug("mcsat::bcp") << "BCPEngine::decide()" << std::endl;
-  // Get the maximal value literal
-  Literal maxLiteral = options[0];
-  double maxScore = d_variableQueue.getScore(maxLiteral.getVariable());
-  for (unsigned i = 1; i < options.size(); ++ i) {
-    double score = d_variableQueue.getScore(options[i].getVariable());
-    if (score > maxScore) {
-      maxLiteral = options[i];
-      maxScore = score;
-    }
-  }
-  out(maxLiteral);
 }
 
 void BCPEngine::notifyBackjump(const std::vector<Variable>& vars) {
-
-  // Just add the Boolean variables to the queue
-  for (unsigned i = 0; i < vars.size(); ++ i) {
-    if (vars[i].typeIndex() == d_boolTypeIndex) {
-      if (!d_variableQueue.inQueue(vars[i])) {
-        d_variableQueue.enqueue(vars[i]);
-      }
-    }
-  }
-
   // Clear any delayed propagations
   d_delayedPropagations.clear();
-  // Decay the variables scores
-  d_variableQueue.decayScores();
-
 }
 
 static unsigned luby(unsigned index) {
@@ -315,12 +278,9 @@ void BCPEngine::notifyConflict() {
 void BCPEngine::notifyConflictResolution(CRef cRef) {
   // The clause that is resolved
   Clause& clause = cRef.getClause();
-  
-  if (options::use_mcsat_bcp_var_heuristic()) {
-    // Bump each variable that is resolved
-    for (unsigned i = 0; i < clause.size(); ++ i) {
-      d_variableQueue.bumpVariable(clause[i].getVariable());
-    }
+  // Bump each variable that is resolved
+  for (unsigned i = 0; i < clause.size(); ++ i) {
+    d_request.bump(clause[i].getVariable(), options::mcsat_bcp_bump());
   }
 }
   
@@ -340,13 +300,9 @@ void BCPEngine::newVariable(Variable var) {
   // New variable
   d_variableValues.resize(var.index() + 1, false);
   d_variableValues[var.index()] = false;
-  // Add to the queue
-  d_variableQueue.newVariable(var);
 }
 
 void BCPEngine::gcRelocate(const VariableGCInfo& vReloc, const ClauseRelocationInfo& cReloc) {
-  // Relocate the variable queue
-  d_variableQueue.gcRelocate(vReloc);
   // Relocate the watch manager
   d_watchManager.gcRelocate(vReloc, cReloc);
 }

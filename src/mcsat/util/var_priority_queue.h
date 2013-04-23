@@ -87,7 +87,7 @@ public:
 
   /** Add new variable to track */
   void newVariable(Variable var) {
-    newVariable(var, d_variableScoresMax);
+    newVariable(var, 0);
   }
 
   /** Add new variable to track with the given score */
@@ -109,7 +109,7 @@ public:
   bool inQueue(Variable var) const;
 
   /** Bump the score of the variable */
-  void bumpVariable(Variable var);
+  void bumpVariable(Variable var, unsigned amount = 1);
 
   /** Decay the scores of variables */
   void decayScores();
