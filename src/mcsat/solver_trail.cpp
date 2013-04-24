@@ -227,14 +227,16 @@ void SolverTrail::DecisionToken::operator () (Literal l) {
   d_trail.d_trail.push_back(Element(BOOLEAN_DECISION, l.getVariable()));
 }
 
-void SolverTrail::DecisionToken::operator () (Variable var, TNode val, bool track) {
+void SolverTrail::DecisionToken::operator () (Variable var, TNode val, bool track, bool fixed) {
   Assert(!d_used);
   Assert(d_trail.consistent());
   Assert(d_trail.d_model[var].isNull());
 
   Debug("mcsat::trail") << "DecisionToken::operator () (" << var << ", " << val << ")" << std::endl;
 
-  d_trail.newDecision();
+  if (!fixed || d_trail.decisionLevel() > 0) {
+    d_trail.newDecision();
+  }
   d_used = true;
 
   d_trail.setValue(var, val, track);

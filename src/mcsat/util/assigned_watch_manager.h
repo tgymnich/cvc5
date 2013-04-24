@@ -205,6 +205,9 @@ public:
     d_watchedVariables.insert(var);
   }
 
+  /** Size of the watchlist */
+  size_t size() const { return d_memory.size(); }
+  
   /** An iterator that can remove as it traverses a watchlist */
   class remove_iterator {
     

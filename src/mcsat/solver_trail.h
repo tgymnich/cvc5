@@ -367,6 +367,7 @@ public:
 
     /** Same as propagation based on a clause, but the clause will be constructed on-demand,  reason */
     void operator () (Literal l, ReasonProvider* reason_provider);
+
   };
   
   /** Token for modules to perform decisions */
@@ -387,10 +388,11 @@ public:
 
     /** Decide a Boolean typed variable to a value */
     void operator () (Literal lit);
+    
     /**
      * Decide a non-Boolean typed variable to a value. If track is true, the trail will keep the value as a Node.
      */
-    void operator () (Variable variable, TNode value, bool track);
+    void operator () (Variable variable, TNode value, bool track, bool fixed = false);
   };
 
   friend class PropagationToken;

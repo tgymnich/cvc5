@@ -41,6 +41,7 @@ FMPlugin::FMPlugin(ClauseDatabase& database, const SolverTrail& trail, SolverPlu
 , d_fixedVariables(trail.getSearchContext())
 , d_fixedVariablesIndex(trail.getSearchContext(), 0)
 , d_fixedVariablesDecided(trail.getSearchContext(), 0)
+, d_constraintsSizeSum(0)
 , d_trailHead(trail.getSearchContext(), 0)
 , d_bounds(trail.getSearchContext())
 , d_fmRule(database, trail)
@@ -125,6 +126,7 @@ void FMPlugin::newConstraint(Variable constraint) {
   }
   
   // Remember the constraint
+  d_constraintsSizeSum += linearConstraint.size();
   d_constraints[constraint].swap(linearConstraint);
   // Status of the constraint
   if (constraint.index() >= d_constraintUnassignedStatus.size()) {
@@ -235,7 +237,7 @@ void FMPlugin::propagate(SolverTrail::PropagationToken& out) {
   // Process any conflicts
   if (d_bounds.inConflict()) {
     processConflicts(out);
-  }
+  } 
 }
 
 bool FMPlugin::isUnitConstraint(Variable constraint) {
@@ -485,7 +487,7 @@ void FMPlugin::decide(SolverTrail::DecisionToken& out, Variable var) {
       if (!d_trail.hasValue(var)) {
         Rational value = d_bounds.pick(var, false);
         Debug("mcsat::fm::decide") << "FMPlugin::decide(): " << var << " fixed at " << d_trail.decisionLevel() << std::endl;
-        out(var, NodeManager::currentNM()->mkConst(value), true);
+        out(var, NodeManager::currentNM()->mkConst(value), true, true);
         d_fixedVariablesDecided = d_fixedVariablesDecided + 1;
         return;
       }
@@ -570,6 +572,8 @@ void FMPlugin::gcRelocate(const VariableGCInfo& vReloc, const ClauseRelocationIn
     for (; it != it_end; ++ it) {
       fm::var_to_constraint_map::iterator find = d_constraints.find(*it);
       if (find != d_constraints.end()) {
+	// Sum
+	d_constraintsSizeSum -= find->second.size();
         // Remove from map: variables -> constraints
         d_constraints.erase(find);
         // Set status to unknwon
@@ -582,4 +586,17 @@ void FMPlugin::gcRelocate(const VariableGCInfo& vReloc, const ClauseRelocationIn
   d_assignedWatchManager.gcRelocate(vReloc);
 }
 
+void FMPlugin::outputStatusHeader(std::ostream& out) const {	
+  out 
+    << std::setw(10) << "Constr"
+    << std::setw(10) << "Avg sz"
+    << std::setw(10) << "Fixed";
+}
+
+void FMPlugin::outputStatusLine(std::ostream& out) const {
+  out 
+    << std::setw(10) << d_constraints.size()
+    << std::setw(10) << std::setprecision(4) << (double) d_constraintsSizeSum / d_constraints.size()
+    << std::setw(10) << d_fixedVariables.size();  
+}
 

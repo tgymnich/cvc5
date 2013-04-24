@@ -221,7 +221,7 @@ void Solver::processRequests() {
     d_gcRequested = false;
     ++ d_stats.restarts;
 
-    outputStatusLine(false);
+    outputStatusLine(d_stats.restarts.getData() % 100 == 1);
 
     if (Debug.isOn("mcsat::solver::unit")) {
       Debug("mcsat::solver::unit") << d_trail << std::endl;
@@ -287,8 +287,6 @@ void Solver::propagate(SolverTrail::PropagationToken::Mode mode) {
 
 bool Solver::check() {
   
-  outputStatusLine(true);
-
   /** Initial limit on the number of learnt clauses */
   d_learntsLimit = d_clauseDatabase.size();
 
@@ -702,6 +700,11 @@ void Solver::performGC() {
 }
 
 void Solver::outputStatusLine(bool header) const {
+  
+  if (!Notice.isOn()) {
+    return;
+  }
+  
   if (header) {
     Notice()
         << setw(10) << "Variables"
@@ -709,8 +712,9 @@ void Solver::outputStatusLine(bool header) const {
         << setw(10) << "Restarts"
         << setw(10) << "Conflicts"
         << setw(10) << "Trail"
-        << setw(10) << "T/V"
-        << std::endl;
+        << setw(10) << "T/V";   
+    d_featuresDispatch.outputStatusHeader(Notice());
+    Notice() << std::endl;
   }
   Notice()
     << setw(10) << d_variableDatabase.size()
@@ -718,6 +722,8 @@ void Solver::outputStatusLine(bool header) const {
     << setw(10) << d_stats.restarts.getData()
     << setw(10) << d_stats.conflicts.getData()
     << setw(10) << d_trail.size()
-    << setw(10) << setprecision(4) << (double)d_trail.size()/d_variableDatabase.size() 
-    << std::endl;
+    << setw(10) << setprecision(4) << (double)d_trail.size()/d_variableDatabase.size();
+
+  d_featuresDispatch.outputStatusLine(Notice());
+  Notice() << std::endl;
 }

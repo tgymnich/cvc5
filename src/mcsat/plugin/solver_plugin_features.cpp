@@ -59,3 +59,17 @@ void FeatureDispatch::decide(SolverTrail::DecisionToken& out, Variable var) {
 void FeatureDispatch::interrupt() {
   d_interrupt = true;
 }
+
+void FeatureDispatch::outputStatusHeader(std::ostream& out) const {
+  for(unsigned i = 0; i < d_plugins[CAN_PROPAGATE].size(); ++ i) {
+    SolverPlugin* plugin = d_plugins[CAN_PROPAGATE][i];
+    plugin->outputStatusHeader(out);
+  }
+}
+
+void FeatureDispatch::outputStatusLine(std::ostream& out) const {
+  for(unsigned i = 0; i < d_plugins[CAN_PROPAGATE].size(); ++ i) {
+    SolverPlugin* plugin = d_plugins[CAN_PROPAGATE][i];
+    plugin->outputStatusLine(out);
+  }
+}

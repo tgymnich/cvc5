@@ -76,6 +76,8 @@ public:
     Unreachable("If you claim to implement, then reimplement");
   }
 
+  virtual void outputStatusHeader(std::ostream& out) const {}
+  virtual void outputStatusLine(std::ostream& out) const {}
 };
 
 
@@ -111,6 +113,8 @@ public:
   /** Interrupt it. No-op if nothing running, and as soon as any the method is done, interrupt is off */
   void interrupt();
 
+  void outputStatusHeader(std::ostream& out) const;
+  void outputStatusLine(std::ostream& out) const;
 };
 
 }

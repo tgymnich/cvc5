@@ -88,7 +88,7 @@ CRef FourierMotzkinRule::finish(SolverTrail::PropagationToken& propToken) {
   Assert(!evalLevel >= 0, "Must evaluate");
 
   // Propagate
-  Literal resolventLiteral = d_resolvent.getLiteral();
+  Literal resolventLiteral = d_resolvent.getLiteral(d_trail);
   propToken(~resolventLiteral, evalLevel);
   
   // Add the literal
@@ -142,7 +142,7 @@ CRef FourierMotzkinRuleDiseq::resolveDisequality(Variable var, Literal varL, Lit
 
   // Resolve A1 and c2 into A1
   FourierMotzkinRule::resolve(var, varL_constraint, c2);
-  Literal l1 = varL_constraint.getLiteral();
+  Literal l1 = varL_constraint.getLiteral(d_trail);
   lits.push_back(l1);
 
   // Evaluate and propagate l1
@@ -152,7 +152,7 @@ CRef FourierMotzkinRuleDiseq::resolveDisequality(Variable var, Literal varL, Lit
 
   // Resolve A2 and c1 into A2
   FourierMotzkinRule::resolve(var, varU_constraint, c1);
-  Literal l2 = varU_constraint.getLiteral();
+  Literal l2 = varU_constraint.getLiteral(d_trail);
   lits.push_back(l2);
 
   // Evaluate and propagate l1

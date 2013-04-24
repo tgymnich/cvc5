@@ -62,6 +62,9 @@ class FMPlugin : public SolverPlugin {
   /** Map from variables to constraints */
   fm::var_to_constraint_map d_constraints;
 
+  /** Sum of sizes of constraints */
+  unsigned d_constraintsSizeSum;
+  
   /** Returns true if variable is a registered linear arith constraint */
   bool isLinearConstraint(Variable var) const {
     return d_constraints.find(var) != d_constraints.end();
@@ -142,6 +145,8 @@ public:
   /** Relocation phase of the GC */
   void gcRelocate(const VariableGCInfo& vReloc, const ClauseRelocationInfo& cReloc);
 
+  void outputStatusHeader(std::ostream& out) const;
+  void outputStatusLine(std::ostream& out) const;
 };
 
 // Register the plugin

@@ -426,7 +426,7 @@ void LinearConstraint::add(const LinearConstraint& other, Rational c) {
 
 }
 
-Literal LinearConstraint::getLiteral() const {
+Literal LinearConstraint::getLiteral(const SolverTrail& trail) const {
 
   Debug("mcsat::linear") << "LinearConstraint::getLiteral(): " << *this << std::endl;
 
@@ -447,9 +447,14 @@ Literal LinearConstraint::getLiteral() const {
       if (x.isNull()) {
         sumBuilder << nm->mkConst<Rational>(a);
       } else {
-        Node xNode = x.getNode();
-        Node aNode = nm->mkConst<Rational>(a);
-        sumBuilder << nm->mkNode(kind::MULT, aNode, xNode);
+	Node xNode;
+	if (trail.hasValue(x) && trail.decisionLevel(x) == 0) {
+	  xNode = trail.value(x);
+	} else {
+	  xNode = x.getNode();
+	}
+	Node aNode = nm->mkConst<Rational>(a);
+	sumBuilder << nm->mkNode(kind::MULT, aNode, xNode);
       }
     }
     sum = sumBuilder;

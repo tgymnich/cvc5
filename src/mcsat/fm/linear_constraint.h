@@ -118,7 +118,7 @@ public:
    * Return the literal representation of the constraint. If the literal does 
    * not exist yet, it will be created hence spawning notifications.
    */
-  Literal getLiteral() const;
+  Literal getLiteral(const SolverTrail& trail) const;
   
   /** 
    * Multiply the constraint with the given positive constant.
