@@ -44,7 +44,7 @@ option mcsat_fm_decide_fixed --enable-mcsat-fm-decide-fixed/--disable-mcsat-fm-d
  decides fixed FM variables immediately 
 /does not decide fixed FM variable immediately
 
-option mcsat_fm_cascade --enable-mcsat-fm-cascade/--disable-mcsat-fm-cascade bool :default false :read-write
+option mcsat_fm_cascade --enable-mcsat-fm-cascade/--disable-mcsat-fm-cascade bool :default true :read-write
  cascade FM resolution while possible
 /does not cascade FM resolution
 

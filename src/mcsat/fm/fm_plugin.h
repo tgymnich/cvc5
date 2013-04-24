@@ -113,6 +113,12 @@ class FMPlugin : public SolverPlugin {
    */
   void processConflicts(SolverTrail::PropagationToken& out);
 
+  /** Bume the variables appearing in c */
+  void bumpVariables(const fm::LinearConstraint& c);
+
+  /** Bume the variables in the set */
+  void bumpVariables(const std::set<Variable>& vars);
+  
 public:
 
   /** Constructor */

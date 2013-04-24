@@ -366,6 +366,24 @@ void FMPlugin::processUnitConstraint(Variable constraint) {
   tryBound(c, var, constraint);  
 }
 
+void FMPlugin::bumpVariables(const LinearConstraint& c) {
+  LinearConstraint::const_iterator it = c.begin();
+  LinearConstraint::const_iterator it_end = c.end();
+  for (; it != it_end; ++ it) {
+    if (!it->first.isNull()) {
+      d_request.bump(it->first, options::mcsat_fm_bump());
+    }
+  }
+}
+
+void FMPlugin::bumpVariables(const std::set<Variable>& vars) {
+  std::set<Variable>::const_iterator it = vars.begin();
+  std::set<Variable>::const_iterator it_end = vars.end();
+  for (; it != it_end; ++ it) {
+    d_request.bump(*it, options::mcsat_fm_bump());
+  }
+}
+
 void FMPlugin::processConflicts(SolverTrail::PropagationToken& out) {
   std::set<Variable> variablesInConflict;
   d_bounds.getVariablesInConflict(variablesInConflict);
@@ -378,6 +396,8 @@ void FMPlugin::processConflicts(SolverTrail::PropagationToken& out) {
     const BoundInfo& lowerBound = d_bounds.getLowerBoundInfo(var);
     const BoundInfo& upperBound = d_bounds.getUpperBoundInfo(var);
 
+    std::set<Variable> varsToBump;
+    
     CRef conflict;
     if (BoundInfo::inConflict(lowerBound, upperBound)) {
       // Clash of bounds
@@ -385,6 +405,10 @@ void FMPlugin::processConflicts(SolverTrail::PropagationToken& out) {
       Literal lowerBoundLiteral(lowerBoundVariable, d_trail.isFalse(lowerBoundVariable));
       Variable upperBoundVariable = upperBound.reason;
       Literal upperBoundLiteral(upperBoundVariable, d_trail.isFalse(upperBoundVariable));
+
+      // Bump the variables involved
+      getLinearConstraint(lowerBoundVariable).getVariables(varsToBump);
+      getLinearConstraint(upperBoundVariable).getVariables(varsToBump);
 
       // Do the initial resolution 
       d_fmRule.start(lowerBoundLiteral);
@@ -414,6 +438,8 @@ void FMPlugin::processConflicts(SolverTrail::PropagationToken& out) {
 	    Assert(d_trail.hasValue(boundVariable));
 	    Literal boundLiteral(boundVariable, d_trail.isFalse(boundVariable));
 	    d_fmRule.resolve(var, boundLiteral);
+	    // Bump the variables
+	    getLinearConstraint(boundVariable).getVariables(varsToBump);
 	  } else {
 	    // No conflict, break
 	    break;
@@ -435,26 +461,16 @@ void FMPlugin::processConflicts(SolverTrail::PropagationToken& out) {
       const DisequalInfo& disequal = d_bounds.getDisequalInfo(var, lowerBound.value);
       Literal disequalityLiteral(disequal.reason, d_trail.isFalse(disequal.reason));
 
+      // Bump the variables
+      getLinearConstraint(lowerBoundVariable).getVariables(varsToBump);
+      getLinearConstraint(upperBoundVariable).getVariables(varsToBump);
+      getLinearConstraint(disequal.reason).getVariables(varsToBump);
+ 
       conflict = d_fmRuleDiseq.resolveDisequality(var, lowerBoundLiteral, upperBoundLiteral, disequalityLiteral, out);
     }
-
-    // Mark the variables as interesting
-    Clause& conflictClause = conflict.getClause();
-    std::vector<Variable> conflictVars;
-    for (unsigned i = 0; i < conflictClause.size(); ++ i) {
-      if (isLinearConstraint(conflictClause[i].getVariable())) {
-        getLinearConstraint(conflictClause[i].getVariable()).getVariables(conflictVars);
-      }
-    }
-    for (unsigned i = 0; i < conflictVars.size(); ++ i) {
-      d_request.bump(conflictVars[i], options::mcsat_fm_bump());
-    }
-
-    // If not a unit clause, remember it
-//    if (conflictClause.size() == 2) {
-//      d_lemmasLearnt.push_back(conflict);
-//    }
-
+    
+    // Actually bump the variables
+    bumpVariables(varsToBump);
   }
 }
 

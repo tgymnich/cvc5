@@ -51,6 +51,18 @@ void LinearConstraint::getVariables(std::vector<Variable>& vars) const {
   }
 }
 
+void LinearConstraint::getVariables(std::set<Variable>& vars) const {
+  var_rational_pair_vector::const_iterator it = d_coefficients.begin();
+  var_rational_pair_vector::const_iterator it_end = d_coefficients.end();
+  while (it != it_end) {
+    Variable var = it->first;
+    if (!var.isNull()) {
+      vars.insert(var);
+    }
+    ++ it;
+  }
+}
+
 void LinearConstraint::swap(LinearConstraint& c) {
   d_coefficients.swap(c.d_coefficients);
   d_variablesValueCache.swap(c.d_variablesValueCache);

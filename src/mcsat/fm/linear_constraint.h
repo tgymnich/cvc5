@@ -69,6 +69,9 @@ public:
   /** Get the variables of this constraint */
   void getVariables(std::vector<Variable>& vars) const;
 
+  /** Get the variables of this constraint */
+  void getVariables(std::set<Variable>& vars) const;
+
   /** Get the top variable */
   Variable getTopVariable(const SolverTrail& trail) const;
   
