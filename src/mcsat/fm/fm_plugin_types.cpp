@@ -9,6 +9,7 @@ CDBoundsModel::CDBoundsModel(context::Context* context)
 : context::ContextNotifyObj(context)
 , d_boundTrailSize(context, 0)
 , d_disequalTrailSize(context, 0)
+, d_constraintCMP(0)
 {
 }
 
@@ -360,7 +361,11 @@ Rational CDBoundsModel::pick(Variable var, bool useCache) {
         value = (lowerBound.value.ceiling()) + options::mcsat_fm_unbounded_d();
       }
       if (options::mcsat_fm_unbounded_sq()) {
-	value = value + value.abs();
+	Rational p = 1;
+	while (p < value) {
+	  p *= 2;
+	}
+	value = p;
       }
       while (disequal.find(value) != disequal.end()) {
         value = value + 1;
@@ -378,7 +383,11 @@ Rational CDBoundsModel::pick(Variable var, bool useCache) {
         value = upperBound.value.floor() - options::mcsat_fm_unbounded_d();
       }
       if (options::mcsat_fm_unbounded_sq()) {
-	value = value - value.abs();
+	Rational p = -1;
+	while (p > value) {
+	  p *= 2;
+	}
+	value = p;
       }
       while (disequal.find(value) != disequal.end()) {
         value = value - 1;

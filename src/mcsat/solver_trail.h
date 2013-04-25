@@ -65,6 +65,9 @@ public:
       return type == CLAUSAL_PROPAGATION;
     }
 
+    Element()
+    : type(BOOLEAN_DECISION) {}
+
     Element(Type type, Variable var)
     : type(type), var(var) {}
   };
@@ -154,6 +157,25 @@ private:
     d_model[var] = value;
     if (track) {
       d_modelValues.push_back(value);
+    }
+  }
+
+  void unsetValue(const Element& e) {
+    Variable var = e.var;
+
+    // Unset all the variable info
+    d_model[var] = Node::null();
+    d_modelInfo[var].decisionLevel = 0;
+    d_modelInfo[var].trailIndex = 0;
+
+    // Remove any reasons
+    if (e.type == CLAUSAL_PROPAGATION) {
+      Literal var_pos(var, false);
+      Literal var_neg(var, true);
+      d_clauseReasons[var_pos] = CRef::null;
+      d_clauseReasons[var_neg] = CRef::null;
+      d_reasonProviders[var_pos] = 0;
+      d_reasonProviders[var_neg] = 0;
     }
   }
 

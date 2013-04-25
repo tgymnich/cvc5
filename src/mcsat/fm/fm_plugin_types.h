@@ -38,6 +38,14 @@ inline std::ostream& operator << (std::ostream& out, const DisequalInfo& info) {
   return out;
 }
 
+/** Compare two constraints that imply the same bound */
+class IConstraintDiscriminator {
+public:
+  virtual ~IConstraintDiscriminator() {}
+  /** Is c1 better than c2 */
+  virtual bool better(Variable c1, Variable c2) = 0;
+};
+
 /** Bound information */
 struct BoundInfo {
   /** The value of the bound */
@@ -58,7 +66,16 @@ struct BoundInfo {
     // if value > other.value or they are equal but this one
     // is strict    
     int cmp = value.cmp(other.value);
-    return (cmp > 0 || (cmp == 0 && strict));
+    if (cmp == 0) {
+      if (strict) {
+        return !other.strict;
+      } else {
+        // TODO: Use discriminator
+        return false;
+      }
+    } else {
+      return cmp > 0;
+    }
   }
   
   bool improvesUpperBound(const BoundInfo& other) const {
@@ -66,7 +83,16 @@ struct BoundInfo {
     // if value < other.value or they are equal but this one 
     // is strict
     int cmp = value.cmp(other.value);
-    return (cmp < 0 || (cmp == 0 && strict));    
+    if (cmp == 0) {
+      if (strict) {
+        return !other.strict;
+      } else {
+        // TODO: Use discriminator
+        return false;
+      }
+    } else {
+      return cmp < 0;
+    }
   }
   
   static bool inConflict(const BoundInfo& lower, const BoundInfo& upper) {
@@ -198,6 +224,9 @@ class CDBoundsModel : public context::ContextNotifyObj {
    */
   void getDisequal(Variable var, std::set<Rational>& disequal) const;
 
+  /** Compare constraints somehow */
+  IConstraintDiscriminator* d_constraintCMP;
+
 public:
   
   ~CDBoundsModel() throw(AssertionException) {}
@@ -210,6 +239,9 @@ public:
 
   /** Update the upper bound, returns true if variable is now fixed */
   bool updateUpperBound(Variable var, const BoundInfo& info);
+
+  /** If two constraints imply the same bound, which one to keep */
+  void setDiscriminator(IConstraintDiscriminator* d);
 
   /** Adds the value to the list of values that a variable must be disequal from */
   void addDisequality(Variable var, const DisequalInfo& info);

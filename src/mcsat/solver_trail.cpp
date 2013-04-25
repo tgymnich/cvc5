@@ -1,6 +1,7 @@
 #include "mcsat/solver_trail.h"
 #include "mcsat/clause/clause_db.h"
 #include "mcsat/variable/variable_db.h"
+#include "mcsat/options.h"
 
 using namespace CVC4;
 using namespace CVC4::mcsat;
@@ -48,32 +49,12 @@ void SolverTrail::popDecision(std::vector<Variable>& variablesUnset) {
 
   // Pop the trail elements
   while (d_trail.size() > d_decisionTrail.back()) {
-
-    // The variable that was set
-    Variable var = d_trail.back().var;
-
-    if (d_trail.back().type == SolverTrail::SEMANTIC_PROPAGATION) {
-      d_semanticRepropagate.push_back(RepropagateInfo(var, isTrue(var), decisionLevel(var)));
+    const Element& e = d_trail.back();
+    if (e.type == SolverTrail::SEMANTIC_PROPAGATION) {
+      d_semanticRepropagate.push_back(RepropagateInfo(e.var, isTrue(e.var), decisionLevel(e.var)));
     }
-
-    variablesUnset.push_back(var);
-
-    // Unset all the variable info
-    d_model[var] = Node::null();
-    d_modelInfo[var].decisionLevel = 0;
-    d_modelInfo[var].trailIndex = 0;
-
-    // Remove any reasons
-    if (d_trail.back().type == CLAUSAL_PROPAGATION) {
-      Literal var_pos(var, false);
-      Literal var_neg(var, true);
-      d_clauseReasons[var_pos] = CRef::null;
-      d_clauseReasons[var_neg] = CRef::null;
-      d_reasonProviders[var_pos] = 0;
-      d_reasonProviders[var_neg] = 0;
-    }
-
-    // Pop the element
+    unsetValue(e);
+    variablesUnset.push_back(e.var);
     d_trail.pop_back();
   }
 
@@ -339,13 +320,13 @@ bool SolverTrail::checkConsistency() const {
 
 void SolverTrail::gcMark(std::set<Variable>& varsToKeep, std::set<CRef>& clausesToKeep) {
   // The trail cares about variables in the trail and any clauses that are in the clausal reasons
-  for (unsigned i = 0; i < d_trail.size(); ++ i) {
+  for(unsigned i = 0; i < d_trail.size(); ++i) {
     Variable var = d_trail[i].var;
-    if (d_trail[i].hasReason()) {
+    if(d_trail[i].hasReason()) {
       // For clausal reasons, it's enough to keep the clause, the variable is part of the clause
       // so it gets kept
       Literal l(var, !isTrue(var));
-      if (d_reasonProviders[l] == &d_clauseReasons) {
+      if(d_reasonProviders[l] == &d_clauseReasons) {
         clausesToKeep.insert(d_clauseReasons[l]);
       }
     } else {
@@ -356,11 +337,11 @@ void SolverTrail::gcMark(std::set<Variable>& varsToKeep, std::set<CRef>& clauses
 
 void SolverTrail::gcRelocate(const VariableGCInfo& vReloc, const ClauseRelocationInfo& cReloc) {
   // The trail cares about variables in the trail and any clauses that are in the clausal reasons
-  for (unsigned i = 0; i < d_trail.size(); ++ i) {
+  for(unsigned i = 0; i < d_trail.size(); ++i) {
     Variable var = d_trail[i].var;
-    if (d_trail[i].hasReason()) {
+    if(d_trail[i].hasReason()) {
       Literal l(var, !isTrue(var));
-      if (d_reasonProviders[l] == &d_clauseReasons) {
+      if(d_reasonProviders[l] == &d_clauseReasons) {
         d_clauseReasons[l] = cReloc.relocate(d_clauseReasons[l]);
       }
     }
