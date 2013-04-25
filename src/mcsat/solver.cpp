@@ -208,20 +208,16 @@ void Solver::processRequests() {
       }
     }
 
-    if (d_learntClauses.size() > d_learntsLimit) {
-      d_gcRequested = true;
-      d_learntsLimit *= d_learntsLimitInc;
-    }
-
     if (d_gcRequested) {
       performGC();
+      d_learntsLimit *= d_learntsLimitInc;
     }
     
     d_restartRequested = false;
     d_gcRequested = false;
     ++ d_stats.restarts;
 
-    outputStatusLine(d_stats.restarts.getData() % 100 == 1);
+    outputStatusLine(d_stats.restarts.getData() % 100 == 0);
 
     if (Debug.isOn("mcsat::solver::unit")) {
       Debug("mcsat::solver::unit") << d_trail << std::endl;
@@ -243,6 +239,7 @@ void Solver::requestPropagate() {
 
 void Solver::requestGC() {
   d_gcRequested = true;
+  requestRestart();
 }
 
 
@@ -287,6 +284,8 @@ void Solver::propagate(SolverTrail::PropagationToken::Mode mode) {
 
 bool Solver::check() {
   
+  outputStatusLine(true);
+
   /** Initial limit on the number of learnt clauses */
   d_learntsLimit = d_clauseDatabase.size();
 
@@ -321,6 +320,11 @@ bool Solver::check() {
       // Analyze the conflict
       analyzeConflicts();
 
+      // Are we too smart?
+      if (d_learntClauses.size() > d_learntsLimit) {
+        requestGC();
+      }
+
       // Start over with propagation
       continue;
     }
@@ -333,8 +337,6 @@ bool Solver::check() {
     // Clauses processed, propagators done, we're ready for a decision
     SolverTrail::DecisionToken decisionOut(d_trail);
     Debug("mcsat::solver::search") << "Solver::check(): trying decision" << std::endl;
-
-
 
     Variable toDecide;
     while (!d_variableQueue.empty()) {

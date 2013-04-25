@@ -1,4 +1,5 @@
 #include "mcsat/fm/fm_plugin_types.h"
+#include "mcsat/options.h"
 
 using namespace CVC4;
 using namespace mcsat;
@@ -242,47 +243,67 @@ bool CDBoundsModel::inRange(Variable var, Rational value, bool& onlyOption) cons
   return true;
 }
 
-static Rational pickLowerInt(const BoundInfo& lowerBound, const std::set<Rational>& disequal) {
-  Rational value;
+static Rational pickBinaryMean(const BoundInfo& l, const BoundInfo& u) {
 
-  if (lowerBound.strict) {
-    // > 1 -> 1 + 1 -> 2
-    // > 0.9 -> 0.9 + 1 -> 1
-    value = (lowerBound.value + 1).floor();
+  // Hm
+  if (l.value == u.value) {
+    return l.value;
+  }
+
+  // Get the biggest power of 2 between the two
+  Rational m = (l.value + u.value)/2;
+  Rational l1 = m.floor();
+  Rational u1 = m.ceiling();
+
+  if (l.strict) {
+    if (l1 > l.value) {
+      return l1;
+    }
   } else {
-    // >= 1 -> 1
-    // >= 0.9 -> 1
-    value = lowerBound.value.ceiling();
+    if (l1 >= l.value) {
+      return l1;
+    }
   }
 
-  // Increase until you find it
-  while (disequal.count(value) > 0) {
-    value = value + 1;
-  }
-
-  return value;
-}
-
-static Rational pickUpperInt(const BoundInfo& upperBound, const std::set<Rational>& disequal) {
-  Rational value;
-
-  if (upperBound.strict) {
-    // < -1 -> -2 -> -2
-    // < -0.9 -> -1.9 -> -1
-    value = (upperBound.value - 1).ceiling();
+  if (u.strict) {
+    if (u1 < u.value) {
+      return u1;
+    }
   } else {
-    // <= -1 -> -1
-    // <= -0.9 -> -1
-    value = upperBound.value.floor();
+    if (u1 <= u.value) {
+      return u1;
+    }
   }
 
-  // Decrease until you find it
-  while (disequal.count(value) > 0) {
-    value = value - 1;
-  }
+  do {
+    // l1 < l <= u < u1 and l1 = p/2^k, l2 = (p+1)/2^k and no a/2^k solutions in [l, u]
+    m = (l1 + u1)/2;
+    // l1 < m < u1
 
-  return value;
+    if (l.strict && m <= l.value) {
+      l1 = m;
+      continue;
+    }
+    if (!l.strict && m < l.value) {
+      l1 = m;
+      continue;
+    }
 
+    if (u.strict && m >= u.value) {
+      u1 = m;
+      continue;
+    }
+    if (!u.strict && m > u.value) {
+      u1 = m;
+      continue;
+    }
+
+    // Got it l <= m <= u
+    break;
+
+  } while (true);
+
+  return m;
 }
 
 Rational CDBoundsModel::pick(Variable var, bool useCache) {
@@ -292,16 +313,6 @@ Rational CDBoundsModel::pick(Variable var, bool useCache) {
   // Set of values to be disequal from
   std::set<Rational> disequal;
   getDisequal(var, disequal);
-
-  // How many integers in the disequal
-  unsigned disequalInts = 0;
-  std::set<Rational>::const_iterator d_it = disequal.begin();
-  std::set<Rational>::const_iterator d_it_end = disequal.end();
-  for (; d_it != d_it_end; ++ d_it) {
-    if (d_it->isIntegral()) {
-      disequalInts ++;
-    }
-  }
 
   // Return value
   Rational value;
@@ -315,57 +326,41 @@ Rational CDBoundsModel::pick(Variable var, bool useCache) {
     }
   }
 
+  // Try 0
+  if (inRange(var, 0) && disequal.count(0) == 0) {
+    return 0;
+  }
+
   if (hasLowerBound(var)) {
     const BoundInfo& lowerBound = getLowerBoundInfo(var);
     if (hasUpperBound(var)) {
       const BoundInfo& upperBound = getUpperBoundInfo(var);
       Debug("mcsat::fm") << "FMPlugin::decide(): " << var << " in [" << lowerBound.value << ".." << upperBound.value << "]" << std::endl;
 
-      // Number of integers in the range
-      Rational intRange = upperBound.value.floor() - lowerBound.value.ceiling() + 1;
-      if (upperBound.strict) intRange = intRange - 1;
-      if (lowerBound.strict) intRange = intRange - 1;
-      Debug("mcsat::fm") << "FMPlugin::decide(): intRange = " << intRange << ", " << "disequalInt = " << disequalInts << std::endl;
-
-      // Can we select an integer
-      if (intRange > disequalInts) {
-        // Try integer starting value
-        if (lowerBound.value >= 0) {
-          // --0---[-----]---- : pick in the middle
-          value = (lowerBound.value + upperBound.value)/2;
-          value = value.floor();
-        } else if (upperBound.value <= 0) {
-          // --[----]----0---- : pick closer to zero
-          value = (lowerBound.value + upperBound.value)/2;
-          value = value.ceiling();
+      // Pick in the middle
+      value = pickBinaryMean(lowerBound, upperBound);
+      // Make sure it's not in the disequal set
+      std::set<Rational>::const_iterator find = disequal.find(value);
+      while (find != disequal.end()) {
+        if (value < upperBound.value) {
+          value = (value + upperBound.value) / 2;
+        } else if (value > lowerBound.value) {
+          value = (value + lowerBound.value) / 2;
         } else {
-          // Pick around 0
-          value = 0;
+          Unreachable();
         }
-      } else {
-        // No integer solution, go for middle
-        value = (lowerBound.value + upperBound.value)/2;
-        // Make sure it's not in the disequal set
-        std::set<Rational>::const_iterator find = disequal.find(value);
-        while (find != disequal.end()) {
-          if (value < upperBound.value) {
-            value = (value + upperBound.value) / 2;
-          } else if (value > lowerBound.value) {
-            value = (value + lowerBound.value) / 2;
-          } else {
-            Unreachable();
-          }
-          find = disequal.find(value);
-        }
+        find = disequal.find(value);
       }
     } else {
       Debug("mcsat::fm") << "FMPlugin::decide(): " << var << " in [" << lowerBound.value << "..]" << std::endl;
-      if (lowerBound.value >= 0) {
-        // --0---[---------: pick far
-        value = lowerBound.value + 100;
+      // First int above + delta
+      if (lowerBound.strict) {
+        value = (lowerBound.value + 1).floor() + options::mcsat_fm_unbounded_d();
       } else {
-        // if ----[--0----- try 0
-        value = 0;
+        value = (lowerBound.value.ceiling()) + options::mcsat_fm_unbounded_d();
+      }
+      while (disequal.find(value) != disequal.end()) {
+        value = value + 1;
       }
     }
   } else {
@@ -373,37 +368,40 @@ Rational CDBoundsModel::pick(Variable var, bool useCache) {
     if (hasUpperBound(var)) {
       const BoundInfo& upperBound = getUpperBoundInfo(var);
       Debug("mcsat::fm") << "FMPlugin::decide(): " << var << " in [.." << upperBound.value << "]" << std::endl;
-      // No lower bound, get min of (upper, diseq) and round down
-      if (upperBound.value <= 0) {
-        // if -------]--0-- : pick far
-        value = upperBound.value - 100;
+      // First int below - delta
+      if (upperBound.strict) {
+        value = (upperBound.value -1).ceiling() - options::mcsat_fm_unbounded_d();
       } else {
-        // if ------0--]--- try 0
-        value = 0;
+        value = upperBound.value.floor() - options::mcsat_fm_unbounded_d();
+      }
+
+      while (disequal.find(value) != disequal.end()) {
+        value = value - 1;
       }
     } else {
-      // No bounds go for 0
+      // No bounds, pick around 0
       value = 0;
+      if (disequal.find(value) != disequal.end()) {
+        unsigned d = 1;
+        do {
+          if (disequal.find(d) == disequal.end()) {
+            value = d;
+            break;
+          }
+          if (disequal.find(-d) == disequal.end()) {
+            value = -d;
+            break;
+          }
+          d ++;
+        } while (true);
+      }
     }
   }
 
-  Debug("mcsat::fm") << "FMPlugin::decide(): " << var << " around 0 " << std::endl;
-  if (!inRange(var, value) || disequal.count(value) > 0) {
-    Rational value_i = value + 1;
-    Rational value_d = value - 1;
-    while (true) {
-      if (inRange(var, value_i) && disequal.count(value_i) == 0) {
-        value = value_i;
-        break;
-      }
-      if (inRange(var, value_d) && disequal.count(value_d) == 0) {
-        value = value_d;
-        break;
-      }
-      value_i = value_i + 1;
-      value_d = value_d - 1;
-    }
-  }
+  Debug("mcsat::fm") << "FMPlugin::decide(): picked " << value << std::endl;
+
+  Assert(inRange(var, value));
+  Assert(disequal.count(value) == 0);
 
   // Cache the values
   d_valueCache[var] = value;

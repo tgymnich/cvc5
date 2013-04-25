@@ -12,7 +12,7 @@ option mcsat --enable-mcsat/--disable-mcsat bool :default false :read-write
 option mcsat_var_random_select --mcsat-var-random-select=N double :default 0.05
  the percent of variables that are randomly selected 
 
-option mcsat_learnts_limit_inc --mcsat-learnts-limit-inc=N double :default 1.1 
+option mcsat_learnts_limit_inc --mcsat-learnts-limit-inc=N double :default 1.2
  sets the factor to increase the learnts size when needed  
 
 option mcsat_learnts_keep_factor --mcsat-learnts-keep-factor=N double :default 0.5 
@@ -47,5 +47,8 @@ option mcsat_fm_decide_fixed --enable-mcsat-fm-decide-fixed/--disable-mcsat-fm-d
 option mcsat_fm_cascade --enable-mcsat-fm-cascade/--disable-mcsat-fm-cascade bool :default true :read-write
  cascade FM resolution while possible
 /does not cascade FM resolution
+
+option mcsat_fm_unbounded_d --mcsat-fm-unbounded_d=N unsigned :default 0 :read-write
+ if x >= l only, pick x + d 
 
 endmodule
