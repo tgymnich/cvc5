@@ -359,6 +359,9 @@ Rational CDBoundsModel::pick(Variable var, bool useCache) {
       } else {
         value = (lowerBound.value.ceiling()) + options::mcsat_fm_unbounded_d();
       }
+      if (options::mcsat_fm_unbounded_sq()) {
+	value = value + value.abs();
+      }
       while (disequal.find(value) != disequal.end()) {
         value = value + 1;
       }
@@ -374,7 +377,9 @@ Rational CDBoundsModel::pick(Variable var, bool useCache) {
       } else {
         value = upperBound.value.floor() - options::mcsat_fm_unbounded_d();
       }
-
+      if (options::mcsat_fm_unbounded_sq()) {
+	value = value - value.abs();
+      }
       while (disequal.find(value) != disequal.end()) {
         value = value - 1;
       }

@@ -48,7 +48,11 @@ option mcsat_fm_cascade --enable-mcsat-fm-cascade/--disable-mcsat-fm-cascade boo
  cascade FM resolution while possible
 /does not cascade FM resolution
 
-option mcsat_fm_unbounded_d --mcsat-fm-unbounded_d=N unsigned :default 0 :read-write
+option mcsat_fm_unbounded_d --mcsat-fm-unbounded-d=N unsigned :default 0 :read-write
  if x >= l only, pick x + d 
+
+option mcsat_fm_unbounded_sq --enable-mcsat-fm-unbounded-sq/--disable-mcsat-fm-unbounded-sq bool :default true :read-write
+ square the unbounded values
+/does not square the unbounded values
 
 endmodule
