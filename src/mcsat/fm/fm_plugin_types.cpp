@@ -90,9 +90,71 @@ void CDBoundsModel::addDisequality(Variable var, const DisequalInfo& info) {
   }
 }
 
+bool CDBoundsModel::improvesLowerBound(Variable var, const BoundInfo& lBound) const {
+  // If no lower bound, done
+  if (!hasLowerBound(var)) return true;
+
+//  // If already in conflict with this variable, and new one also in conflict, then compare
+//  if (d_constraintCMP && d_variablesInConflict.size() > 0 && d_variablesInConflict.count(var) > 0) {
+//    if (BoundInfo::inConflict(lBound, getUpperBoundInfo(var))) {
+//      return d_constraintCMP->better(lBound.reason, getLowerBoundInfo(var).reason);
+//    } else {
+//      // Definitvely not better
+//      return false;
+//    }
+//  }
+  // 1: improves, 0: same, -1 doesn't improve
+  int cmp = lBound.improvesLowerBound(getLowerBoundInfo(var));
+  if (cmp > 0) {
+    // Definitively better
+    return true;
+  } else if (cmp < 0) {
+    // Definitively worse
+    return false;
+  } else {
+    // Same, compare
+    if (d_constraintCMP) {
+      return d_constraintCMP->better(lBound.reason, getLowerBoundInfo(var).reason);
+    } else {
+      return false;
+    }
+  }
+}
+
+bool CDBoundsModel::improvesUpperBound(Variable var, const BoundInfo& uBound) const {
+  // If no lower bound, done
+  if (!hasUpperBound(var)) return true;
+
+//  // If already in conflict with this variable, and new one also in conflict, then compare
+//  if (d_constraintCMP && d_variablesInConflict.size() > 0 && d_variablesInConflict.count(var) > 0) {
+//    if (BoundInfo::inConflict(getLowerBoundInfo(var), uBound)) {
+//      return d_constraintCMP->better(uBound.reason, getUpperBoundInfo(var).reason);
+//    } else {
+//      // Definitvely not better
+//      return false;
+//    }
+//  }
+  // 1: improves, 0: same, -1 doesn't improve
+  int cmp = uBound.improvesUpperBound(getUpperBoundInfo(var));
+  if (cmp > 0) {
+    // Definitively better
+    return true;
+  } else if (cmp < 0) {
+    // Definitively worse
+    return false;
+  } else {
+    // Same, compare
+    if (d_constraintCMP) {
+      return d_constraintCMP->better(uBound.reason, getUpperBoundInfo(var).reason);
+    } else {
+      return false;
+    }
+  }
+}
+
 bool CDBoundsModel::updateLowerBound(Variable var, const BoundInfo& lBound) {
   // Update if better than the current one
-  if (!hasLowerBound(var) || lBound.improvesLowerBound(getLowerBoundInfo(var))) {  
+  if (improvesLowerBound(var, lBound)) {
     
     Debug("mcsat::fm") << "CDBoundsModel::updateLowerBound(" << var << ", " << lBound << ")" << std::endl;
 
@@ -138,7 +200,7 @@ bool CDBoundsModel::updateLowerBound(Variable var, const BoundInfo& lBound) {
 }
 
 bool CDBoundsModel::updateUpperBound(Variable var, const BoundInfo& uBound) {
-  if (!hasUpperBound(var) || uBound.improvesUpperBound(getUpperBoundInfo(var))) {
+  if (improvesUpperBound(var, uBound)) {
 
     Debug("mcsat::fm") << "CDBoundsModel::updateUpperBound(" << var << ", " << uBound << ")" << std::endl;
 
@@ -323,12 +385,14 @@ Rational CDBoundsModel::pick(Variable var, bool useCache) {
     value = d_valueCache[var];
     if (inRange(var, value) && disequal.count(value) == 0) {
       Debug("mcsat::fm") << "FMPlugin::decide(): [cache] " << var << std::endl;
+      ++ d_stats.pickCached;
       return value;
     }
   }
 
   // Try 0
   if (inRange(var, 0) && disequal.count(0) == 0) {
+    ++ d_stats.pickZero;
     return 0;
   }
 
@@ -337,6 +401,7 @@ Rational CDBoundsModel::pick(Variable var, bool useCache) {
     if (hasUpperBound(var)) {
       const BoundInfo& upperBound = getUpperBoundInfo(var);
       Debug("mcsat::fm") << "FMPlugin::decide(): " << var << " in [" << lowerBound.value << ".." << upperBound.value << "]" << std::endl;
+      ++ d_stats.pickBoth;
 
       // Pick in the middle
       value = pickBinaryMean(lowerBound, upperBound);
@@ -354,6 +419,7 @@ Rational CDBoundsModel::pick(Variable var, bool useCache) {
       }
     } else {
       Debug("mcsat::fm") << "FMPlugin::decide(): " << var << " in [" << lowerBound.value << "..]" << std::endl;
+      ++ d_stats.pickLower;
       // First int above + delta
       if (lowerBound.strict) {
         value = (lowerBound.value + 1).floor() + options::mcsat_fm_unbounded_d();
@@ -374,6 +440,7 @@ Rational CDBoundsModel::pick(Variable var, bool useCache) {
   } else {
     // No lower bound
     if (hasUpperBound(var)) {
+      ++ d_stats.pickUpper;
       const BoundInfo& upperBound = getUpperBoundInfo(var);
       Debug("mcsat::fm") << "FMPlugin::decide(): " << var << " in [.." << upperBound.value << "]" << std::endl;
       // First int below - delta
@@ -393,6 +460,7 @@ Rational CDBoundsModel::pick(Variable var, bool useCache) {
         value = value - 1;
       }
     } else {
+      ++ d_stats.pickNone;
       // No bounds, pick around 0
       value = 0;
       if (disequal.find(value) != disequal.end()) {

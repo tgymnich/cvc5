@@ -4,6 +4,7 @@
 #include "context/cdo.h"
 #include "mcsat/variable/variable.h"
 #include "mcsat/fm/linear_constraint.h"
+#include "util/statistics_registry.h"
 
 #include <iostream>
 #include <boost/integer_traits.hpp>
@@ -14,6 +15,47 @@ namespace fm {
 
 /** Map from variables to constraints */
 typedef std::hash_map<Variable, LinearConstraint, VariableHashFunction> var_to_constraint_map;
+
+/** Statistics for the value selection */
+struct BoundStats {
+  /** Number of 0 selections */
+  IntStat pickZero;
+  /** Number of cached selections */
+  IntStat pickCached;
+  /** Number of .[..]. selections */
+  IntStat pickBoth;
+  /** Number of [.... selections */
+  IntStat pickLower;
+  /** Number of ....] selections */
+  IntStat pickUpper;
+  /** Number of .... selections */
+  IntStat pickNone;
+  
+  BoundStats() 
+  : pickZero("mcsat::fm::value_zero", 0)
+  , pickCached("mcsat::fm::value_cached", 0)
+  , pickBoth("mcsat::fm::value_both", 0)
+  , pickLower("mcsat::fm::value_lower", 0)
+  , pickUpper("mcsat::fm::value_upper", 0)
+  , pickNone("mcsat::fm::value_none", 0)
+  {
+    StatisticsRegistry::registerStat(&pickZero);  
+    StatisticsRegistry::registerStat(&pickCached);  
+    StatisticsRegistry::registerStat(&pickBoth);  
+    StatisticsRegistry::registerStat(&pickLower);  
+    StatisticsRegistry::registerStat(&pickUpper);
+    StatisticsRegistry::registerStat(&pickNone);
+  }
+  
+  ~BoundStats() {
+    StatisticsRegistry::unregisterStat(&pickZero);  
+    StatisticsRegistry::unregisterStat(&pickCached);  
+    StatisticsRegistry::unregisterStat(&pickBoth);  
+    StatisticsRegistry::unregisterStat(&pickLower);  
+    StatisticsRegistry::unregisterStat(&pickUpper);
+    StatisticsRegistry::unregisterStat(&pickNone);
+  }
+};
 
 /** Value info for stating x != value */
 struct DisequalInfo {
@@ -61,37 +103,40 @@ struct BoundInfo {
   BoundInfo(Rational value, bool strict, Variable reason)
   : value(value), strict(strict), reason(reason) {}
 
-  bool improvesLowerBound(const BoundInfo& other) const {
+  /**
+   * 1: better
+   * 0: same
+   * -1: worse
+   */
+  int improvesLowerBound(const BoundInfo& other) const {
     // x > value is better than x > other.value
     // if value > other.value or they are equal but this one
     // is strict    
     int cmp = value.cmp(other.value);
     if (cmp == 0) {
-      if (strict) {
-        return !other.strict;
+      if (strict == other.strict) {
+        return 0;
       } else {
-        // TODO: Use discriminator
-        return false;
+        return strict ? 1 : -1;
       }
     } else {
-      return cmp > 0;
+      return cmp > 0 ? 1 : -1;
     }
   }
   
-  bool improvesUpperBound(const BoundInfo& other) const {
+  int improvesUpperBound(const BoundInfo& other) const {
     // x < value is better than x < other.value
     // if value < other.value or they are equal but this one 
     // is strict
     int cmp = value.cmp(other.value);
     if (cmp == 0) {
-      if (strict) {
-        return !other.strict;
+      if (strict == other.strict) {
+        return 0;
       } else {
-        // TODO: Use discriminator
-        return false;
+        return strict ? 1 : -1;
       }
     } else {
-      return cmp < 0;
+      return cmp < 0 ? 1 : -1;
     }
   }
   
@@ -115,6 +160,9 @@ inline std::ostream& operator << (std::ostream& out, const BoundInfo& info) {
 /** Context-dependent bounds model */
 class CDBoundsModel : public context::ContextNotifyObj {
 
+  /** Some stats */
+  BoundStats d_stats;
+  
   /** Index of the bound in the bounds vector */
   typedef unsigned BoundInfoIndex;
   
@@ -227,6 +275,12 @@ class CDBoundsModel : public context::ContextNotifyObj {
   /** Compare constraints somehow */
   IConstraintDiscriminator* d_constraintCMP;
 
+  /** Update the lower bound, returns true if variable is now fixed */
+  bool improvesLowerBound(Variable var, const BoundInfo& info) const;
+
+  /** Update the upper bound, returns true if variable is now fixed */
+  bool improvesUpperBound(Variable var, const BoundInfo& info) const;
+
 public:
   
   ~CDBoundsModel() throw(AssertionException) {}
@@ -241,7 +295,9 @@ public:
   bool updateUpperBound(Variable var, const BoundInfo& info);
 
   /** If two constraints imply the same bound, which one to keep */
-  void setDiscriminator(IConstraintDiscriminator* d);
+  void setDiscriminator(IConstraintDiscriminator* d) {
+    d_constraintCMP = d;
+  }
 
   /** Adds the value to the list of values that a variable must be disequal from */
   void addDisequality(Variable var, const DisequalInfo& info);

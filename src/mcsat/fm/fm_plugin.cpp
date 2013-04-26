@@ -33,6 +33,41 @@ void FMPlugin::NewVariableNotify::newVariable(Variable var) {
   }
 }
 
+struct ConstraintDiscriminator : public IConstraintDiscriminator {
+  const SolverTrail& trail;
+  const fm::var_to_constraint_map& constraints;
+
+  bool size;
+  bool level;
+public:
+
+  ConstraintDiscriminator(const SolverTrail& trail, const fm::var_to_constraint_map& constraints, bool size, bool level)
+  : trail(trail)
+  , constraints(constraints)
+  , size(size)
+  , level(level)
+  {}
+
+  bool better(Variable c1, Variable c2) {
+
+    if (level) {
+      unsigned l1 = trail.decisionLevel(c1);
+      unsigned l2 = trail.decisionLevel(c2);
+      if (l1 != l2) {
+        return l1 < l2;
+      }
+    }
+
+    if (size) {
+      fm::var_to_constraint_map::const_iterator f1 = constraints.find(c1);
+      fm::var_to_constraint_map::const_iterator f2 = constraints.find(c2);
+      return f1->second.size() < f2->second.size();
+    }
+
+    return false;
+  }
+};
+
 FMPlugin::FMPlugin(ClauseDatabase& database, const SolverTrail& trail, SolverPluginRequest& request)
 : SolverPlugin(database, trail, request)
 , d_newVariableNotify(*this)
@@ -46,6 +81,7 @@ FMPlugin::FMPlugin(ClauseDatabase& database, const SolverTrail& trail, SolverPlu
 , d_bounds(trail.getSearchContext())
 , d_fmRule(database, trail)
 , d_fmRuleDiseq(database, trail)
+, d_constraintDiscriminator(new ConstraintDiscriminator(d_trail, d_constraints, options::mcsat_fm_discriminate_size(), options::mcsat_fm_discriminate_level()))
 {
   Debug("mcsat::fm") << "FMPlugin::FMPlugin()" << std::endl;
 
@@ -58,6 +94,15 @@ FMPlugin::FMPlugin(ClauseDatabase& database, const SolverTrail& trail, SolverPlu
 
   // Add the listener
   VariableDatabase::getCurrentDB()->addNewVariableListener(&d_newVariableNotify);
+
+  // Add the comparator for bounds
+  if (options::mcsat_fm_discriminate()) {
+    d_bounds.setDiscriminator(d_constraintDiscriminator);
+  }
+}
+
+FMPlugin::~FMPlugin() {
+  delete d_constraintDiscriminator;
 }
 
 std::string FMPlugin::toString() const  {
@@ -381,6 +426,14 @@ void FMPlugin::bumpVariables(const LinearConstraint& c) {
 void FMPlugin::bumpVariables(const std::set<Variable>& vars) {
   std::set<Variable>::const_iterator it = vars.begin();
   std::set<Variable>::const_iterator it_end = vars.end();
+  for (; it != it_end; ++ it) {
+    d_request.bump(*it, options::mcsat_fm_bump());
+  }
+}
+
+void FMPlugin::bumpVariables(const std::vector<Variable>& vars) {
+  std::vector<Variable>::const_iterator it = vars.begin();
+  std::vector<Variable>::const_iterator it_end = vars.end();
   for (; it != it_end; ++ it) {
     d_request.bump(*it, options::mcsat_fm_bump());
   }

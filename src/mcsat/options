@@ -37,7 +37,7 @@ option mcsat_bcp_attach_limit --mcsat-bcp-attach-limit=N unsigned :default 0
 option mcsat_fm_lemmas_keep_factor --mcsat-fm-lemmas-keep-factor=N double :default 0.1 
  sets the factor of FM lemmas  to keep when collecting garbage
 
-option mcsat_fm_bump --mcsat-fm-bump=N unsigned :default 1 
+option mcsat_fm_bump --mcsat-fm-bump=N unsigned :default 2 
  FM bump factor
 
 option mcsat_fm_decide_fixed --enable-mcsat-fm-decide-fixed/--disable-mcsat-fm-decide-fixed bool :default true :read-write
@@ -47,6 +47,19 @@ option mcsat_fm_decide_fixed --enable-mcsat-fm-decide-fixed/--disable-mcsat-fm-d
 option mcsat_fm_cascade --enable-mcsat-fm-cascade/--disable-mcsat-fm-cascade bool :default true :read-write
  cascade FM resolution while possible
 /does not cascade FM resolution
+
+option mcsat_fm_discriminate --enable-mcsat-fm-discrimination/--disable-mcsat-fm-discrimination bool :default true :read-write
+ enable discrimination of constraints based on level and size
+/disable discrimination of constraints based on level and size
+
+option mcsat_fm_discriminate_size --enable-mcsat-fm-discrimination-size/--disable-mcsat-fm-discrimination-size bool :default true :read-write
+ enable discrimination of constraints based on size
+/disable discrimination of constraints based on size
+
+option mcsat_fm_discriminate_level --enable-mcsat-fm-discrimination-level/--disable-mcsat-fm-discrimination-level bool :default true :read-write
+ enable discrimination of constraints based on level
+/disable discrimination of constraints based on level
+
 
 option mcsat_fm_unbounded_d --mcsat-fm-unbounded-d=N unsigned :default 0 :read-write
  if x >= l only, pick x + d 

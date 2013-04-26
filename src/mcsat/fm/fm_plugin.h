@@ -121,11 +121,19 @@ class FMPlugin : public SolverPlugin {
 
   /** Bume the variables in the set */
   void bumpVariables(const std::set<Variable>& vars);
+
+  /** Bume the variables in the set */
+  void bumpVariables(const std::vector<Variable>& vars);
   
+  /** Discriminator for constraints */
+  fm::IConstraintDiscriminator* d_constraintDiscriminator;
+
 public:
 
   /** Constructor */
   FMPlugin(ClauseDatabase& clauseDb, const SolverTrail& trail, SolverPluginRequest& request);
+
+  ~FMPlugin();
 
   /** Perform propagation */
   void propagate(SolverTrail::PropagationToken& out);

@@ -62,7 +62,7 @@ public:
   }
 
   /** Returns the number of proper variables */
-  unsigned size() {
+  unsigned size() const {
     return d_coefficients.size() - 1;
   }
 
