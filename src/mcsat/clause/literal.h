@@ -55,6 +55,9 @@ public:
   /** Return the variable of the literal */
   Variable getVariable() const { return d_variable; }
 
+  /** Is it a null literal */
+  bool isNull() const { return d_variable.isNull(); }
+
   /** Return true if the literal is negated */
   bool isNegated() const { return d_negated; }
 

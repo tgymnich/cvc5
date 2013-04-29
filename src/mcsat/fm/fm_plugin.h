@@ -3,7 +3,7 @@
 #include "mcsat/plugin/solver_plugin.h"
 #include "mcsat/variable/variable_table.h"
 
-#include "mcsat/fm/fm_plugin_types.h"
+#include "mcsat/fm/bounds_model.h"
 
 #include "mcsat/util/assigned_watch_manager.h"
 #include "mcsat/util/var_priority_queue.h"
@@ -13,10 +13,44 @@
 namespace CVC4 {
 namespace mcsat {
 
+/** Statistics for the value selection */
+struct FMPluginStats {
+  /** Number of decisions */
+  IntStat decisions;
+  /** Conflicts */
+  IntStat conflicts;
+  /** Number of propagations (semantic, x -> 1 => x > 0) */
+  IntStat propagationS;
+  /** Number of propagations (deductive, x > 1 => x > 0) */
+  IntStat propagationD;
+  /** Number of [.... selections */
+
+  FMPluginStats ()
+  : decisions("mcsat::fm::decisions", 0)
+  , conflicts("mcsat::fm::conflicts", 0)
+  , propagationS("mcsat::fm::propagations_s", 0)
+  , propagationD("mcsat::fm::propagations_d", 0)
+  {
+    StatisticsRegistry::registerStat(&decisions);
+    StatisticsRegistry::registerStat(&conflicts);
+    StatisticsRegistry::registerStat(&propagationS);
+    StatisticsRegistry::registerStat(&propagationD);
+  }
+
+  ~FMPluginStats () {
+    StatisticsRegistry::unregisterStat(&decisions);
+    StatisticsRegistry::unregisterStat(&conflicts);
+    StatisticsRegistry::unregisterStat(&propagationS);
+    StatisticsRegistry::unregisterStat(&propagationD);
+  }
+};
+
 /**
  * Fourier-Motzkin elimination plugin.
  */
 class FMPlugin : public SolverPlugin {
+
+  FMPluginStats d_stats;
 
   class NewVariableNotify : public VariableDatabase::INewVariableNotify {
     FMPlugin& d_plugin;
@@ -31,24 +65,22 @@ class FMPlugin : public SolverPlugin {
   /** Real type index */
   size_t d_realTypeIndex;
 
-  /** Delayed constraints to propagate by value (value is propagated) */
-  std::vector<Variable> d_delayedPropagations;
-
   /** The learned clauses */
   std::vector<CRef> d_lemmasLearnt;
 
   /** Called on arithmetic constraints */
   void newConstraint(Variable constraint);
-  
-  /** Number of unassigned variables in a constraint */
-  enum UnassignedStatus {
-    UNASSIGNED_UNKNOWN,
-    UNASSIGNED_UNIT,
-    UNASSIGNED_NONE,
-  };
 
-  /** Map from constraints to their status */
-  std::vector<UnassignedStatus> d_constraintUnassignedStatus;
+  /** Unit constraint we got at creation */
+  std::vector<Variable> d_lateConstraints;
+
+  typedef std::hash_map<Variable, Variable, VariableHashFunction> unassigned_map;
+  
+  /**
+   * Map from constraints to the unit variable thats not assigned. If the cosntraint is
+   * fully assigned, then null is put into the map.
+   */
+  unassigned_map d_unassignedMap;
 
   /** List of fixed variables to use for decisions x = c assertion */
   context::CDList<Variable> d_fixedVariables;
@@ -90,20 +122,24 @@ class FMPlugin : public SolverPlugin {
   util::AssignedWatchManager d_assignedWatchManager;
 
   /** Checks whether the constraint is unit */
-  bool isUnitConstraint(Variable constraint);
+  bool isUnitConstraint(Variable constraint) const;
+
+  /** Checks whether the constraint is fully assigned */
+  bool isFullyAssigned(Variable constraint) const;
 
   /**
-   * Takes a unit constraint and asserts the apropriate bound (if inequalities), or
-   * adds to the list of dis-equalities for the free variable.
+   * Takes a unit constraint (asserted or not) and processes it. If it is asserted then the appropriate bound
+   * (if inequalities) is added, or adds to the list of dis-equalities for the free variable.
    */
-  void processUnitConstraint(Variable constraint);
+  void processUnitConstraint(Variable constraint, SolverTrail::PropagationToken& out);
+
+  /** Try the bounding and return the conflict if any. */
+  Literal tryBounding(const fm::BoundingInfo& bounding, Variable var) const;
 
   /**
-   * Try the constraint for bounding. If constraint (reason of c) is not null, then 
-   * the bound is asserted. Otherwise, the bound si just checked for a conflict.
-   * In case of conflict the opposite bound reason is retured.
+   * Propagate reason => propagation (x unassigned variable)
    */
-  Variable tryBound(const fm::LinearConstraint& c, Variable var, Variable constraint = Variable::null);
+  void propagateDeduction(Literal propagation, Literal reason, Variable x, SolverTrail::PropagationToken& out);
 
   /** The Fourier-Motzkin rule we use for derivation */
   rules::FourierMotzkinRule d_fmRule;
@@ -116,17 +152,44 @@ class FMPlugin : public SolverPlugin {
    */
   void processConflicts(SolverTrail::PropagationToken& out);
 
-  /** Bume the variables appearing in c */
+  /** Bump the variables appearing in c */
   void bumpVariables(const fm::LinearConstraint& c);
 
-  /** Bume the variables in the set */
+  /** Bump the variables in the set */
   void bumpVariables(const std::set<Variable>& vars);
 
-  /** Bume the variables in the set */
+  /** Bump the variables in the set */
   void bumpVariables(const std::vector<Variable>& vars);
   
   /** Discriminator for constraints */
   fm::IConstraintDiscriminator* d_constraintDiscriminator;
+
+  class SimpleReasonProvider : public SolverTrail::ReasonProvider {
+    /** Propagation reasons */
+    struct PropInfo {
+      /** The assertion */
+      Literal reason;
+      /** Real variable to resolve */
+      Variable x;
+      PropInfo(Literal reason, Variable x)
+      : reason(reason), x(x) {}
+    };
+    typedef context::CDInsertHashMap<Literal, PropInfo, LiteralHashFunction> reason_map;
+    /** Reasons for propagations */
+    reason_map d_reasons;
+    /** The rule we're using */
+    rules::FourierMotzkinRule& d_fmRule;
+  public:
+    SimpleReasonProvider(rules::FourierMotzkinRule& rule, context::Context* sc)
+    : d_reasons(sc)
+    , d_fmRule(rule)
+    {}
+    ~SimpleReasonProvider() {}
+    /** Note a propagation */
+    bool add(Literal propagation, Literal reason, Variable x);
+    /** Explain */
+    CRef explain(Literal l, SolverTrail::PropagationToken& out);
+  } d_reasonProvider;
 
 public:
 

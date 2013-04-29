@@ -3,12 +3,15 @@
 #include "mcsat/variable/variable_db.h"
 #include "mcsat/options.h"
 
+#include "theory/rewriter.h"
+#include "util/node_visitor.h"
+
 using namespace CVC4;
 using namespace CVC4::mcsat;
 
 SolverTrail::SolverTrail(context::Context* context)
 : d_decisionLevel(0)
-, d_modelValues(context)
+, d_cacheTimestamp(1)
 , d_context(context)
 {
   c_TRUE = NodeManager::currentNM()->mkConst<bool>(true);
@@ -26,6 +29,58 @@ SolverTrail::SolverTrail(context::Context* context)
 }
 
 SolverTrail::~SolverTrail() {
+}
+
+struct SubstituteVisitor {
+  const SolverTrail& trail;
+  unsigned level;
+  std::hash_map<TNode, Node, TNodeHashFunction> d_evaluation;
+public:
+  SubstituteVisitor(const SolverTrail& trail, unsigned level) 
+  : trail(trail), level(level) {}
+  
+  typedef Node return_type;
+
+  bool alreadyVisited(TNode current, TNode parent) const {
+    return d_evaluation.find(current) != d_evaluation.end();
+  }
+
+  void visit(TNode current, TNode parent) {
+    if (current.isConst()) {
+      d_evaluation[current] = current;
+      return;
+    }
+    if (current.isVar()) {
+      Variable var = VariableDatabase::getCurrentDB()->getVariable(current);
+      if (trail.hasValue(var) && trail.decisionLevel(var) <= level) {
+	d_evaluation[current] = trail.value(var);
+      } else {
+	d_evaluation[current] = current;
+      }
+      return;
+    }
+    NodeBuilder<> nb(current.getKind());
+    for (unsigned i = 0; i < current.getNumChildren(); ++ i) {
+      nb << d_evaluation[current[i]];
+    }
+    Node result = nb;
+    d_evaluation[current] = theory::Rewriter::rewrite(result);
+  }
+
+  void start(TNode node) {}
+  
+  Node done(TNode node) {
+    return d_evaluation[node];
+  }
+};
+
+
+Node SolverTrail::evaluate(Literal l, unsigned level) const {
+  Node atom = l.getVariable().getNode();
+  Node node = l.isNegated() ? atom.notNode() : atom;
+  SubstituteVisitor visitor(*this, level);
+  Node eval = NodeVisitor<SubstituteVisitor>::run(visitor, node);
+  return eval;
 }
 
 void SolverTrail::newDecision() {
@@ -115,6 +170,8 @@ void SolverTrail::PropagationToken::operator () (Literal l, unsigned level) {
 
   Debug("mcsat::trail") << "PropagationToken::operator () (" << l << ", " << level << ")" << std::endl;
 
+  // Assert(d_trail.evaluatesToTrue(l, level));
+  
   d_used = true;
 
   if (!d_trail.hasValue(l.getVariable())) {
@@ -152,11 +209,12 @@ static bool clausePropagates(Literal l, CRef reason, SolverTrail& trail) {
 void SolverTrail::PropagationToken::operator () (Literal l, CRef reason) {
 
   Debug("mcsat::trail") << "PropagationToken::operator () (" << l << ", " << reason << ")" << std::endl;
+  // Assert(!d_trail.evaluatesToFalse(l, d_trail.decisionLevel()) || d_trail.isFalse(l));
 
   d_used = true;
 
   Assert(clausePropagates(l, reason, d_trail));
-
+  
   // If new propagation, record in model and in trail
   if (!d_trail.isTrue(l)) {
     // Check that we're not in conflict with this propagation
@@ -182,13 +240,48 @@ void SolverTrail::PropagationToken::operator () (Literal l, CRef reason) {
       d_trail.d_trail.push_back(Element(CLAUSAL_PROPAGATION, var));
     }
   } 
-
 }
+
+void SolverTrail::PropagationToken::operator () (Literal l, ReasonProvider* reason_provider) {
+
+  Debug("mcsat::trail") << "PropagationToken::operator () (" << l << ", with lazy reason)" << std::endl;
+  // Assert(!d_trail.evaluatesToFalse(l, d_trail.decisionLevel()) || d_trail.isFalse(l));
+
+  d_used = true;
+
+    // If new propagation, record in model and in trail
+  if (!d_trail.isTrue(l)) {
+    // Check that we're not in conflict with this propagation
+    if (d_trail.isFalse(l)) {
+      // Conflict
+      Debug("mcsat::trail") << "PropagationToken::operator () (" << l << ", with lazy reason): conflict" << std::endl;
+      CRef reason = reason_provider->explain(l, *this);
+      d_trail.d_inconsistentPropagations.push_back(InconsistentPropagation(l, reason));
+    } else {
+      // No conflict, remember the l value in the model
+      if (l.isNegated()) {
+        d_trail.setValue(l.getVariable(), d_trail.c_FALSE, false);
+      } else {
+        d_trail.setValue(l.getVariable(), d_trail.c_TRUE, false);
+      }
+      // Set the model information
+      Variable var = l.getVariable();
+      d_trail.d_modelInfo[var].decisionLevel = d_trail.decisionLevel();
+      d_trail.d_modelInfo[var].trailIndex = d_trail.d_trail.size();
+      // Remember the reason
+      d_trail.d_reasonProviders[l] = reason_provider;
+      // Push to the trail
+      d_trail.d_trail.push_back(Element(CLAUSAL_PROPAGATION, var));
+    }
+  }
+}
+
 
 void SolverTrail::DecisionToken::operator () (Literal l) {
   Assert(!d_used);
   Assert(d_trail.consistent());
   Assert(d_trail.d_model[l.getVariable()].isNull());
+  Assert(!d_trail.evaluatesToFalse(l, d_trail.decisionLevel()));
 
   Debug("mcsat::trail") << "DecisionToken::operator () (" << l << ")" << std::endl;
 
@@ -237,7 +330,8 @@ bool SolverTrail::hasReason(Literal literal) const {
 CRef SolverTrail::reason(Literal literal) {
   Assert(hasReason(literal));
   ReasonProvider* reasonProvider = d_reasonProviders[literal];
-  CRef reason = reasonProvider->explain(literal);
+  PropagationToken out(*this, PropagationToken::PROPAGATION_INIT);
+  CRef reason = reasonProvider->explain(literal, out);
   // If not a clausal reason provider, remember just in case
   if (reasonProvider != &d_clauseReasons) {
     d_clauseReasons[literal] = reason;

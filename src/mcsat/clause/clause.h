@@ -69,9 +69,7 @@ inline std::ostream& operator << (std::ostream& out, const Clause& clause) {
 // Sorting as Literals since we only shuffle them around
 template<class Compare>
 inline void Clause::sort(Compare& cmp) {
-  Literal* begin = reinterpret_cast<Literal*>(d_literals);
-  Literal* end = reinterpret_cast<Literal*>(d_literals) + size();
-  std::sort(begin, end, cmp);
+  std::sort(d_literals, d_literals + size(), cmp);
 }
 
 } /* Namespace mcsat */

@@ -1,4 +1,4 @@
-#include "mcsat/fm/fm_plugin_types.h"
+#include "mcsat/fm/bounds_model.h"
 #include "mcsat/options.h"
 
 using namespace CVC4;
@@ -94,15 +94,6 @@ bool CDBoundsModel::improvesLowerBound(Variable var, const BoundInfo& lBound) co
   // If no lower bound, done
   if (!hasLowerBound(var)) return true;
 
-//  // If already in conflict with this variable, and new one also in conflict, then compare
-//  if (d_constraintCMP && d_variablesInConflict.size() > 0 && d_variablesInConflict.count(var) > 0) {
-//    if (BoundInfo::inConflict(lBound, getUpperBoundInfo(var))) {
-//      return d_constraintCMP->better(lBound.reason, getLowerBoundInfo(var).reason);
-//    } else {
-//      // Definitvely not better
-//      return false;
-//    }
-//  }
   // 1: improves, 0: same, -1 doesn't improve
   int cmp = lBound.improvesLowerBound(getLowerBoundInfo(var));
   if (cmp > 0) {
@@ -114,7 +105,7 @@ bool CDBoundsModel::improvesLowerBound(Variable var, const BoundInfo& lBound) co
   } else {
     // Same, compare
     if (d_constraintCMP) {
-      return d_constraintCMP->better(lBound.reason, getLowerBoundInfo(var).reason);
+      return d_constraintCMP->better(lBound.reason.getVariable(), getLowerBoundInfo(var).reason.getVariable());
     } else {
       return false;
     }
@@ -125,15 +116,6 @@ bool CDBoundsModel::improvesUpperBound(Variable var, const BoundInfo& uBound) co
   // If no lower bound, done
   if (!hasUpperBound(var)) return true;
 
-//  // If already in conflict with this variable, and new one also in conflict, then compare
-//  if (d_constraintCMP && d_variablesInConflict.size() > 0 && d_variablesInConflict.count(var) > 0) {
-//    if (BoundInfo::inConflict(getLowerBoundInfo(var), uBound)) {
-//      return d_constraintCMP->better(uBound.reason, getUpperBoundInfo(var).reason);
-//    } else {
-//      // Definitvely not better
-//      return false;
-//    }
-//  }
   // 1: improves, 0: same, -1 doesn't improve
   int cmp = uBound.improvesUpperBound(getUpperBoundInfo(var));
   if (cmp > 0) {
@@ -145,7 +127,7 @@ bool CDBoundsModel::improvesUpperBound(Variable var, const BoundInfo& uBound) co
   } else {
     // Same, compare
     if (d_constraintCMP) {
-      return d_constraintCMP->better(uBound.reason, getUpperBoundInfo(var).reason);
+      return d_constraintCMP->better(uBound.reason.getVariable(), getUpperBoundInfo(var).reason.getVariable());
     } else {
       return false;
     }
@@ -153,6 +135,9 @@ bool CDBoundsModel::improvesUpperBound(Variable var, const BoundInfo& uBound) co
 }
 
 bool CDBoundsModel::updateLowerBound(Variable var, const BoundInfo& lBound) {
+
+  Assert(!lBound.reason.isNull());
+
   // Update if better than the current one
   if (improvesLowerBound(var, lBound)) {
     
@@ -167,7 +152,7 @@ bool CDBoundsModel::updateLowerBound(Variable var, const BoundInfo& lBound) {
     if (find == d_lowerBounds.end()) {
       // New bound
       d_boundTrailUndo.push_back(UndoBoundInfo(var, null_bound_index, true));
-      d_lowerBounds[var] = index;  
+      d_lowerBounds[var] = index;
     } else {
       d_boundTrailUndo.push_back(UndoBoundInfo(var, find->second, true));
       find->second = index;
@@ -200,6 +185,9 @@ bool CDBoundsModel::updateLowerBound(Variable var, const BoundInfo& lBound) {
 }
 
 bool CDBoundsModel::updateUpperBound(Variable var, const BoundInfo& uBound) {
+
+  Assert(!uBound.reason.isNull());
+
   if (improvesUpperBound(var, uBound)) {
 
     Debug("mcsat::fm") << "CDBoundsModel::updateUpperBound(" << var << ", " << uBound << ")" << std::endl;

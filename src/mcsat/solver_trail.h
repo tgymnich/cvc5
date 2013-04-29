@@ -72,15 +72,18 @@ public:
     : type(type), var(var) {}
   };
 
+  class PropagationToken;
+
   /**
    * An object that can provide a reason for the propagation
    */
   class ReasonProvider {
   public:
+
     /**
      * Provide the clausal explanation of the propagation of l.
      */
-    virtual CRef explain(Literal l) = 0;
+    virtual CRef explain(Literal l, PropagationToken& out) = 0;
   };
 
   /** Captures the inconsistently propagated literal and the reason for it */
@@ -116,7 +119,7 @@ private:
     /** Map from literals to clausal reasons */
     reasons_map d_reasons;
   public:
-    CRef explain(Literal l) { return d_reasons[l]; }
+    CRef explain(Literal l, PropagationToken& out) { return d_reasons[l]; }
     CRef& operator [] (Literal l) { return d_reasons[l]; }
   };
   
@@ -141,8 +144,27 @@ private:
   /** Model indexed by variables */
   variable_table<TNode> d_model;
 
-  /** Values that the trail tracks */
-  context::CDList<Node> d_modelValues;
+  struct cache_entry {
+    Node value;
+    size_t timestamp;
+    cache_entry()
+    : timestamp(0) {}
+    cache_entry(TNode value, size_t timestamp)
+    : value(value), timestamp(timestamp) {}
+
+    void set(TNode newValue, size_t newTimestamp) {
+      Assert(timestamp == 0 || value != newValue);
+      Assert(newTimestamp > timestamp);
+      value = newValue;
+      timestamp = newTimestamp;
+    }
+  };
+
+  /** Cache for tracking */
+  variable_table<cache_entry> d_cache;
+
+  /** Global time-stamp for values */
+  size_t d_cacheTimestamp;
 
   struct VariableInfo {
     unsigned decisionLevel;
@@ -156,7 +178,10 @@ private:
     Assert(d_model[var].isNull());
     d_model[var] = value;
     if (track) {
-      d_modelValues.push_back(value);
+      cache_entry& ce = d_cache[var];
+      if (ce.timestamp == 0 || ce.value != value) {
+        ce.set(value, d_cacheTimestamp ++);
+      }
     }
   }
 
@@ -248,6 +273,11 @@ public:
     return d_decisionLevel;
   }
 
+  /** Get the timestamp of a tracked value */
+  size_t getValueTimestamp(Variable var) const {
+    return d_cache[var].timestamp;
+  }
+
   /** Pop to the given decision level. All unset variables are pushed into the vector. */
   void popToLevel(unsigned level, std::vector<Variable>& variablesUnset);
 
@@ -268,6 +298,24 @@ public:
       }
     }
     return v;
+  }
+
+  /** 
+   * Evaluate the literal according to the first order asssignment. Don't used
+   * assignements > level.
+   */
+  Node evaluate(Literal l, unsigned level) const;
+  
+  /** Literal evaluates to true */
+  bool evaluatesToTrue(Literal l, unsigned level) const {
+    Node e = evaluate(l, level);
+    return e.getKind() == kind::CONST_BOOLEAN && e.getConst<bool>();
+  }
+
+  /** Literal evaluates to true */
+  bool evaluatesToFalse(Literal l, unsigned level) const {
+    Node e = evaluate(l, level);
+    return e.getKind() == kind::CONST_BOOLEAN && !e.getConst<bool>();
   }
 
   /** Returns true if the literal is true in the current model */

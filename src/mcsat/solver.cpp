@@ -492,6 +492,7 @@ void Solver::analyzeConflicts() {
       Assert(literalReasonClause[0].getVariable() == varToResolve);
 
       // Resolve the literal (propagations should always have first literal propagating)
+      Assert(literalReasonClause[0].getVariable() == varToResolve);
       d_rule_Resolution.resolve(literalReason, 0);
       d_notifyDispatch.notifyConflictResolution(literalReason);
       if (literalReasonClause.getRuleId() == d_rule_Resolution.getRuleId()) {

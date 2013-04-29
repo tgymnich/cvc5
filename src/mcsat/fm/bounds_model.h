@@ -3,6 +3,7 @@
 #include "expr/node.h"
 #include "context/cdo.h"
 #include "mcsat/variable/variable.h"
+#include "mcsat/fm/bound_info.h"
 #include "mcsat/fm/linear_constraint.h"
 #include "util/statistics_registry.h"
 
@@ -87,75 +88,6 @@ public:
   /** Is c1 better than c2 */
   virtual bool better(Variable c1, Variable c2) = 0;
 };
-
-/** Bound information */
-struct BoundInfo {
-  /** The value of the bound */
-  Rational value;
-  /** Is the bound strict (<,>) */
-  bool strict;
-  /** What is the reason for this bound */
-  Variable reason;
-
-  BoundInfo()
-  : strict(false) {}
-
-  BoundInfo(Rational value, bool strict, Variable reason)
-  : value(value), strict(strict), reason(reason) {}
-
-  /**
-   * 1: better
-   * 0: same
-   * -1: worse
-   */
-  int improvesLowerBound(const BoundInfo& other) const {
-    // x > value is better than x > other.value
-    // if value > other.value or they are equal but this one
-    // is strict    
-    int cmp = value.cmp(other.value);
-    if (cmp == 0) {
-      if (strict == other.strict) {
-        return 0;
-      } else {
-        return strict ? 1 : -1;
-      }
-    } else {
-      return cmp > 0 ? 1 : -1;
-    }
-  }
-  
-  int improvesUpperBound(const BoundInfo& other) const {
-    // x < value is better than x < other.value
-    // if value < other.value or they are equal but this one 
-    // is strict
-    int cmp = value.cmp(other.value);
-    if (cmp == 0) {
-      if (strict == other.strict) {
-        return 0;
-      } else {
-        return strict ? 1 : -1;
-      }
-    } else {
-      return cmp < 0 ? 1 : -1;
-    }
-  }
-  
-  static bool inConflict(const BoundInfo& lower, const BoundInfo& upper) {
-    // x > a and x < b are in conflict 
-    // if a > b or they are equal but one is strict
-    int cmp = lower.value.cmp(upper.value);
-    return (cmp > 0 || (cmp == 0 && (lower.strict || upper.strict)));
-  }
-
-  void toStream(std::ostream& out) const {
-    out << "[" << value << (strict ? "" : "=") << "]";
-  }
-};
-
-inline std::ostream& operator << (std::ostream& out, const BoundInfo& info) {
-  info.toStream(out);
-  return out;
-}
 
 /** Context-dependent bounds model */
 class CDBoundsModel : public context::ContextNotifyObj {
@@ -275,10 +207,10 @@ class CDBoundsModel : public context::ContextNotifyObj {
   /** Compare constraints somehow */
   IConstraintDiscriminator* d_constraintCMP;
 
-  /** Update the lower bound, returns true if variable is now fixed */
+  /** Do we improve the lower bound */
   bool improvesLowerBound(Variable var, const BoundInfo& info) const;
 
-  /** Update the upper bound, returns true if variable is now fixed */
+  /** Do we improve the upper bound  */
   bool improvesUpperBound(Variable var, const BoundInfo& info) const;
 
 public:

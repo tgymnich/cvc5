@@ -1,6 +1,7 @@
 #include "mcsat/fm/linear_constraint.h"
 #include "mcsat/variable/variable_db.h"
 #include "mcsat/solver_trail.h"
+#include "mcsat/options.h"
 
 #include "theory/rewriter.h"
 
@@ -39,6 +40,23 @@ void LinearConstraint::normalize(var_rational_pair_vector& coefficients) {
   coefficients.resize(head + 1);
 }
 
+LinearConstraint::LinearConstraint()
+: d_kind(kind::LAST_KIND)
+, d_evaluationTimestamp(0)
+, d_evaluationCache(false)
+, d_boundingTimestamp(0)
+{
+  d_coefficients.push_back(var_rational_pair(Variable::null, 0));
+}
+
+void LinearConstraint::clearCache() {
+  d_evaluationTimestamp = 0;
+  d_evaluationCache = false;
+  d_boundingTimestamp = 0;
+  d_boundingVariable = Variable::null;
+  d_boundingCache.clear();
+}
+
 void LinearConstraint::getVariables(std::vector<Variable>& vars) const {
   var_rational_pair_vector::const_iterator it = d_coefficients.begin();
   var_rational_pair_vector::const_iterator it_end = d_coefficients.end();
@@ -65,9 +83,12 @@ void LinearConstraint::getVariables(std::set<Variable>& vars) const {
 
 void LinearConstraint::swap(LinearConstraint& c) {
   d_coefficients.swap(c.d_coefficients);
-  d_variablesValueCache.swap(c.d_variablesValueCache);
   std::swap(d_kind, c.d_kind);
-  std::swap(d_constraintValueCache, c.d_constraintValueCache);
+  std::swap(d_evaluationTimestamp, c.d_evaluationTimestamp);
+  std::swap(d_evaluationCache, c.d_evaluationCache);
+  std::swap(d_boundingTimestamp, c.d_boundingTimestamp);
+  std::swap(d_boundingVariable, c.d_boundingVariable);
+  d_boundingCache.swap(c.d_boundingCache);
 }
 
 int LinearConstraint::getEvaluationLevel(const SolverTrail& trail) const {
@@ -97,27 +118,27 @@ bool LinearConstraint::evaluate(const SolverTrail& trail, unsigned& level) const
 
   // Check if the cache is valid
   bool cacheValid = true;
-  if (!d_variablesValueCache.empty()) {
-    Assert(d_variablesValueCache.size() == d_coefficients.size());
-    for (unsigned i = 0; i < d_variablesValueCache.size(); ++ i) {
-      Variable var = d_coefficients[i].first;
-      if (!var.isNull()) {
-        level = std::max(level, trail.decisionLevel(var));
-        if (trail.value(var).getConst<Rational>() != d_variablesValueCache[i]) {
-          cacheValid = false;
-        }
-      }
+
+  size_t timestamp = 0;
+  for (unsigned i = 0; i < d_coefficients.size(); ++ i) {
+    Variable var = d_coefficients[i].first;
+    if (!var.isNull()) {
+      level = std::max(level, trail.decisionLevel(var));
+      Assert(trail.hasValue(var));
+      timestamp = std::max(timestamp, trail.getValueTimestamp(var));
     }
-  } else {
+  }
+
+  if (timestamp > d_evaluationTimestamp) {
     cacheValid = false;
   }
 
-  if (cacheValid) {
-    return d_constraintValueCache;
+  if (options::mcsat_fm_cache_evaluation() && cacheValid) {
+    return d_evaluationCache;
   }
 
-  // Make sure enough value for the cache
-  const_cast<LinearConstraint*>(this)->d_variablesValueCache.clear();
+  // Set the new timestamp
+  const_cast<LinearConstraint*>(this)->d_evaluationTimestamp = timestamp;
 
   Rational lhsValue;
   const_iterator it = begin();
@@ -126,17 +147,13 @@ bool LinearConstraint::evaluate(const SolverTrail& trail, unsigned& level) const
     Variable var = it->first;
     if (var.isNull()) {
       lhsValue += it->second;
-      const_cast<LinearConstraint*>(this)->d_variablesValueCache.push_back(0);
     } else {
       Assert(trail.hasValue(var));
       level = std::max(level, trail.decisionLevel(var));
       Rational value = trail.value(var).getConst<Rational>();
-      const_cast<LinearConstraint*>(this)->d_variablesValueCache.push_back(value);
       lhsValue += value * it->second;
     }
   }
-
-  Assert(d_variablesValueCache.size() == d_coefficients.size());
 
   int sgn = lhsValue.sgn();
   bool value;
@@ -164,9 +181,9 @@ bool LinearConstraint::evaluate(const SolverTrail& trail, unsigned& level) const
     break;
   }
 
-  const_cast<LinearConstraint*>(this)->d_constraintValueCache = value;
+  const_cast<LinearConstraint*>(this)->d_evaluationCache = value;
 
-  return value;
+  return d_evaluationCache;
 }
 
 
@@ -298,6 +315,9 @@ Kind LinearConstraint::negateKind(Kind kind) {
   case kind::EQUAL:
     // not (a = b) = (a != b)
     return kind::DISTINCT;
+  case kind::DISTINCT:
+    // not (a != b) = (a = b)
+    return kind::EQUAL;
   default:
     Unreachable();
     break;
@@ -366,8 +386,8 @@ void LinearConstraint::splitDisequality(Variable x, LinearConstraint& other) {
   Assert(d_kind == kind::DISTINCT);
   Assert(!x.isNull() && getCoefficient(x) != 0);
 
-  d_variablesValueCache.clear();
-  other.d_variablesValueCache.clear();
+  clearCache();
+  other.clearCache();
 
   // Make a copy
   other.d_coefficients = d_coefficients;
@@ -389,7 +409,7 @@ void LinearConstraint::add(const LinearConstraint& other, Rational c) {
 
   Debug("mcsat::linear") << "LinearConstraint::add(): " << *this << " + " << c << " * " << other << std::endl;
 
-  d_variablesValueCache.clear();
+  clearCache();
 
   // Figure out the resulting kind
   switch (d_kind) {
@@ -514,4 +534,84 @@ Variable LinearConstraint::getUnassignedVariable(const SolverTrail& trail) const
     } 
   }
   return Variable::null;  
+}
+
+BoundingInfo LinearConstraint::bound(Variable x, const SolverTrail& trail) const {
+  Debug("mcsat::linear") << "bounding " << x << " with " << *this << std::endl;
+  Assert(d_kind != kind::DISTINCT);
+  
+  // Check if the cache is valid
+  bool cacheValid = x == d_boundingVariable;
+
+  size_t timestamp = 0;
+  for (unsigned i = 0; i < d_coefficients.size(); ++ i) {
+    Variable var = d_coefficients[i].first;
+    if (!var.isNull() && var != x) {
+      Assert(trail.hasValue(var));
+      timestamp = std::max(timestamp, trail.getValueTimestamp(var));
+    }
+  }
+
+  if (timestamp > d_boundingTimestamp) {
+    cacheValid = false;
+  }
+
+  if (options::mcsat_fm_cache_bounding() && cacheValid) {
+    return d_boundingCache;
+  }
+
+  // Set the new timestamp and variable
+  const_cast<LinearConstraint*>(this)->d_boundingTimestamp = timestamp;
+  const_cast<LinearConstraint*>(this)->d_boundingVariable = x;
+
+  // Compute ax + sum:
+  // * the sum of the linear term that evaluates
+  // * the single variable that is unassigned (or top in decision order)
+  // * coefficient of the variable
+  Rational a, sum;
+
+  const_iterator it = begin();
+  const_iterator it_end = end();
+  for (; it != it_end; ++ it) {
+    Variable var = it->first;
+    // Constant term
+    if (var.isNull()) {
+      sum += it->second;
+      continue;
+    }    
+    // Variable to bound 
+    if (x == var) {
+      a = it->second;
+    } else {
+      Assert(trail.hasValue(var));
+      Rational varValue = trail.value(var).getConst<Rational>();
+      sum += it->second * varValue;
+    } 
+  }
+
+  // The constraint kind
+  Kind kind = getKind();
+  
+  // If a < 0 we flip 
+  if (a < 0) {
+    // If a is negative flip the kind
+    kind = LinearConstraint::flipKind(kind);
+    a = -a;
+    sum = -sum;
+  }
+
+  Debug("mcsat::linear") << a << "*" << x << " + " << sum << " " << kind << " 0" << std::endl;
+  
+  // The bound
+  Rational value = -sum/a;
+
+  const_cast<LinearConstraint*>(this)->d_boundingCache = BoundingInfo(value, kind);
+
+  // Return the whole thing
+  return d_boundingCache;
+}
+
+
+void BoundingInfo::negate() {
+  kind = LinearConstraint::negateKind(kind);
 }

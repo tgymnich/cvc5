@@ -10,8 +10,9 @@ noinst_LTLIBRARIES = libmcsat_fm.la
 libmcsat_fm_la_SOURCES = \
 	fm_plugin.h \
 	fm_plugin.cpp \
-	fm_plugin_types.h \
-	fm_plugin_types.cpp \
+	bound_info.h \
+	bounds_model.h \
+	bounds_model.cpp \
 	linear_constraint.h \
 	linear_constraint.cpp 
 	

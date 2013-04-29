@@ -3,6 +3,7 @@
 #include "expr/node.h"
 #include "mcsat/variable/variable.h"
 #include "mcsat/clause/literal.h"
+#include "mcsat/fm/bound_info.h"
 
 #include <vector>
 #include <iostream>
@@ -22,6 +23,65 @@ typedef std::hash_map<Variable, Rational, VariableHashFunction> var_to_rational_
 
 typedef std::vector<var_rational_pair> var_rational_pair_vector;
 
+/** Information about a bound */
+struct BoundingInfo {
+  /** The value of the bound */
+  Rational value;
+  /** The kind of bound */
+  Kind kind;
+
+  BoundingInfo(Rational value, Kind kind)
+  : value(value), kind(kind) {}
+
+  BoundingInfo()
+  : value(0), kind(kind::UNDEFINED_KIND)
+  {}
+
+  void swap(BoundingInfo& other) {
+    std::swap(value, other.value);
+    std::swap(kind, other.kind);
+  }
+
+  /** Clear */
+  void clear() {
+    value = 0;
+    kind = kind::UNDEFINED_KIND;
+  }
+
+  /** As if the constraint was negated */
+  void negate();
+
+  /** Is this a lower bound */
+  bool isLowerBound() const {
+    switch(kind) {
+    case kind::GT:
+    case kind::GEQ:
+    case kind::EQUAL:
+      return true;
+    default:
+      return false;
+    }
+  }
+
+  /** Is this an upper bound */
+  bool isUpperBound() const {
+    switch(kind) {
+    case kind::LT:
+    case kind::LEQ:
+    case kind::EQUAL:
+      return true;
+    default:
+      return false;
+
+    }
+  }
+
+  /** Is this a strict bound */
+  bool isStrict() const {
+    return kind == kind::LT || kind == kind::GT;
+  }
+};
+
 /**
  * A generic linear constraint (t op 0) is just a map from variables to coefficients
  * representing a term t, and a kind of constraint op. The resulting constraint will
@@ -35,30 +95,38 @@ class LinearConstraint {
   /** The kind of constraint >=, ... */
   Kind d_kind;
 
-  /** Value cache for the variables */
-  std::vector<Rational> d_variablesValueCache;
+  /** Evaluation timestamp */
+  size_t d_evaluationTimestamp;
 
-  /** Value of the constraint */
-  bool d_constraintValueCache;
+  /** Evaluation cached value */
+  bool d_evaluationCache;
   
+  /** Bounding timestamp */
+  size_t d_boundingTimestamp;
+
+  /** The variable we whose value we cached */
+  Variable d_boundingVariable;
+
+  /** Bounding cached value */
+  BoundingInfo d_boundingCache;
+
   static void normalize(var_rational_pair_vector& coefficients);
 
   static bool parse(TNode constraint, Rational mult, var_rational_pair_vector& coefficientMap);
 
+  void clearCache();
+
 public:
 
   /** Default constructor */
-  LinearConstraint(): d_kind(kind::LAST_KIND), d_constraintValueCache(false) {
-    d_coefficients.push_back(var_rational_pair(Variable::null, 0));
-  }
+  LinearConstraint();
 
   /** Clears the constraint */
   void clear() {
     d_coefficients.clear();
-    d_variablesValueCache.clear();
     d_coefficients.push_back(var_rational_pair(Variable::null, 0));
     d_kind = kind::LAST_KIND;
-    d_constraintValueCache = false;
+    clearCache();
   }
 
   /** Returns the number of proper variables */
@@ -100,7 +168,11 @@ public:
    */
   int getEvaluationLevel(const SolverTrail& trail) const;
 
-
+  /**
+   * Bounds a variable in the given context unsing this constraint.
+   */
+  BoundingInfo bound(Variable x, const SolverTrail& trail) const;
+  
   typedef var_rational_pair_vector::const_iterator const_iterator;
 
   /** Returns the cosfficient with the given variable */

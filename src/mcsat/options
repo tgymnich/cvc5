@@ -25,6 +25,9 @@ option use_mcsat_bcp_value_phase_heuristic --enable-mcsat-bcp-value-phase-heuris
 option mcsat_bcp_bump --mcsat-bcp-bump=N unsigned :default 1 
  FM bump factor
 
+option mcsat_bcp_bum_initp --mcsat-bcp-bump-init=N unsigned :default 0 
+ FM bump initial variable
+
 option mcsat_bcp_restart_base --mcsat-bcp-restart-base=N double :default 2.0
  sets the base for the restart computation via the luby sequence
  
@@ -40,6 +43,9 @@ option mcsat_fm_lemmas_keep_factor --mcsat-fm-lemmas-keep-factor=N double :defau
 option mcsat_fm_bump --mcsat-fm-bump=N unsigned :default 2 
  FM bump factor
 
+option mcsat_fm_bump_init --mcsat-fm-bump-init=N unsigned :default 0 
+ FM bump factor
+
 option mcsat_fm_decide_fixed --enable-mcsat-fm-decide-fixed/--disable-mcsat-fm-decide-fixed bool :default true :read-write
  decides fixed FM variables immediately 
 /does not decide fixed FM variable immediately
@@ -47,6 +53,10 @@ option mcsat_fm_decide_fixed --enable-mcsat-fm-decide-fixed/--disable-mcsat-fm-d
 option mcsat_fm_cascade --enable-mcsat-fm-cascade/--disable-mcsat-fm-cascade bool :default true :read-write
  cascade FM resolution while possible
 /does not cascade FM resolution
+
+option mcsat_fm_deductive_propagate --enable-mcsat-fm-deductive-propagation/--disable--mcsat-fm-deductive-propagation bool :default true :read-write
+ enable deductive propagation 
+/disable deductive propagation
 
 option mcsat_fm_discriminate --enable-mcsat-fm-discrimination/--disable-mcsat-fm-discrimination bool :default true :read-write
  enable discrimination of constraints based on level and size
@@ -60,6 +70,13 @@ option mcsat_fm_discriminate_level --enable-mcsat-fm-discrimination-level/--disa
  enable discrimination of constraints based on level
 /disable discrimination of constraints based on level
 
+option mcsat_fm_cache_evaluation --enable-mcsat-fm-evaluation-cache/--disable-mcsat-fm-evaluation-cache bool :default true :read-write
+ enable caching of evaluation values 
+/disable caching of evaluation value
+
+option mcsat_fm_cache_bounding --enable-mcsat-fm-bounding-cache/--disable-mcsat-fm-bounding-cache bool :default true :read-write
+ enable caching of bounding 
+/disable caching of bounding 
 
 option mcsat_fm_unbounded_d --mcsat-fm-unbounded-d=N unsigned :default 0 :read-write
  if x >= l only, pick x + d 

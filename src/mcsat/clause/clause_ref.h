@@ -17,7 +17,7 @@ class ClauseDatabase;
 class CRef {
 
   /** Number of bits kept for the reference */
-  static const size_t BITS_FOR_REFERENCE = 28;
+  static const size_t BITS_FOR_REFERENCE = 60;
   
   /** NUmber of bits kept for the database id */
   static const size_t BITS_FOR_DATABASE  = 4;

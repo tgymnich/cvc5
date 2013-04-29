@@ -82,6 +82,7 @@ FMPlugin::FMPlugin(ClauseDatabase& database, const SolverTrail& trail, SolverPlu
 , d_fmRule(database, trail)
 , d_fmRuleDiseq(database, trail)
 , d_constraintDiscriminator(new ConstraintDiscriminator(d_trail, d_constraints, options::mcsat_fm_discriminate_size(), options::mcsat_fm_discriminate_level()))
+, d_reasonProvider(d_fmRule, trail.getSearchContext())
 {
   Debug("mcsat::fm") << "FMPlugin::FMPlugin()" << std::endl;
 
@@ -173,24 +174,22 @@ void FMPlugin::newConstraint(Variable constraint) {
   // Remember the constraint
   d_constraintsSizeSum += linearConstraint.size();
   d_constraints[constraint].swap(linearConstraint);
-  // Status of the constraint
-  if (constraint.index() >= d_constraintUnassignedStatus.size()) {
-    d_constraintUnassignedStatus.resize(constraint.index() + 1, UNASSIGNED_UNKNOWN);
-  }
   
   // Check if anything to do immediately
   if (!d_trail.hasValue(vars[0])) {
     if (vars.size() == 1 || d_trail.hasValue(vars[1])) {
       // Single variable is unassigned
-      d_constraintUnassignedStatus[constraint.index()] = UNASSIGNED_UNIT;
+      d_unassignedMap[constraint] = vars[0];
+      // Process this unit later
+      d_lateConstraints.push_back(constraint);
       Debug("mcsat::fm") << "FMPlugin::newConstraint(" << constraint << "): unit " << std::endl;
     }
   } else {
     // All variables are unassigned    
-    d_constraintUnassignedStatus[constraint.index()] = UNASSIGNED_NONE;
+    d_unassignedMap[constraint] = Variable::null;
+    // Process this unit later on a backtrack
+    d_lateConstraints.push_back(constraint);
     Debug("mcsat::fm") << "FMPlugin::newConstraint(" << constraint << "): all assigned " << std::endl;
-    // Propagate later
-    d_delayedPropagations.push_back(constraint);
   }
 }
 
@@ -240,27 +239,25 @@ void FMPlugin::propagate(SolverTrail::PropagationToken& out) {
           if (d_trail.hasValue(variableList[0])) {
             // Even the first one is assigned, so we have a semantic propagation
             Variable constraintVar = d_assignedWatchManager.getConstraint(variableListRef);
+            d_unassignedMap[constraintVar] = Variable::null;
             unsigned valueLevel;
             if (!d_trail.hasValue(constraintVar)) {
               const LinearConstraint& constraint = getLinearConstraint(constraintVar);
               bool value = constraint.evaluate(d_trail, valueLevel);
               out(Literal(constraintVar, !value), valueLevel);
+              ++ d_stats.propagationS;
             } else {
               Assert(getLinearConstraint(constraintVar).evaluate(d_trail, valueLevel) == d_trail.isTrue(constraintVar));
             }
-            // Mark the assignment
-            d_constraintUnassignedStatus[constraintVar.index()] = UNASSIGNED_NONE;
           } else {
             // The first one is not assigned, so we have a new unit constraint
             Variable constraintVar = d_assignedWatchManager.getConstraint(variableListRef);
-            d_constraintUnassignedStatus[constraintVar.index()] = UNASSIGNED_UNIT;
-            // If the constraint was already asserted, then process it
-            if (d_trail.hasValue(constraintVar)) {
-              processUnitConstraint(constraintVar);
-            } else {
-	      Debug("mcsat::fm::propagate") << "FMPlugin::propagate(): might propagate " << constraintVar << std::endl;
-	    }
-          }
+            d_unassignedMap[constraintVar] = variableList[0];
+	    // Process the unit constraint
+            if (options::mcsat_fm_deductive_propagate()) {
+              processUnitConstraint(constraintVar, out);
+            }
+	  }
           // Keep the watch, and continue
           w.next_and_keep();
         }
@@ -269,7 +266,7 @@ void FMPlugin::propagate(SolverTrail::PropagationToken& out) {
       // If the constraint is unit we propagate a new bound
       if (isUnitConstraint(var)) {
 	Debug("mcsat::fm") << "FMPlugin::propagate(): processing " << var << " -> " << d_trail.value(var) << std::endl;
-        processUnitConstraint(var);
+        processUnitConstraint(var, out);
       } else {
 	Debug("mcsat::fm") << "FMPlugin::propagate(): " << var << " not unit" << std::endl;
       }
@@ -282,125 +279,99 @@ void FMPlugin::propagate(SolverTrail::PropagationToken& out) {
   // Process any conflicts
   if (d_bounds.inConflict()) {
     processConflicts(out);
-  } 
-}
 
-bool FMPlugin::isUnitConstraint(Variable constraint) {
-  return d_constraintUnassignedStatus[constraint.index()] == UNASSIGNED_UNIT;
-}
-
-Variable FMPlugin::tryBound(const LinearConstraint& c, Variable x, Variable constraint) {
-  
-  Debug("mcsat::fm::resolve") << "bounding " << x << " with " << c << "(" << constraint << ")" << std::endl;
-	  
-  // Compute ax + sum:
-  // * the sum of the linear term that evaluates
-  // * the single variable that is unassigned (or top in decision order)
-  // * coefficient of the variable
-  Rational a, sum;
-
-  LinearConstraint::const_iterator it = c.begin();
-  LinearConstraint::const_iterator it_end = c.end();
-  for (; it != it_end; ++ it) {
-    Variable var = it->first;
-    // Constant term
-    if (var.isNull()) {
-      sum += it->second;
-      continue;
-    }    
-    // Variable to bound 
-    if (x == var) {
-      a = it->second;
-    } else {
-      Assert(d_trail.hasValue(var));
-      Rational varValue = d_trail.value(var).getConst<Rational>();
-      sum += it->second * varValue;
-    } 
-  }
-
-  // The constraint kind
-  Kind kind = c.getKind();
-  
-  // If the constraint is asserted, it might be negated
-  if (!constraint.isNull() && d_trail.isFalse(constraint)) {
-    // If the constraint is negated, negate the kind
-    kind = LinearConstraint::negateKind(kind);
-  }
- 
-  // If a < 0 we flip 
-  if (a < 0) {
-    // If a is negative flip the kind
-    kind = LinearConstraint::flipKind(kind);
-    a = -a;
-    sum = -sum;
-  }
-
-  Debug("mcsat::fm::resolve") << a << "*" << x << " + " << sum << " " << kind << " 0" << std::endl;
-  
-  // Do the work (assuming a > 0)
-  Rational value = -sum/a;
-  bool strict = kind == kind::GT || kind == kind::LT;
-  BoundInfo info(value, strict, constraint);
-  
-  if (!constraint.isNull()) {
-    // Assert the bound
-    bool fixed = false;
-    switch (kind) {
-      case kind::GT:
-      case kind::GEQ:
-	// (ax + sum >= 0) <=> (x >= -sum/a)
-	fixed = d_bounds.updateLowerBound(x, info);
-	break;
-      case kind::LT:
-      case kind::LEQ:
-	// (ax + sum <= 0) <=> (x <= -sum/a)
-	fixed = d_bounds.updateUpperBound(x, info);
-	break;
-      case kind::EQUAL:
-	// (ax + sum == 0) <=> (x >= -sum/a) and (x <= -sum/a)
-	d_bounds.updateLowerBound(x, info);
-	d_bounds.updateUpperBound(x, info);
-	fixed = true;
-	break;
-      case kind::DISTINCT:
-	// (ax + sum != 0) <=> x != -sum/a
-	d_bounds.addDisequality(x, DisequalInfo(value, constraint));
-	break;
-      default:
-	Unreachable();
-    }
-   
-    if (fixed) {
-      d_fixedVariables.push_back(x);
-    }  
-
-    return Variable::null;
   } else {
-    // Don't assert, just compute, use inConflict(const BoundInfo& lower, const BoundInfo& upper)
-    if (kind == kind::GT || kind == kind::GEQ || kind == kind::EQUAL) {
-      if (d_bounds.hasUpperBound(x)) {
-	const BoundInfo& upperBound = d_bounds.getUpperBoundInfo(x);
-	if (BoundInfo::inConflict(info, upperBound)) {
-	  Debug("mcsat::fm::resolve") << "conflict with ub of " << x << " : " << upperBound.reason << std::endl;
-	  return upperBound.reason;
-	}
+    // Process all the late constraints (should not trigger conflicts)
+    unsigned keep = 0;
+    for (unsigned i = 0; i < d_lateConstraints.size(); ++ i) {
+      Variable constraint = d_lateConstraints[i];
+      Debug("mcsat::fm") << "FMPlugin::propagate(): processing late " << constraint << std::endl;
+
+      if (isFullyAssigned(constraint)) {
+        // Fully assigned
+        if (!d_trail.hasValue(constraint)) {
+          unsigned level = 0;
+          bool value = getLinearConstraint(constraint).evaluate(d_trail, level);
+          out(Literal(constraint, !value), level);
+        }
       }
-    } 
-    if (kind == kind::LT || kind == kind::LEQ || kind == kind::EQUAL) {
-      if (d_bounds.hasLowerBound(x)) {
-	const BoundInfo& lowerBound = d_bounds.getLowerBoundInfo(x);
-	if (BoundInfo::inConflict(lowerBound, info)) {
-	  Debug("mcsat::fm::resolve") << "conflict with lb of " << x << " : " << lowerBound.reason << std::endl;
-	  return lowerBound.reason;
-	}
+      if (isUnitConstraint(constraint)) {
+        // Unit constraint
+        if (options::mcsat_fm_deductive_propagate()) {
+          processUnitConstraint(constraint, out);
+        }
       }
-    }   
-    return Variable::null;
+    }
+    d_lateConstraints.resize(keep);
   }
 }
 
-void FMPlugin::processUnitConstraint(Variable constraint) {
+bool FMPlugin::SimpleReasonProvider::add(Literal propagation, Literal reason, Variable x) {
+  if (d_reasons.find(propagation) == d_reasons.end()) {
+    d_reasons.insert(propagation, PropInfo(reason, x));
+    return true;
+  } else {
+    return false;
+  }
+}
+
+CRef FMPlugin::SimpleReasonProvider::explain(Literal l, SolverTrail::PropagationToken& out) {
+  reason_map::const_iterator find = d_reasons.find(l);
+  Assert(find != d_reasons.end());
+  // Explaining R, L are true in the model, therefore R, ~L => False, or R, ~False => L
+  d_fmRule.start(~l);
+  d_fmRule.resolve(find->second.x, find->second.reason);
+  CRef explanation = d_fmRule.finish(out);
+  return explanation;
+}
+
+void FMPlugin::propagateDeduction(Literal propagation, Literal reason, Variable x, SolverTrail::PropagationToken& out) {
+  if (d_reasonProvider.add(propagation, reason, x)) {
+    out(propagation, &d_reasonProvider);
+    ++ d_stats.propagationD;
+  }
+}
+
+bool FMPlugin::isUnitConstraint(Variable constraint) const {
+  unassigned_map::const_iterator find = d_unassignedMap.find(constraint);
+  if (find == d_unassignedMap.end()) return false;
+  return !find->second.isNull();
+}
+
+bool FMPlugin::isFullyAssigned(Variable constraint) const {
+  unassigned_map::const_iterator find = d_unassignedMap.find(constraint);
+  if (find == d_unassignedMap.end()) return false;
+  return find->second.isNull();
+}
+
+Literal FMPlugin::tryBounding(const BoundingInfo& bounding, Variable var) const {
+
+  if (bounding.isLowerBound()) {
+    if (d_bounds.hasUpperBound(var)) {
+      const BoundInfo& uBound = d_bounds.getUpperBoundInfo(var);
+      BoundInfo lBound(bounding.value, bounding.isStrict());
+      if (BoundInfo::inConflict(lBound, uBound)) {
+        return uBound.reason;
+      }
+    }
+  }
+
+  if (bounding.isUpperBound()) {
+    if (d_bounds.hasLowerBound(var)) {
+      const BoundInfo& lBound = d_bounds.getLowerBoundInfo(var);
+      BoundInfo uBound(bounding.value, bounding.isStrict());
+      if (BoundInfo::inConflict(lBound, uBound)) {
+        return lBound.reason;
+      }
+    }
+  }
+
+  return Literal();
+}
+
+void FMPlugin::processUnitConstraint(Variable constraint, SolverTrail::PropagationToken& out) {
   Debug("mcsat::fm") << "FMPlugin::processUnitConstraint(" << constraint << ")" << std::endl;
+  
   Assert(isLinearConstraint(constraint));
   Assert(isUnitConstraint(constraint));
 
@@ -408,9 +379,62 @@ void FMPlugin::processUnitConstraint(Variable constraint) {
   const LinearConstraint& c = getLinearConstraint(constraint);
   Debug("mcsat::fm") << "FMPlugin::processUnitConstraint(): " << c << " with value " << d_trail.value(constraint) << std::endl;
 
-  // Do the bounding 
-  Variable var = c.getUnassignedVariable(d_trail);
-  tryBound(c, var, constraint);  
+  // Variable to bound
+  Variable var = d_unassignedMap[constraint];
+  Assert(!var.isNull());
+  Assert(!d_trail.hasValue(var));
+  
+  // Bound the variable with the constraint  
+  BoundingInfo boundingInfo = c.bound(var, d_trail);
+  
+  // If the constraint has a value then try to assert it to the model 
+  if (d_trail.hasValue(constraint)) {
+
+    // If the constraint is negated, negate the bound
+    Literal constraintLiteral(constraint, d_trail.isFalse(constraint));
+    if (d_trail.isFalse(constraint)) {
+      boundingInfo.negate();
+    }
+
+    // Data for the bound
+    BoundInfo bound(boundingInfo.value, boundingInfo.isStrict(), constraintLiteral);
+
+    // Does this bound fix the value of the variable
+    bool fixed = false;
+    if (boundingInfo.isLowerBound()) {
+      fixed = d_bounds.updateLowerBound(var, bound);
+    }
+    if (boundingInfo.isUpperBound()) {
+      fixed = d_bounds.updateUpperBound(var, bound);
+    }
+    if (boundingInfo.kind == kind::DISTINCT) {
+      d_bounds.addDisequality(var, DisequalInfo(boundingInfo.value, constraint));
+    }
+
+    // If the variable is fixed, remember it
+    if (fixed) {
+      d_fixedVariables.push_back(var);
+    }  
+  } else {
+
+    // Try the positive bounding
+    Literal conflict = tryBounding(boundingInfo, var);
+    if (!conflict.isNull()) {
+      Literal propagation(constraint, true);
+      propagateDeduction(propagation, conflict, var, out);
+      return;
+    }
+
+    // Try the negated bounding
+    boundingInfo.negate();
+    conflict = tryBounding(boundingInfo, var);
+    if (!conflict.isNull()) {
+      Literal propagation(constraint, false);
+      propagateDeduction(propagation, conflict, var, out);
+      return;
+    }
+
+  }
 }
 
 void FMPlugin::bumpVariables(const LinearConstraint& c) {
@@ -446,6 +470,9 @@ void FMPlugin::processConflicts(SolverTrail::PropagationToken& out) {
   std::set<Variable>::const_iterator it = variablesInConflict.begin();
   std::set<Variable>::const_iterator it_end = variablesInConflict.end();
   for (; it != it_end; ++ it) {
+
+    ++ d_stats.conflicts;
+
     Variable var = *it;
 
     const BoundInfo& lowerBound = d_bounds.getLowerBoundInfo(var);
@@ -456,18 +483,16 @@ void FMPlugin::processConflicts(SolverTrail::PropagationToken& out) {
     CRef conflict;
     if (BoundInfo::inConflict(lowerBound, upperBound)) {
       // Clash of bounds
-      Variable lowerBoundVariable = lowerBound.reason;
-      Literal lowerBoundLiteral(lowerBoundVariable, d_trail.isFalse(lowerBoundVariable));
-      Variable upperBoundVariable = upperBound.reason;
-      Literal upperBoundLiteral(upperBoundVariable, d_trail.isFalse(upperBoundVariable));
+      Variable lowerBoundVariable = lowerBound.reason.getVariable();
+      Variable upperBoundVariable = upperBound.reason.getVariable();
 
       // Bump the variables involved
       getLinearConstraint(lowerBoundVariable).getVariables(varsToBump);
       getLinearConstraint(upperBoundVariable).getVariables(varsToBump);
 
       // Do the initial resolution 
-      d_fmRule.start(lowerBoundLiteral);
-      d_fmRule.resolve(var, upperBoundLiteral);
+      d_fmRule.start(lowerBound.reason);
+      d_fmRule.resolve(var, upperBound.reason);
 
       if (options::mcsat_fm_cascade()) {
 	do {
@@ -484,17 +509,19 @@ void FMPlugin::processConflicts(SolverTrail::PropagationToken& out) {
 	    break;
 	  }
 	  
+	  // Bound the variable with the constraint
+	  BoundingInfo boundingInfo = current.bound(var, d_trail);
+
 	  // Try to bound 
-	  Variable boundVariable = tryBound(current, var);
+	  Literal conflictLiteral = tryBounding(boundingInfo, var);
 	  
 	  // If there
-	  if (!boundVariable.isNull()) {
+	  if (!conflictLiteral.isNull()) {
 	    // We got a bound conflict we can resolve further
-	    Assert(d_trail.hasValue(boundVariable));
-	    Literal boundLiteral(boundVariable, d_trail.isFalse(boundVariable));
-	    d_fmRule.resolve(var, boundLiteral);
+	    Assert(d_trail.isTrue(conflictLiteral));
+	    d_fmRule.resolve(var, conflictLiteral);
 	    // Bump the variables
-	    getLinearConstraint(boundVariable).getVariables(varsToBump);
+	    getLinearConstraint(conflictLiteral.getVariable()).getVariables(varsToBump);
 	  } else {
 	    // No conflict, break
 	    break;
@@ -507,21 +534,20 @@ void FMPlugin::processConflicts(SolverTrail::PropagationToken& out) {
       conflict = d_fmRule.finish(out);
     } else {
       // Bounds clash with a disequality
-      Variable lowerBoundVariable = lowerBound.reason;
-      Literal lowerBoundLiteral(lowerBoundVariable, d_trail.isFalse(lowerBoundVariable));
-      Variable upperBoundVariable = upperBound.reason;
-      Literal upperBoundLiteral(upperBoundVariable, d_trail.isFalse(upperBoundVariable));
+      Variable lowerBoundVariable = lowerBound.reason.getVariable();
+      Variable upperBoundVariable = upperBound.reason.getVariable();
 
       Assert (!lowerBound.strict && !upperBound.strict && lowerBound.value == upperBound.value);
       const DisequalInfo& disequal = d_bounds.getDisequalInfo(var, lowerBound.value);
-      Literal disequalityLiteral(disequal.reason, d_trail.isFalse(disequal.reason));
+      Assert(d_trail.isFalse(disequal.reason));
+      Literal disequalityLiteral(disequal.reason, true);
 
       // Bump the variables
       getLinearConstraint(lowerBoundVariable).getVariables(varsToBump);
       getLinearConstraint(upperBoundVariable).getVariables(varsToBump);
       getLinearConstraint(disequal.reason).getVariables(varsToBump);
  
-      conflict = d_fmRuleDiseq.resolveDisequality(var, lowerBoundLiteral, upperBoundLiteral, disequalityLiteral, out);
+      conflict = d_fmRuleDiseq.resolveDisequality(var, lowerBound.reason, upperBound.reason, disequalityLiteral, out);
     }
     
     // Actually bump the variables
@@ -546,16 +572,11 @@ void FMPlugin::decide(SolverTrail::DecisionToken& out, Variable var) {
       }
     }
   }
-
-  if (Debug.isOn("mcsat::fm::decide")) {
-    if (d_fixedVariablesDecided == d_trail.decisionLevel()) {
-      Debug("mcsat::fm::decide") << "FMPlugin::decide(): initially fixed " << d_trail.decisionLevel() << std::endl; 
-    }
-  }
   
   if (isArithmeticVariable(var)) {
     Rational value = d_bounds.pick(var, true);
     out(var, NodeManager::currentNM()->mkConst(value), true);
+    ++ d_stats.decisions;
     return;
   }
 }
@@ -563,9 +584,6 @@ void FMPlugin::decide(SolverTrail::DecisionToken& out, Variable var) {
 void FMPlugin::notifyBackjump(const std::vector<Variable>& vars) {
 
   Debug("mcsat::fm") << "FMPlugin::notifyBackjump(): " << d_trail.decisionLevel() << std::endl;
-
-  // Clear the delayed stuff
-  d_delayedPropagations.clear();
 
   for (unsigned i = 0; i < vars.size(); ++ i) {
     if (isArithmeticVariable(vars[i])) {
@@ -577,20 +595,17 @@ void FMPlugin::notifyBackjump(const std::vector<Variable>& vars) {
       while (!w.done()) {
         // Get the current list where var appears
         Variable constraintVar = d_assignedWatchManager.getConstraint(*w);
-        switch (d_constraintUnassignedStatus[constraintVar.index()]) {
-	  case UNASSIGNED_NONE:
-	    d_constraintUnassignedStatus[constraintVar.index()] = UNASSIGNED_UNIT;
-	    break;
-	  case UNASSIGNED_UNIT:
-	    if ((*w).size() > 1) {
-	      // Becomes unknown only if not unit by construction
-	      d_constraintUnassignedStatus[constraintVar.index()] = UNASSIGNED_UNKNOWN;
-	    }
-	    break;
-	  case UNASSIGNED_UNKNOWN:
-	    break;
-	}
-	w.next_and_keep();
+        unassigned_map::iterator find = d_unassignedMap.find(constraintVar);
+        if (find != d_unassignedMap.end()) {
+          if (find->second.isNull()) {
+            // From fully assigned to unit
+            find->second = vars[i];
+          } else {
+            // From unit to don't care
+            d_unassignedMap.erase(find);
+          }
+        }
+        w.next_and_keep();
       }
     }
   }
@@ -630,10 +645,13 @@ void FMPlugin::gcRelocate(const VariableGCInfo& vReloc, const ClauseRelocationIn
         // Remove from map: variables -> constraints
         d_constraints.erase(find);
         // Set status to unknwon
-        d_constraintUnassignedStatus[it->index()] = UNASSIGNED_UNKNOWN;
+        d_unassignedMap.erase(find->first);
       }
     }
   }
+
+  // Late constraints
+  vReloc.collect(d_lateConstraints);
 
   // Relocate the watch manager
   d_assignedWatchManager.gcRelocate(vReloc);
