@@ -77,7 +77,7 @@ class FMPlugin : public SolverPlugin {
   typedef std::hash_map<Variable, Variable, VariableHashFunction> unassigned_map;
   
   /**
-   * Map from constraints to the unit variable thats not assigned. If the cosntraint is
+   * Map from constraints to the unit variable thats not assigned. If the constraint is
    * fully assigned, then null is put into the map.
    */
   unassigned_map d_unassignedMap;

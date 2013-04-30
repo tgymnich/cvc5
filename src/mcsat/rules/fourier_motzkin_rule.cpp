@@ -7,6 +7,7 @@ using namespace fm;
 
 FourierMotzkinRule::FourierMotzkinRule(ClauseDatabase& clauseDB, const SolverTrail& trail)
 : ProofRule("mcsat::fourier_motzkin_rule", clauseDB, trail)
+, d_trueCount(0)
 {
 }
 
@@ -15,15 +16,19 @@ const LinearConstraint& FourierMotzkinRule::getCurrentResolvent() const {
 }
 
 void FourierMotzkinRule::start(Literal lit) {
+
   d_assumptions.clear();
   d_resolvent.clear();
 
   d_assumptions.insert(lit);
-  bool linear = LinearConstraint::parse(lit, d_resolvent);
+  bool linear CVC4_UNUSED = LinearConstraint::parse(lit, d_resolvent);
 
   Debug("mcsat::fm") << "FourierMotzkinRule: starting with " << d_resolvent << std::endl;
-
   Assert(linear);
+  Assert(d_trail.hasValue(lit.getVariable()));
+
+  // Count true literals (this one is an assumption, so count if false)
+  d_trueCount = d_trail.isFalse(lit) ? 1 : 0;
 }
 
 void FourierMotzkinRule::resolve(Variable var, LinearConstraint& c1, LinearConstraint& c2) {
@@ -57,8 +62,13 @@ void FourierMotzkinRule::resolve(Variable var, LinearConstraint& c1, LinearConst
 void FourierMotzkinRule::resolve(Variable var, Literal ineq) {
 
   LinearConstraint toResolve;
-  bool linear = LinearConstraint::parse(ineq, toResolve);
+  bool linear CVC4_UNUSED = LinearConstraint::parse(ineq, toResolve);
   Assert(linear);
+  Assert(d_trail.hasValue(ineq.getVariable()));
+  if (d_trail.isFalse(ineq)) {
+    d_trueCount ++;
+  }
+  Assert(d_trueCount <= 1);
 
   Debug("mcsat::fm") << "FourierMotzkinRule: resolving " << toResolve << std::endl;
   resolve(var, d_resolvent, toResolve);
@@ -68,6 +78,21 @@ void FourierMotzkinRule::resolve(Variable var, Literal ineq) {
 
   Debug("mcsat::fm") << "FourierMotzkinRule: got " << d_resolvent << std::endl;
 }
+
+static bool onlyFalse(const SolverTrail& trail, Literal l, const std::set<Literal>& assumptions) {
+  if (trail.isTrue(l)) {
+    Debug("mcsat::trail::error") << trail << std::endl;
+    Debug("mcsat::trail::error") << l << " is not supposed to be true" << std::endl;
+    std::set<Literal>::const_iterator it = assumptions.begin();
+    std::set<Literal>::const_iterator it_end = assumptions.end();
+    for (; it != it_end; ++ it) {
+      Debug("mcsat::trail::error") << *it << std::endl;
+    }
+    return false;
+  }
+  return true;
+}
+
 
 /** Finish the derivation */
 CRef FourierMotzkinRule::finish(SolverTrail::PropagationToken& propToken) {
@@ -85,10 +110,14 @@ CRef FourierMotzkinRule::finish(SolverTrail::PropagationToken& propToken) {
   
   // Evaluate 
   int evalLevel = d_resolvent.getEvaluationLevel(d_trail);
-  Assert(!evalLevel >= 0, "Must evaluate");
+  Assert(evalLevel >= 0, "Must evaluate");
+  unsigned evalLevelDebug CVC4_UNUSED = 0;
+  Assert(!d_resolvent.evaluate(d_trail, evalLevelDebug));
+  Assert((unsigned) evalLevel == evalLevelDebug);
 
   // Propagate
   Literal resolventLiteral = d_resolvent.getLiteral(d_trail);
+  Assert(onlyFalse(d_trail, resolventLiteral, d_assumptions));
   propToken(~resolventLiteral, evalLevel);
   
   // Add the literal

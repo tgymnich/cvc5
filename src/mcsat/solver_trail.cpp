@@ -166,6 +166,21 @@ unsigned SolverTrail::trailIndex(Variable var) const {
   return d_modelInfo[var].trailIndex;
 }
 
+static bool ensureTrue(const SolverTrail& trail, Literal l) {
+  if (!trail.hasValue(l.getVariable())) {
+    Debug("mcsat::trail::error") << trail << std::endl;
+    Debug("mcsat::trail::error") << l << " does not have a value" << std::endl;
+    return false;
+  }
+
+  if (!trail.isTrue(l)) {
+    Debug("mcsat::trail::error") << trail << std::endl;
+    Debug("mcsat::trail::error") << l << " is not true" << std::endl;
+    return false;
+  }
+  return true;
+}
+
 void SolverTrail::PropagationToken::operator () (Literal l, unsigned level) {
 
   Debug("mcsat::trail") << "PropagationToken::operator () (" << l << ", " << level << ")" << std::endl;
@@ -189,7 +204,7 @@ void SolverTrail::PropagationToken::operator () (Literal l, unsigned level) {
     d_trail.d_modelInfo[var].trailIndex = d_trail.d_trail.size();
     d_trail.d_trail.push_back(Element(SEMANTIC_PROPAGATION, var));
   } else {
-    Assert(d_trail.isTrue(l));
+    Assert(ensureTrue(d_trail, l));
   }
 }
 
@@ -417,11 +432,14 @@ void SolverTrail::gcMark(std::set<Variable>& varsToKeep, std::set<CRef>& clauses
   for(unsigned i = 0; i < d_trail.size(); ++i) {
     Variable var = d_trail[i].var;
     if(d_trail[i].hasReason()) {
-      // For clausal reasons, it's enough to keep the clause, the variable is part of the clause
-      // so it gets kept
       Literal l(var, !isTrue(var));
       if(d_reasonProviders[l] == &d_clauseReasons) {
+        // For clausal reasons, it's enough to keep the clause, the variable is part of the clause
+        // so it gets kept
         clausesToKeep.insert(d_clauseReasons[l]);
+      } else {
+        // We don't have a reason yet, keep the variable
+        varsToKeep.insert(var);
       }
     } else {
       varsToKeep.insert(var);

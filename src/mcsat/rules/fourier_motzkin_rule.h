@@ -25,11 +25,16 @@ namespace rules {
  * 
  * The rule above, with it's succesive variant is available through the start, 
  * resolve and finish methods.
+ *
+ * The resulting clause should propagate (conflict, or explanation of a propagation)
  */
 class FourierMotzkinRule : public ProofRule {
 
   /** The set of assumptions */
   std::set<Literal> d_assumptions;
+
+  /** Count of false literals */
+  unsigned d_trueCount;
 
   /** Resolvent */
   fm::LinearConstraint d_resolvent;

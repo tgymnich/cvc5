@@ -163,6 +163,11 @@ public:
    */
   bool evaluate(const SolverTrail& trail, unsigned& level) const;
 
+  bool evaluate(const SolverTrail& trail) const {
+    unsigned level;
+    return evaluate(trail, level);
+  }
+
   /**
    * Returns the constraint evaluates, or -1 otherwise.
    */

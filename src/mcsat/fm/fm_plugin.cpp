@@ -236,14 +236,14 @@ void FMPlugin::propagate(SolverTrail::PropagationToken& out) {
             // Even the first one is assigned, so we have a semantic propagation
             Variable constraintVar = d_assignedWatchManager.getConstraint(variableListRef);
             d_unassignedMap[constraintVar] = Variable::null;
-            unsigned valueLevel;
             if (!d_trail.hasValue(constraintVar)) {
+              unsigned valueLevel;
               const LinearConstraint& constraint = getLinearConstraint(constraintVar);
               bool value = constraint.evaluate(d_trail, valueLevel);
               out(Literal(constraintVar, !value), valueLevel);
               ++ d_stats.propagationS;
             } else {
-              Assert(getLinearConstraint(constraintVar).evaluate(d_trail, valueLevel) == d_trail.isTrue(constraintVar));
+              Assert(getLinearConstraint(constraintVar).evaluate(d_trail) == d_trail.isTrue(constraintVar));
             }
           } else {
             // The first one is not assigned, so we have a new unit constraint
@@ -257,12 +257,12 @@ void FMPlugin::propagate(SolverTrail::PropagationToken& out) {
         }
       }
     } else if (isLinearConstraint(var)) {
+      Debug("mcsat::fm") << "FMPlugin::propagate(): processing " << var << " -> " << d_trail.value(var) << std::endl;
       // If the constraint is unit we propagate a new bound
       if (isUnitConstraint(var)) {
-	Debug("mcsat::fm") << "FMPlugin::propagate(): processing " << var << " -> " << d_trail.value(var) << std::endl;
         processUnitConstraint(var, out);
       } else {
-	Debug("mcsat::fm") << "FMPlugin::propagate(): " << var << " not unit" << std::endl;
+	Assert(!isFullyAssigned(var) || getLinearConstraint(var).evaluate(d_trail) == d_trail.isTrue(var));
       }
     }
   }
