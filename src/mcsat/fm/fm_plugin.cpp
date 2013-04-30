@@ -180,15 +180,11 @@ void FMPlugin::newConstraint(Variable constraint) {
     if (vars.size() == 1 || d_trail.hasValue(vars[1])) {
       // Single variable is unassigned
       d_unassignedMap[constraint] = vars[0];
-      // Process this unit later
-      d_lateConstraints.push_back(constraint);
       Debug("mcsat::fm") << "FMPlugin::newConstraint(" << constraint << "): unit " << std::endl;
     }
   } else {
     // All variables are unassigned    
     d_unassignedMap[constraint] = Variable::null;
-    // Process this unit later on a backtrack
-    d_lateConstraints.push_back(constraint);
     Debug("mcsat::fm") << "FMPlugin::newConstraint(" << constraint << "): all assigned " << std::endl;
   }
 }
@@ -254,9 +250,7 @@ void FMPlugin::propagate(SolverTrail::PropagationToken& out) {
             Variable constraintVar = d_assignedWatchManager.getConstraint(variableListRef);
             d_unassignedMap[constraintVar] = variableList[0];
 	    // Process the unit constraint
-            if (options::mcsat_fm_deductive_propagate()) {
-              processUnitConstraint(constraintVar, out);
-            }
+	    processUnitConstraint(constraintVar, out);
 	  }
           // Keep the watch, and continue
           w.next_and_keep();
@@ -279,31 +273,7 @@ void FMPlugin::propagate(SolverTrail::PropagationToken& out) {
   // Process any conflicts
   if (d_bounds.inConflict()) {
     processConflicts(out);
-
-  } else {
-    // Process all the late constraints (should not trigger conflicts)
-    unsigned keep = 0;
-    for (unsigned i = 0; i < d_lateConstraints.size(); ++ i) {
-      Variable constraint = d_lateConstraints[i];
-      Debug("mcsat::fm") << "FMPlugin::propagate(): processing late " << constraint << std::endl;
-
-      if (isFullyAssigned(constraint)) {
-        // Fully assigned
-        if (!d_trail.hasValue(constraint)) {
-          unsigned level = 0;
-          bool value = getLinearConstraint(constraint).evaluate(d_trail, level);
-          out(Literal(constraint, !value), level);
-        }
-      }
-      if (isUnitConstraint(constraint)) {
-        // Unit constraint
-        if (options::mcsat_fm_deductive_propagate()) {
-          processUnitConstraint(constraint, out);
-        }
-      }
-    }
-    d_lateConstraints.resize(keep);
-  }
+  } 
 }
 
 bool FMPlugin::SimpleReasonProvider::add(Literal propagation, Literal reason, Variable x) {
@@ -383,12 +353,12 @@ void FMPlugin::processUnitConstraint(Variable constraint, SolverTrail::Propagati
   Variable var = d_unassignedMap[constraint];
   Assert(!var.isNull());
   Assert(!d_trail.hasValue(var));
-  
-  // Bound the variable with the constraint  
-  BoundingInfo boundingInfo = c.bound(var, d_trail);
-  
+    
   // If the constraint has a value then try to assert it to the model 
   if (d_trail.hasValue(constraint)) {
+
+    // Bound the variable with the constraint  
+    BoundingInfo boundingInfo = c.bound(var, d_trail);
 
     // If the constraint is negated, negate the bound
     Literal constraintLiteral(constraint, d_trail.isFalse(constraint));
@@ -400,22 +370,26 @@ void FMPlugin::processUnitConstraint(Variable constraint, SolverTrail::Propagati
     BoundInfo bound(boundingInfo.value, boundingInfo.isStrict(), constraintLiteral);
 
     // Does this bound fix the value of the variable
-    bool fixed = false;
+    bool fixed1 = false;
     if (boundingInfo.isLowerBound()) {
-      fixed = d_bounds.updateLowerBound(var, bound);
+      fixed1 = d_bounds.updateLowerBound(var, bound);
     }
+    bool fixed2 = false;
     if (boundingInfo.isUpperBound()) {
-      fixed = d_bounds.updateUpperBound(var, bound);
+      fixed2 = d_bounds.updateUpperBound(var, bound);
     }
     if (boundingInfo.kind == kind::DISTINCT) {
       d_bounds.addDisequality(var, DisequalInfo(boundingInfo.value, constraint));
     }
 
     // If the variable is fixed, remember it
-    if (fixed) {
+    if (fixed1 || fixed2) {
       d_fixedVariables.push_back(var);
     }  
-  } else {
+  } else if (options::mcsat_fm_deductive_propagate()) {
+
+    // Bound the variable with the constraint  
+    BoundingInfo boundingInfo = c.bound(var, d_trail);
 
     // Try the positive bounding
     Literal conflict = tryBounding(boundingInfo, var);
