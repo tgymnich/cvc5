@@ -11,12 +11,26 @@
 
 namespace CVC4 {
 namespace mcsat {
-  
+
+
 class WatchListManager {
 
-  typedef std::vector<CRef> clause_list;
+public:
+
+  struct Watcher {
+    CRef cref;
+    Literal blocker;
+
+    Watcher(CRef cref, Literal blocker)
+    : cref(cref), blocker(blocker) {}
+
+    Watcher() {}
+  };
   
+  typedef std::vector<Watcher> clause_list;
   typedef literal_table<clause_list> watch_lists;
+
+private:
 
   /** Watchlist indexed by literals */
   watch_lists d_watchLists;
@@ -26,9 +40,9 @@ class WatchListManager {
   
 public:
 
-  void add(Literal lit, CRef cRef) {
+  void add(Literal lit, CRef cRef, Literal blocker) {
     Debug("mcsat::bcp::watch") << "WatchListManager::add(" << lit << ", " << cRef << ")" << std::endl;
-    d_watchLists[lit].push_back(cRef);
+    d_watchLists[lit].push_back(Watcher(cRef, blocker));
   }
   
   class remove_iterator {
@@ -68,7 +82,11 @@ public:
       ++ d_current;
     }
     /** Get the current element */
-    CRef operator * () const {
+    const Watcher& operator * () const {
+      return d_watchLists[d_literal][d_current];
+    }
+
+    Watcher& operator * () {
       return d_watchLists[d_literal][d_current];
     }
 

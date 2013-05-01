@@ -113,8 +113,8 @@ void BCPEngine::newClause(CRef cRef) {
     // Attach the top two literals
     bool attach = options::mcsat_bcp_attach_limit() == 0 || clause.size() <= options::mcsat_bcp_attach_limit();
     if (attach) {
-      d_watchManager.add(~clause[0], cRef);
-      d_watchManager.add(~clause[1], cRef);
+      d_watchManager.add(~clause[0], cRef, clause[1]);
+      d_watchManager.add(~clause[1], cRef, clause[0]);
     }
       
     // If clause[1] is false, the clause propagates
@@ -167,11 +167,16 @@ void BCPEngine::propagate(SolverTrail::PropagationToken& out) {
       // Propagate through the watchlist
       while (d_trail.consistent() && !w.done()) {
 	// Get the watched clause
-	CRef cRef = *w;
+	WatchListManager::Watcher& watcher = *w;
 
-        Debug("mcsat::bcp") << "BCPEngine::propagate(): propagating over " << cRef << std::endl;
+        Debug("mcsat::bcp") << "BCPEngine::propagate(): propagating over " << watcher.cref << std::endl;
 
-	Clause& clause = cRef.getClause();
+        if (d_trail.isTrue(watcher.blocker)) {
+          w.next_and_keep();
+          continue;
+        }
+
+	Clause& clause = watcher.cref.getClause();
 	
 	// Put the propagation literal to position [1]
 	if (clause[0] == lit_neg) {
@@ -179,6 +184,7 @@ void BCPEngine::propagate(SolverTrail::PropagationToken& out) {
 	}
         
         // If 0th literal is true, the clause is already satisfied.
+        watcher.blocker = clause[0];
 	if (d_trail.isTrue(clause[0])) {
           Debug("mcsat::bcp") << "BCPEngine::propagate(): clause " << clause << " is true";
 	  // Keep this watch and go to the next one 
@@ -193,7 +199,7 @@ void BCPEngine::propagate(SolverTrail::PropagationToken& out) {
           if (!d_trail.isFalse(clause[j])) {
 	    // Put the new watch in place
 	    clause.swapLiterals(1, j);
-	    d_watchManager.add(~clause[1], cRef);
+	    d_watchManager.add(~clause[1], watcher.cref, clause[0]);
 	    w.next_and_remove();
 	    // We found a watch
 	    watchFound = true;
@@ -205,7 +211,7 @@ void BCPEngine::propagate(SolverTrail::PropagationToken& out) {
 
         if (!watchFound) {
 	  // We did not find a watch so clause[0] is propagated to be true
-	  out(clause[0], cRef);
+	  out(clause[0], watcher.cref);
 	
 	  // Keep this watch 
 	  w.next_and_keep(); 

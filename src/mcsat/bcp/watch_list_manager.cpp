@@ -28,7 +28,17 @@ void WatchListManager::gcRelocate(const VariableGCInfo& vReloc, const ClauseRelo
   // Clean the rest of the lists
   for (unsigned i = 0; i < d_watchLists.size(); ++ i) {
     if (d_watchLists[i].size() > 0) {
-      cReloc.relocate(d_watchLists[i]);
+      unsigned current = 0;
+      unsigned lastToKeep = 0;
+      clause_list& clauses = d_watchLists[i];
+      for (; current < clauses.size(); ++ current) {
+        CRef newClause = cReloc.relocate(clauses[current].cref);
+        if (!newClause.isNull()) {
+          clauses[lastToKeep ++] = Watcher(newClause, clauses[current].blocker);;
+        }
+      }
+      Assert(clauses.size() >= lastToKeep);
+      clauses.resize(lastToKeep);
     }
   }
 
