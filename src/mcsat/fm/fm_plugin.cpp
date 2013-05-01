@@ -82,7 +82,7 @@ FMPlugin::FMPlugin(ClauseDatabase& database, const SolverTrail& trail, SolverPlu
 , d_fmRule(database, trail)
 , d_fmRuleDiseq(database, trail)
 , d_constraintDiscriminator(new ConstraintDiscriminator(d_trail, d_constraints, options::mcsat_fm_discriminate_size(), options::mcsat_fm_discriminate_level()))
-, d_reasonProvider(d_fmRule, trail.getSearchContext())
+, d_reasonProvider(*this, trail.getSearchContext())
 {
   Debug("mcsat::fm") << "FMPlugin::FMPlugin()" << std::endl;
 
@@ -289,9 +289,13 @@ CRef FMPlugin::SimpleReasonProvider::explain(Literal l, SolverTrail::Propagation
   reason_map::const_iterator find = d_reasons.find(l);
   Assert(find != d_reasons.end());
   // Explaining R, L are true in the model, therefore R, ~L => False, or R, ~False => L
-  d_fmRule.start(~l);
-  d_fmRule.resolve(find->second.x, find->second.reason);
-  CRef explanation = d_fmRule.finish(out);
+  d_plugin.d_fmRule.start(~l);
+  d_plugin.d_fmRule.resolve(find->second.x, find->second.reason);
+  if (options::mcsat_fm_cascade()) {
+    std::set<Variable> variables;
+    d_plugin.minimizeResolvent(variables);
+  }
+  CRef explanation = d_plugin.d_fmRule.finish(out);
   return explanation;
 }
 
@@ -437,6 +441,41 @@ void FMPlugin::bumpVariables(const std::vector<Variable>& vars) {
   }
 }
 
+void FMPlugin::minimizeResolvent(std::set<Variable>& vars) {
+
+  do {
+
+    // Get the current constraint and see if it breaks any current boudns
+    const LinearConstraint& current = d_fmRule.getCurrentResolvent();
+
+    // Get the top variable
+    Variable var = current.getTopVariable(d_trail);
+
+    // No variable, awesome
+    if (var.isNull()) {
+      return;
+    }
+
+    // Bound the variable with the constraint
+    BoundingInfo boundingInfo = current.bound(var, d_trail);
+
+    // Try to bound
+    Literal conflictLiteral = tryBounding(boundingInfo, var);
+
+    // If there
+    if (!conflictLiteral.isNull()) {
+      // We got a bound conflict we can resolve further
+      Assert(d_trail.isTrue(conflictLiteral));
+      d_fmRule.resolve(var, conflictLiteral);
+      getLinearConstraint(conflictLiteral.getVariable()).getVariables(vars);
+    } else {
+      // No conflict, break
+      return;
+    }
+
+  } while (true);
+}
+
 void FMPlugin::processConflicts(SolverTrail::PropagationToken& out) {
   std::set<Variable> variablesInConflict;
   d_bounds.getVariablesInConflict(variablesInConflict);
@@ -469,39 +508,7 @@ void FMPlugin::processConflicts(SolverTrail::PropagationToken& out) {
       d_fmRule.resolve(var, upperBound.reason);
 
       if (options::mcsat_fm_cascade()) {
-	do {
-	  
-	  Debug("mcsat::fm") << d_trail << std::endl;
-	  
-	  // Get the current constraint and see if it breaks any current boudns
-	  const LinearConstraint& current = d_fmRule.getCurrentResolvent();
-	  
-	  // Get the top variable
-	  var = current.getTopVariable(d_trail);
-	  if (var.isNull()) {
-	    // great, we resolve to nothing
-	    break;
-	  }
-	  
-	  // Bound the variable with the constraint
-	  BoundingInfo boundingInfo = current.bound(var, d_trail);
-
-	  // Try to bound 
-	  Literal conflictLiteral = tryBounding(boundingInfo, var);
-	  
-	  // If there
-	  if (!conflictLiteral.isNull()) {
-	    // We got a bound conflict we can resolve further
-	    Assert(d_trail.isTrue(conflictLiteral));
-	    d_fmRule.resolve(var, conflictLiteral);
-	    // Bump the variables
-	    getLinearConstraint(conflictLiteral.getVariable()).getVariables(varsToBump);
-	  } else {
-	    // No conflict, break
-	    break;
-	  }
-	  
-	} while (true);
+        minimizeResolvent(varsToBump);
       }
       
       // Finish up

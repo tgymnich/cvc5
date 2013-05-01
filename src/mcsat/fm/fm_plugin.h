@@ -141,6 +141,9 @@ class FMPlugin : public SolverPlugin {
    */
   void propagateDeduction(Literal propagation, Literal reason, Variable x, SolverTrail::PropagationToken& out);
 
+  /** Minimize the resolvent from the fmRule */
+  void minimizeResolvent(std::set<Variable>& varsInvolved);
+
   /** The Fourier-Motzkin rule we use for derivation */
   rules::FourierMotzkinRule d_fmRule;
 
@@ -178,11 +181,11 @@ class FMPlugin : public SolverPlugin {
     /** Reasons for propagations */
     reason_map d_reasons;
     /** The rule we're using */
-    rules::FourierMotzkinRule& d_fmRule;
+    FMPlugin& d_plugin;
   public:
-    SimpleReasonProvider(rules::FourierMotzkinRule& rule, context::Context* sc)
+    SimpleReasonProvider(FMPlugin& plugin, context::Context* sc)
     : d_reasons(sc)
-    , d_fmRule(rule)
+    , d_plugin(plugin)
     {}
     ~SimpleReasonProvider() {}
     /** Note a propagation */

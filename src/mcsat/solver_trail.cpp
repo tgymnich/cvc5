@@ -166,7 +166,7 @@ unsigned SolverTrail::trailIndex(Variable var) const {
   return d_modelInfo[var].trailIndex;
 }
 
-static bool ensureTrue(const SolverTrail& trail, Literal l) {
+CVC4_UNUSED static bool ensureTrue(const SolverTrail& trail, Literal l) {
   if (!trail.hasValue(l.getVariable())) {
     Debug("mcsat::trail::error") << trail << std::endl;
     Debug("mcsat::trail::error") << l << " does not have a value" << std::endl;
@@ -208,7 +208,7 @@ void SolverTrail::PropagationToken::operator () (Literal l, unsigned level) {
   }
 }
 
-static bool clausePropagates(Literal l, CRef reason, SolverTrail& trail) {
+CVC4_UNUSED static bool clausePropagates(Literal l, CRef reason, SolverTrail& trail) {
   Clause& clause = reason.getClause();
   if (clause[0] != l) {
     return false;
@@ -341,6 +341,12 @@ bool SolverTrail::hasReason(Literal literal) const {
   // You can resolve with l if ~l has been propagated true with a clausal reason
   return d_reasonProviders[literal] != 0;
 }
+
+bool SolverTrail::hasClausalReason(Literal literal) const {
+  // You can resolve with l if ~l has been propagated true with a clausal reason
+  return d_reasonProviders[literal] == &d_clauseReasons;
+}
+
 
 CRef SolverTrail::reason(Literal literal) {
   Assert(hasReason(literal));

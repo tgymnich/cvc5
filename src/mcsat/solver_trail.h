@@ -347,6 +347,8 @@ public:
   CRef reason(Literal literal);
   /** Does this literal have a clausal reason for it's value */
   bool hasReason(Literal literal) const;
+  /** Does this literal have an existing clause as a reason */
+  bool hasClausalReason(Literal literal) const;
 
   /** Returns inconsistent propagations */
   void getInconsistentPropagations(std::vector<InconsistentPropagation>& out) const;
