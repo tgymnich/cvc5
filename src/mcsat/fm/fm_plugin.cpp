@@ -175,16 +175,21 @@ void FMPlugin::newConstraint(Variable constraint) {
   d_constraintsSizeSum += linearConstraint.size();
   d_constraints[constraint].swap(linearConstraint);
   
+  // Resize the unit info if necessary 
+  if (constraint.index() >= d_unitInfo.size()) {
+    d_unitInfo.resize(constraint.index() + 1);
+  }
+  
   // Check if anything to do immediately
   if (!d_trail.hasValue(vars[0])) {
     if (vars.size() == 1 || d_trail.hasValue(vars[1])) {
       // Single variable is unassigned
-      d_unassignedMap[constraint] = vars[0];
+      d_unitInfo[constraint.index()].setUnit(vars[0]);
       Debug("mcsat::fm") << "FMPlugin::newConstraint(" << constraint << "): unit " << std::endl;
     }
   } else {
     // All variables are unassigned    
-    d_unassignedMap[constraint] = Variable::null;
+    d_unitInfo[constraint.index()].setFullyAssigned();
     Debug("mcsat::fm") << "FMPlugin::newConstraint(" << constraint << "): all assigned " << std::endl;
   }
 }
@@ -235,7 +240,7 @@ void FMPlugin::propagate(SolverTrail::PropagationToken& out) {
           if (d_trail.hasValue(variableList[0])) {
             // Even the first one is assigned, so we have a semantic propagation
             Variable constraintVar = d_assignedWatchManager.getConstraint(variableListRef);
-            d_unassignedMap[constraintVar] = Variable::null;
+            d_unitInfo[constraintVar.index()].setFullyAssigned();
             if (!d_trail.hasValue(constraintVar)) {
               unsigned valueLevel;
               const LinearConstraint& constraint = getLinearConstraint(constraintVar);
@@ -248,7 +253,7 @@ void FMPlugin::propagate(SolverTrail::PropagationToken& out) {
           } else {
             // The first one is not assigned, so we have a new unit constraint
             Variable constraintVar = d_assignedWatchManager.getConstraint(variableListRef);
-            d_unassignedMap[constraintVar] = variableList[0];
+            d_unitInfo[constraintVar.index()].setUnit(variableList[0]);
 	    // Process the unit constraint
 	    processUnitConstraint(constraintVar, out);
 	  }
@@ -307,15 +312,11 @@ void FMPlugin::propagateDeduction(Literal propagation, Literal reason, Variable 
 }
 
 bool FMPlugin::isUnitConstraint(Variable constraint) const {
-  unassigned_map::const_iterator find = d_unassignedMap.find(constraint);
-  if (find == d_unassignedMap.end()) return false;
-  return !find->second.isNull();
+  return d_unitInfo[constraint.index()].isUnit();
 }
 
 bool FMPlugin::isFullyAssigned(Variable constraint) const {
-  unassigned_map::const_iterator find = d_unassignedMap.find(constraint);
-  if (find == d_unassignedMap.end()) return false;
-  return find->second.isNull();
+  return d_unitInfo[constraint.index()].isFullyAssigned();
 }
 
 Literal FMPlugin::tryBounding(const BoundingInfo& bounding, Variable var) const {
@@ -354,7 +355,7 @@ void FMPlugin::processUnitConstraint(Variable constraint, SolverTrail::Propagati
   Debug("mcsat::fm") << "FMPlugin::processUnitConstraint(): " << c << " with value " << d_trail.value(constraint) << std::endl;
 
   // Variable to bound
-  Variable var = d_unassignedMap[constraint];
+  Variable var = d_unitInfo[constraint.index()].getUnitVar();
   Assert(!var.isNull());
   Assert(!d_trail.hasValue(var));
     
@@ -576,16 +577,12 @@ void FMPlugin::notifyBackjump(const std::vector<Variable>& vars) {
       while (!w.done()) {
         // Get the current list where var appears
         Variable constraintVar = d_assignedWatchManager.getConstraint(*w);
-        unassigned_map::iterator find = d_unassignedMap.find(constraintVar);
-        if (find != d_unassignedMap.end()) {
-          if (find->second.isNull()) {
-            // From fully assigned to unit
-            find->second = vars[i];
-          } else {
-            // From unit to don't care
-            d_unassignedMap.erase(find);
-          }
-        }
+        unit_info& ui = d_unitInfo[constraintVar.index()];
+	if (ui.isFullyAssigned()) {
+	  ui.setUnit(vars[i]);
+	} else if (ui.isUnit()) {
+	  ui.unsetUnit();
+	}
         w.next_and_keep();
       }
     }
@@ -626,13 +623,10 @@ void FMPlugin::gcRelocate(const VariableGCInfo& vReloc, const ClauseRelocationIn
         // Remove from map: variables -> constraints
         d_constraints.erase(find);
         // Set status to unknwon
-        d_unassignedMap.erase(find->first);
+        d_unitInfo[find->first.index()].unsetUnit();
       }
     }
   }
-
-  // Late constraints
-  vReloc.collect(d_lateConstraints);
 
   // Relocate the watch manager
   d_assignedWatchManager.gcRelocate(vReloc);

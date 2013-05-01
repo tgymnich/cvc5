@@ -71,16 +71,47 @@ class FMPlugin : public SolverPlugin {
   /** Called on arithmetic constraints */
   void newConstraint(Variable constraint);
 
-  /** Unit constraint we got at creation */
-  std::vector<Variable> d_lateConstraints;
-
-  typedef std::hash_map<Variable, Variable, VariableHashFunction> unassigned_map;
+  class unit_info {
+    
+    /** Last unit variable */
+    Variable var;
+    /** Are we unit */
+    bool unit;
+ 
+  public:
+    
+    unit_info(): unit(false) {}
+    
+    bool isUnit() const { 
+      return unit && !var.isNull();
+    }
+    
+    void setUnit(Variable v) {
+      var = v;
+      unit = true;
+    }
+    
+    Variable getUnitVar() const {
+      return var;
+    }
+    
+    void setFullyAssigned() {
+      var = Variable::null;
+      unit = true;      
+    }
+    
+    bool isFullyAssigned() const {
+      return unit && var.isNull();
+    }
+    
+    void unsetUnit() {
+      var = Variable::null;
+      unit = false;
+    }
+  };
   
-  /**
-   * Map from constraints to the unit variable thats not assigned. If the constraint is
-   * fully assigned, then null is put into the map.
-   */
-  unassigned_map d_unassignedMap;
+  /** Map from constraints to the unit information. */
+  std::vector<unit_info> d_unitInfo;
 
   /** List of fixed variables to use for decisions x = c assertion */
   context::CDList<Variable> d_fixedVariables;
