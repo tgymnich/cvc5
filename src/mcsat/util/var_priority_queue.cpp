@@ -197,14 +197,10 @@ void VariablePriorityQueue::percolateDown(Variable var) {
   var_index(var) = i;
 }
 
-Variable VariablePriorityQueue::popRandom() {
+Variable VariablePriorityQueue::getRandom() const {
   // Get a random variable from the queue
   unsigned i = (rand() % d_heapElements.size());
-  Variable var = d_heapElements[i];
-  // Remove it
-  remove(var);
-  // Return it
-  return var;
+  return d_heapElements[i];
 }
 
 bool VariablePriorityQueue::empty() const {
@@ -212,6 +208,8 @@ bool VariablePriorityQueue::empty() const {
 }
 
 void VariablePriorityQueue::remove(Variable var) {
+  
+  Assert(inQueue(var));
   
   double maxScore = d_variableScoresMax;
 

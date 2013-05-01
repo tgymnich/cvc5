@@ -97,7 +97,7 @@ public:
   Variable pop();
 
   /** Get a random variable off the queue */
-  Variable popRandom();
+  Variable getRandom() const;
   
   /** Is the queue empty */
   bool empty() const;

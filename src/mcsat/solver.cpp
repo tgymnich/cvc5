@@ -344,7 +344,7 @@ bool Solver::check() {
       double selectRand = ((double)rand()) / RAND_MAX;
 
       if (selectRand < options::mcsat_var_random_select()) {
-        toDecide = d_variableQueue.popRandom();
+        toDecide = d_variableQueue.getRandom();
       } else {
         toDecide = d_variableQueue.pop();
       }
@@ -360,7 +360,7 @@ bool Solver::check() {
     if (!toDecide.isNull()) {
       d_featuresDispatch.decide(decisionOut, toDecide);
       Assert(decisionOut.used());
-      if (d_trail[d_trail.size() - 1].var != toDecide) {
+      if (d_trail[d_trail.size() - 1].var != toDecide && !d_variableQueue.inQueue(toDecide)) {
         d_variableQueue.enqueue(toDecide);
       }
       // We made a new decision

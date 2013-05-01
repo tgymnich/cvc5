@@ -123,8 +123,8 @@ bool LinearConstraint::evaluate(const SolverTrail& trail, unsigned& level) const
   for (unsigned i = 0; i < d_coefficients.size(); ++ i) {
     Variable var = d_coefficients[i].first;
     if (!var.isNull()) {
-      level = std::max(level, trail.decisionLevel(var));
       Assert(trail.hasValue(var));
+      level = std::max(level, trail.decisionLevel(var));
       timestamp = std::max(timestamp, trail.getValueTimestamp(var));
     }
   }
@@ -149,9 +149,7 @@ bool LinearConstraint::evaluate(const SolverTrail& trail, unsigned& level) const
       lhsValue += it->second;
     } else {
       Assert(trail.hasValue(var));
-      level = std::max(level, trail.decisionLevel(var));
-      Rational value = trail.value(var).getConst<Rational>();
-      lhsValue += value * it->second;
+      lhsValue += trail.value(var).getConst<Rational>() * it->second;
     }
   }
 
@@ -584,8 +582,7 @@ BoundingInfo LinearConstraint::bound(Variable x, const SolverTrail& trail) const
       a = it->second;
     } else {
       Assert(trail.hasValue(var));
-      Rational varValue = trail.value(var).getConst<Rational>();
-      sum += it->second * varValue;
+      sum += it->second * trail.value(var).getConst<Rational>();
     } 
   }
 
@@ -596,16 +593,12 @@ BoundingInfo LinearConstraint::bound(Variable x, const SolverTrail& trail) const
   if (a < 0) {
     // If a is negative flip the kind
     kind = LinearConstraint::flipKind(kind);
-    a = -a;
-    sum = -sum;
   }
 
   Debug("mcsat::linear") << a << "*" << x << " + " << sum << " " << kind << " 0" << std::endl;
   
   // The bound
-  Rational value = -sum/a;
-
-  const_cast<LinearConstraint*>(this)->d_boundingCache = BoundingInfo(value, kind);
+  const_cast<LinearConstraint*>(this)->d_boundingCache = BoundingInfo(-sum/a, kind);
 
   // Return the whole thing
   return d_boundingCache;
