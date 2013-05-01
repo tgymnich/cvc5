@@ -14,9 +14,6 @@ namespace CVC4 {
 namespace mcsat {
 namespace fm {
 
-/** Map from variables to constraints */
-typedef std::hash_map<Variable, LinearConstraint, VariableHashFunction> var_to_constraint_map;
-
 /** Statistics for the value selection */
 struct BoundStats {
   /** Number of 0 selections */

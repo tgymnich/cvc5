@@ -65,6 +65,9 @@ class FMPlugin : public SolverPlugin {
   /** Real type index */
   size_t d_realTypeIndex;
 
+  /** Bool type index */
+  size_t d_boolTypeIndex;
+  
   /** The learned clauses */
   std::vector<CRef> d_lemmasLearnt;
 
@@ -123,19 +126,24 @@ class FMPlugin : public SolverPlugin {
   context::CDO<unsigned> d_fixedVariablesDecided;
 
   /** Map from variables to constraints */
-  fm::var_to_constraint_map d_constraints;
+  std::vector<fm::LinearConstraint> d_constraints;
 
+  /** Number of valid constraints */
+  unsigned d_constraintsCount;
+  
   /** Sum of sizes of constraints */
   unsigned d_constraintsSizeSum;
   
   /** Returns true if variable is a registered linear arith constraint */
   bool isLinearConstraint(Variable var) const {
-    return d_constraints.find(var) != d_constraints.end();
+    return var.typeIndex() == d_boolTypeIndex &&
+      var.index() < d_constraints.size() &&
+      !d_constraints[var.index()].isNull();
   }
 
   const fm::LinearConstraint& getLinearConstraint(Variable var) const {
     Assert(isLinearConstraint(var));
-    return d_constraints.find(var)->second;
+    return d_constraints[var.index()];
   }
 
   /** Is this variable an arithmetic variable */

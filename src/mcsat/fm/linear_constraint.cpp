@@ -49,6 +49,17 @@ LinearConstraint::LinearConstraint()
   d_coefficients.push_back(var_rational_pair(Variable::null, 0));
 }
 
+void LinearConstraint::clear() {
+  d_coefficients.clear();
+  d_coefficients.push_back(var_rational_pair(Variable::null, 0));
+  d_kind = kind::LAST_KIND;
+  clearCache();
+}
+
+bool LinearConstraint::isNull() const {
+  return d_kind == kind::LAST_KIND;
+}
+
 void LinearConstraint::clearCache() {
   d_evaluationTimestamp = 0;
   d_evaluationCache = false;

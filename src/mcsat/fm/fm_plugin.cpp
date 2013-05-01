@@ -35,13 +35,13 @@ void FMPlugin::NewVariableNotify::newVariable(Variable var) {
 
 struct ConstraintDiscriminator : public IConstraintDiscriminator {
   const SolverTrail& trail;
-  const fm::var_to_constraint_map& constraints;
+  const std::vector<LinearConstraint>& constraints;
 
   bool size;
   bool level;
 public:
 
-  ConstraintDiscriminator(const SolverTrail& trail, const fm::var_to_constraint_map& constraints, bool size, bool level)
+  ConstraintDiscriminator(const SolverTrail& trail, const std::vector<LinearConstraint>& constraints, bool size, bool level)
   : trail(trail)
   , constraints(constraints)
   , size(size)
@@ -59,9 +59,7 @@ public:
     }
 
     if (size) {
-      fm::var_to_constraint_map::const_iterator f1 = constraints.find(c1);
-      fm::var_to_constraint_map::const_iterator f2 = constraints.find(c2);
-      return f1->second.size() < f2->second.size();
+      return constraints[c1.index()].size() < constraints[c2.index()].size();
     }
 
     return false;
@@ -73,9 +71,11 @@ FMPlugin::FMPlugin(ClauseDatabase& database, const SolverTrail& trail, SolverPlu
 , d_newVariableNotify(*this)
 , d_intTypeIndex(VariableDatabase::getCurrentDB()->getTypeIndex(NodeManager::currentNM()->integerType()))
 , d_realTypeIndex(VariableDatabase::getCurrentDB()->getTypeIndex(NodeManager::currentNM()->realType()))
+, d_boolTypeIndex(VariableDatabase::getCurrentDB()->getTypeIndex(NodeManager::currentNM()->booleanType()))
 , d_fixedVariables(trail.getSearchContext())
 , d_fixedVariablesIndex(trail.getSearchContext(), 0)
 , d_fixedVariablesDecided(trail.getSearchContext(), 0)
+, d_constraintsCount(0)
 , d_constraintsSizeSum(0)
 , d_trailHead(trail.getSearchContext(), 0)
 , d_bounds(trail.getSearchContext())
@@ -170,10 +170,15 @@ void FMPlugin::newConstraint(Variable constraint) {
   if (vars.size() > 1) {
     d_assignedWatchManager.watch(vars[1], listRef);
   }
+
+  if (constraint.index() >= d_constraints.size()) {
+    d_constraints.resize(constraint.index() + 1);
+  }
   
   // Remember the constraint
+  d_constraintsCount ++;
   d_constraintsSizeSum += linearConstraint.size();
-  d_constraints[constraint].swap(linearConstraint);
+  d_constraints[constraint.index()].swap(linearConstraint);
   
   // Resize the unit info if necessary 
   if (constraint.index() >= d_unitInfo.size()) {
@@ -616,14 +621,15 @@ void FMPlugin::gcRelocate(const VariableGCInfo& vReloc, const ClauseRelocationIn
     VariableGCInfo::const_iterator it = vReloc.begin(boolType);
     VariableGCInfo::const_iterator it_end = vReloc.end(boolType);
     for (; it != it_end; ++ it) {
-      fm::var_to_constraint_map::iterator find = d_constraints.find(*it);
-      if (find != d_constraints.end()) {
-	// Sum
-	d_constraintsSizeSum -= find->second.size();
+      if (isLinearConstraint(*it)) {
+	Variable c = *it;
+	// Remove info
+	d_constraintsCount --;
+	d_constraintsSizeSum -= d_constraints[c.index()].size();
         // Remove from map: variables -> constraints
-        d_constraints.erase(find);
+        d_constraints[c.index()].clear();
         // Set status to unknwon
-        d_unitInfo[find->first.index()].unsetUnit();
+        d_unitInfo[c.index()].unsetUnit();
       }
     }
   }
@@ -641,8 +647,8 @@ void FMPlugin::outputStatusHeader(std::ostream& out) const {
 
 void FMPlugin::outputStatusLine(std::ostream& out) const {
   out 
-    << std::setw(10) << d_constraints.size()
-    << std::setw(10) << std::setprecision(4) << (double) d_constraintsSizeSum / d_constraints.size()
+    << std::setw(10) << d_constraintsCount
+    << std::setw(10) << std::setprecision(4) << (double) d_constraintsSizeSum / d_constraintsCount
     << std::setw(10) << d_fixedVariables.size();  
 }
 

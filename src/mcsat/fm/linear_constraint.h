@@ -118,17 +118,15 @@ class LinearConstraint {
 
 public:
 
-  /** Default constructor */
+  /** Default constructor (null constraint) */
   LinearConstraint();
 
   /** Clears the constraint */
-  void clear() {
-    d_coefficients.clear();
-    d_coefficients.push_back(var_rational_pair(Variable::null, 0));
-    d_kind = kind::LAST_KIND;
-    clearCache();
-  }
+  void clear();
 
+  /** Null constraint ? */
+  bool isNull() const;
+  
   /** Returns the number of proper variables */
   unsigned size() const {
     return d_coefficients.size() - 1;
