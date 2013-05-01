@@ -38,7 +38,7 @@ public:
   literal_table(const T& defaultValue = T());
 
   /** Dereference */
-  element_const_ref& operator [] (Literal l) const {
+  element_const_ref operator [] (Literal l) const {
     return d_table[l.index()];
   }
 
@@ -84,6 +84,72 @@ literal_table<T>::literal_table(const T& defaultValue)
 {
   VariableDatabase* db = VariableDatabase::getCurrentDB();
   db->addNewVariableListener(&d_new_literal_listener);
+}
+
+class literal_set : protected literal_table<bool> {
+
+  /** Inserted ones */
+  std::vector<Literal> d_inserted;
+
+  /** Size of the set */
+  size_t d_size;
+
+public:
+
+  literal_set()
+  : d_size(0)
+  {}
+
+  size_t size() const {
+    return d_size;
+  }
+
+  bool contains(Literal l) const {
+    return operator [] (l);
+  }
+
+  void insert(Literal l) {
+    if (!contains(l)) {
+      operator [] (l) = true;
+      d_inserted.push_back(l);
+      d_size ++;
+    }
+  }
+
+  void remove(Literal l) {
+    Assert(contains(l));
+    operator [] (l) = false;
+    d_size --;
+  }
+
+  void clear() {
+    for (unsigned i = 0; i < d_inserted.size(); ++ i) {
+      if (contains(d_inserted[i])) {
+        remove(d_inserted[i]);
+      }
+    }
+    d_inserted.clear();
+    d_size = 0;
+  }
+
+  void get(std::vector<Literal>& out) const {
+    for (unsigned i = 0; i < d_inserted.size(); ++ i) {
+      if (contains(d_inserted[i])) {
+        out.push_back(d_inserted[i]);
+      }
+    }
+  }
+
+  void toStream(std::ostream& out) const {
+    std::vector<Literal> lits;
+    get(lits);
+    out << lits;
+  }
+};
+
+inline std::ostream& operator << (std::ostream& out, const literal_set& set) {
+  set.toStream(out);
+  return out;
 }
 
 }

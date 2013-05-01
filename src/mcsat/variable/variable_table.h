@@ -113,6 +113,73 @@ std::ostream& operator << (std::ostream& out, const variable_table<T, variable_f
   return out;
 }
 
+class variable_set : protected variable_table<bool> {
+
+  /** Inserted ones */
+  std::vector<Variable> d_inserted;
+
+  /** Size of the set */
+  size_t d_size;
+
+public:
+
+  variable_set()
+  : d_size(0)
+  {}
+
+  size_t size() const {
+    return d_size;
+  }
+
+  bool contains(Variable v) const {
+    return operator [] (v);
+  }
+
+  void insert(Variable v) {
+    if (!contains(v)) {
+      operator [] (v) = true;
+      d_inserted.push_back(v);
+      d_size ++;
+    }
+  }
+
+  void remove(Variable v) {
+    Assert(contains(v));
+    operator [] (v) = false;
+    d_size --;
+  }
+
+  void clear() {
+    for (unsigned i = 0; i < d_inserted.size(); ++ i) {
+      if (contains(d_inserted[i])) {
+        remove(d_inserted[i]);
+      }
+    }
+    d_inserted.clear();
+    d_size = 0;
+  }
+
+  void get(std::vector<Variable>& out) const {
+    for (unsigned i = 0; i < d_inserted.size(); ++ i) {
+      if (contains(d_inserted[i])) {
+        out.push_back(d_inserted[i]);
+      }
+    }
+  }
+
+  void toStream(std::ostream& out) const {
+    std::vector<Variable> vars;
+    get(vars);
+    out << vars;
+  }
+};
+
+inline std::ostream& operator << (std::ostream& out, const variable_set& set) {
+  set.toStream(out);
+  return out;
+}
+
+
 }
 }
 

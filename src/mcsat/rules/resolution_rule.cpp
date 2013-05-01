@@ -36,12 +36,9 @@ void BooleanResolutionRule::resolve(CRef cRef, unsigned literalIndex) {
   for (unsigned i = 0; i < toResolve.size(); ++ i) {
     Literal l = toResolve[i];
     if (i == literalIndex) {
-      Literal not_l = ~l;
-      LiteralHashSet::iterator find = d_literals.find(not_l);
-      Assert(find != d_literals.end());
-      d_literals.erase(find);
+      d_literals.remove(~l);
     } else {
-      Assert(d_literals.find(~l) == d_literals.end());
+      Assert(!d_literals.contains(~l));
       d_literals.insert(l);
     }
   }
@@ -58,7 +55,10 @@ void BooleanResolutionRule::resolve(CRef cRef, unsigned literalIndex) {
 
 CRef BooleanResolutionRule::finish() {
 
-  CRef result = d_stepsCount == 0 ? d_initialClause : commit(d_literals);
+  std::vector<Literal> literals;
+  d_literals.get(literals);
+
+  CRef result = d_stepsCount == 0 ? d_initialClause : commit(literals);
 
   d_literals.clear();
   d_stepsCount = 0;

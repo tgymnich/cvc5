@@ -1,6 +1,7 @@
 #pragma once
 
 #include "mcsat/rules/proof_rule.h"
+#include "mcsat/clause/literal_table.h"
 
 namespace CVC4 {
 namespace mcsat {
@@ -12,7 +13,7 @@ namespace rules {
 class BooleanResolutionRule : public ProofRule {
 
   /** The literals of the current clause */
-  LiteralHashSet d_literals;
+  literal_set d_literals;
 
   /** Initial clause */
   CRef d_initialClause;

@@ -118,6 +118,11 @@ private:
   /** Perform propagation */
   void propagate(SolverTrail::PropagationToken::Mode mode);
 
+  /** For analysis: Set of variables in the current resolvent that have a reason */
+  variable_set d_varsWithReason;
+  /** For analysis: Set of variables in the from the current level that we have seen alrady */
+  variable_set d_varsSeen;
+
   /** Analyze all the conflicts in the trail */
   void analyzeConflicts();
 

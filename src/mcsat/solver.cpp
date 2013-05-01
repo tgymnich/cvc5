@@ -409,6 +409,9 @@ void Solver::analyzeConflicts() {
 
   for (unsigned c = 0; c < conflicts.size(); ++ c) {
 
+    Assert(d_varsWithReason.size() == 0);
+    Assert(d_varsSeen.size() == 0);
+
     // Get the current conflict
     SolverTrail::InconsistentPropagation& conflictPropagation = conflicts[c];
 
@@ -433,11 +436,6 @@ void Solver::analyzeConflicts() {
     d_rule_Resolution.start(conflictPropagation.reason);
     d_notifyDispatch.notifyConflictResolution(conflictPropagation.reason);
     
-    // Set of variables in the current resolvent that have a reason
-    VariableHashSet varsWithReason;
-    // Set of variables in the from the current level that we have seen alrady
-    VariableHashSet varsSeen;
-
     // Number of literals in the current resolvent
     unsigned varsAtConflictLevel = 0;
 
@@ -447,11 +445,11 @@ void Solver::analyzeConflicts() {
       Variable var = lit.getVariable();
       // We resolve literals at the conflict level
       if (d_trail.decisionLevel(var) == conflictLevel) {
-        if (varsSeen.count(var) == 0) {
+        if (!d_varsSeen.contains(var)) {
           varsAtConflictLevel ++;
-          varsSeen.insert(var);
+          d_varsSeen.insert(var);
           if (d_trail.hasReason(~lit)) {
-            varsWithReason.insert(var);
+            d_varsWithReason.insert(var);
           }
         }
       }
@@ -464,12 +462,12 @@ void Solver::analyzeConflicts() {
     // While there is more than one literal at current conflict level (UIP)
     while (!d_trail[trailIndex].isDecision() && varsAtConflictLevel > 1) {
 
-      Debug("mcsat::solver::analyze") << "Solver::analyzeConflicts(): can be resolved: " << varsWithReason << std::endl;
-      Debug("mcsat::solver::analyze") << "Solver::analyzeConflicts(): seen: " << varsSeen << std::endl;
+      Debug("mcsat::solver::analyze") << "Solver::analyzeConflicts(): can be resolved: " << d_varsWithReason << std::endl;
+      Debug("mcsat::solver::analyze") << "Solver::analyzeConflicts(): seen: " << d_varsSeen << std::endl;
       Debug("mcsat::solver::analyze") << "Solver::analyzeConflicts(): at index " << trailIndex << std::endl;
 
       // Find the next literal to resolve
-      while (!d_trail[trailIndex].isDecision() && varsWithReason.find(d_trail[trailIndex].var) == varsWithReason.end()) {
+      while (!d_trail[trailIndex].isDecision() && !d_varsWithReason.contains(d_trail[trailIndex].var)) {
         -- trailIndex;
       }
 
@@ -510,12 +508,12 @@ void Solver::analyzeConflicts() {
         Debug("mcsat::solver::analyze") << "Solver::analyzeConflicts(): checking reason lit: " << lit << " at " << d_trail.decisionLevel(var) << std::endl;
         // We resolve literals at the conflict level
         if (d_trail.decisionLevel(var) == conflictLevel) {
-          Debug("mcsat::solver::analyze") << "Solver::analyzeConflicts(): checking reason var: " << (varsSeen.count(var) == 0 ? "unseen" : "seen") << std::endl;
-          if (varsSeen.count(var) == 0) {
+          Debug("mcsat::solver::analyze") << "Solver::analyzeConflicts(): checking reason var: " << (d_varsSeen.contains(var) ? "seen" : "unseen") << std::endl;
+          if (!d_varsSeen.contains(var)) {
             varsAtConflictLevel ++;
-            varsSeen.insert(var);
+            d_varsSeen.insert(var);
             if (d_trail.hasReason(~lit)) {
-              varsWithReason.insert(var);
+              d_varsWithReason.insert(var);
             }
           }
         }
@@ -543,6 +541,10 @@ void Solver::analyzeConflicts() {
       Assert(d_trail[trailIndex].type == SolverTrail::SEMANTIC_DECISION);
       requestBacktrack(conflictLevel - 1, resolvent);
     }
+
+    // Clear the data
+    d_varsWithReason.clear();
+    d_varsSeen.clear();
   }
 }
 

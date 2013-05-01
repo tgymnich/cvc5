@@ -136,7 +136,7 @@ CRef FourierMotzkinRuleDiseq::resolveDisequality(Variable var, Literal varL, Lit
 
   Debug("mcsat::fm") << "FourierMotzkinRule::resolveDisequality(" << var << "):" << std::endl;
 
-  bool linear;
+  bool linear CVC4_UNUSED;
   int evalLevel;
 
   LiteralVector lits;
