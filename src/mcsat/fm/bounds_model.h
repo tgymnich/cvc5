@@ -237,6 +237,9 @@ public:
   /** Does the variable have an upper bound */
   bool hasUpperBound(Variable var) const;
   
+  /** Is this variable fixed by it's upper and lower bound */
+  bool isFixed(Variable var) const;
+  
   /** Pick a value for a variable */
   Rational pick(Variable var, bool useCache);
 

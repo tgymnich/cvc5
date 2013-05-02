@@ -241,6 +241,20 @@ bool CDBoundsModel::hasUpperBound(Variable var) const {
   return d_upperBounds.find(var) != d_upperBounds.end();
 }
 
+bool CDBoundsModel::isFixed(Variable var) const {
+ 
+  bound_map::const_iterator lfind = d_lowerBounds.find(var);
+  if (lfind == d_lowerBounds.end()) return false;
+  
+  bound_map::const_iterator ufind = d_upperBounds.find(var);
+  if (ufind == d_upperBounds.end()) return false;
+  
+  const BoundInfo& lbound = d_boundTrail[lfind->second];
+  const BoundInfo& ubound = d_boundTrail[ufind->second];
+  
+  return !lbound.strict && !ubound.strict && lbound.value == ubound.value;  
+}
+
 const BoundInfo& CDBoundsModel::getLowerBoundInfo(Variable var) const {
   Assert(hasLowerBound(var));
   return d_boundTrail[d_lowerBounds.find(var)->second];
