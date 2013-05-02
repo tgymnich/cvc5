@@ -1,5 +1,6 @@
 #include "mcsat/util/var_priority_queue.h"
 #include "mcsat/variable/variable_db.h"
+#include "mcsat/options.h"
 
 #include <limits>
 
@@ -18,7 +19,7 @@ VariablePriorityQueue::VariablePriorityQueue()
 : d_variableScoresMax(1)
 , d_variableScoreIncreasePerBump(1)
 , d_variableScoreDecayFactor(0.95)
-, d_maxScoreBeforeScaling(1e20)
+, d_maxScoreBeforeScaling(options::mcsat_var_max_score())
 {}
 
 void VariablePriorityQueue::decayScores() {

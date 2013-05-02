@@ -16,6 +16,9 @@ option mcsat_conflict_minimization --enable-mcsat-conflict-minimization/--disabl
 option mcsat_var_random_select --mcsat-var-random-select=N double :default 0.05
  the percent of variables that are randomly selected 
 
+option mcsat_var_max_score --mcsat-var-max-score=N double :default 1e100
+ maximal score before they are scaled down 
+
 option mcsat_learnts_limit_inc --mcsat-learnts-limit-inc=N double :default 1.2
  sets the factor to increase the learnts size when needed  
 
