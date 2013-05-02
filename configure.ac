@@ -496,7 +496,7 @@ if test "$enable_static_binary" = yes; then
   fi
 fi
 
-AC_MSG_CHECKING([whether to support proof in libcvc4])
+AC_MSG_CHECKING([whether to support proofs in libcvc4])
 
 AC_ARG_ENABLE([proof],
   [AS_HELP_STRING([--enable-proof],
@@ -708,6 +708,17 @@ if test "$enable_profiling" = yes; then
   CVC4LDFLAGS="${CVC4LDFLAGS:+$CVC4LDFLAGS }-pg"
 fi
 
+# Check for libglpk (defined in config/glpk.m4)
+AC_ARG_WITH([glpk],
+  [AS_HELP_STRING([--with-glpk],
+     [use GLPK simplex solver])], [], [with_glpk=])
+CVC4_CHECK_FOR_GLPK
+if test $have_libglpk -eq 1; then
+  CVC4CPPFLAGS="${CVC4CPPFLAGS:+$CVC4CPPFLAGS }-DCVC4_USE_GLPK"
+fi
+AM_CONDITIONAL([CVC4_USE_GLPK], [test $have_libglpk -eq 1])
+AC_SUBST([GLPK_LIBS])
+
 # Check to see if this version/architecture of GNU C++ explicitly
 # instantiates __gnu_cxx::hash<uint64_t> or not.  Some do, some don't.
 # See src/util/hash.h.
@@ -739,6 +750,37 @@ void foo(int64_t) {}])],
                   [AC_MSG_RESULT([typedef or similar]); CVC4_NEED_INT64_T_OVERLOADS=0])
 AC_LANG_POP([C++])
 AC_SUBST([CVC4_NEED_INT64_T_OVERLOADS])
+
+AC_MSG_CHECKING([for the pb_ds namespace])
+AC_LANG_PUSH([C++])
+AC_COMPILE_IFELSE([AC_LANG_SOURCE([
+#include <ext/pb_ds/priority_queue.hpp>
+typedef pb_ds::priority_queue<void, void, void> pq;])],
+  [CVC4_PB_DS_NAMESPACE=pb_ds],
+  [AC_COMPILE_IFELSE([AC_LANG_SOURCE([
+    #include <ext/pb_ds/priority_queue.hpp>
+    typedef __gnu_pbds::priority_queue<void, void, void> pq;])],
+      [CVC4_PB_DS_NAMESPACE=__gnu_pbds],
+      [AC_MSG_ERROR([cannot find required priority_queue in either __gnu_pbds or pb_ds namespace])])])
+AC_LANG_POP([C++])
+AC_MSG_RESULT([$CVC4_PB_DS_NAMESPACE])
+AC_DEFINE_UNQUOTED(CVC4_PB_DS_NAMESPACE, ${CVC4_PB_DS_NAMESPACE}, [The namespace for pb_ds data structures.])
+
+# for information: http://gcc.gnu.org/bugzilla/show_bug.cgi?id=36612
+AC_MSG_CHECKING([whether pb_ds has bug 36612])
+AC_LANG_PUSH([C++])
+AC_COMPILE_IFELSE([AC_LANG_SOURCE([
+#define __throw_container_error inline __throw_container_error
+#define __throw_insert_error inline __throw_insert_error
+#define __throw_join_error inline __throw_join_error
+#define __throw_resize_error inline __throw_resize_error
+#include <ext/pb_ds/exception.hpp>
+])],
+  [CVC4_GCC_HAS_PB_DS_BUG=1; bugverb=is],
+  [CVC4_GCC_HAS_PB_DS_BUG=0; bugverb="is not"])
+AC_LANG_POP([C++])
+AC_MSG_RESULT([bug $bugverb present])
+AC_DEFINE_UNQUOTED(CVC4_GCC_HAS_PB_DS_BUG, ${CVC4_GCC_HAS_PB_DS_BUG}, [Whether libstdc++ has a certain bug; see http://gcc.gnu.org/bugzilla/show_bug.cgi?id=36612])
 
 # Check for ANTLR runantlr script (defined in config/antlr.m4)
 AC_PROG_ANTLR
@@ -1097,6 +1139,13 @@ if test "$cvc4_build_java_bindings"; then
   fi
 fi
 
+# on Mac OS X, Java doesn't like the .so module extension; it wants .dylib
+module=no eval CVC4_JAVA_MODULE_EXT="$shrext_cmds"
+if test -z "$CVC4_JAVA_MODULE_EXT"; then
+  CVC4_JAVA_MODULE_EXT=.so
+fi
+AC_SUBST([CVC4_JAVA_MODULE_EXT])
+
 # Prepare configure output
 
 if test "$enable_shared" = yes; then BUILDING_SHARED=1; else BUILDING_SHARED=0; fi
@@ -1312,6 +1361,7 @@ TLS support  : $CVC4_TLS_explanation
 Portfolio    : $with_portfolio
 
 MP library   : $mplibrary
+GLPK         : $with_glpk
 
 CPPFLAGS     : $CPPFLAGS
 CXXFLAGS     : $CXXFLAGS
