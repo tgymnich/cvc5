@@ -380,20 +380,20 @@ void FMPlugin::processUnitConstraint(Variable constraint, SolverTrail::Propagati
     BoundInfo bound(boundingInfo.value, boundingInfo.isStrict(), constraintLiteral);
 
     // Does this bound fix the value of the variable
-    bool fixed1 = false;
+    CDBoundsModel::update_info u1;
     if (boundingInfo.isLowerBound()) {
-      fixed1 = d_bounds.updateLowerBound(var, bound);
+      u1 = d_bounds.updateLowerBound(var, bound);
     }
-    bool fixed2 = false;
+    CDBoundsModel::update_info u2;
     if (boundingInfo.isUpperBound()) {
-      fixed2 = d_bounds.updateUpperBound(var, bound);
+      u2 = d_bounds.updateUpperBound(var, bound);
     }
     if (boundingInfo.kind == kind::DISTINCT) {
       d_bounds.addDisequality(var, DisequalInfo(boundingInfo.value, constraint));
     }
 
     // If the variable is fixed, remember it
-    if (fixed1 || fixed2) {
+    if (u1.fixed || u2.fixed) {
       d_fixedVariables.push_back(var);
     }  
   } else if (options::mcsat_fm_deductive_propagate()) {
@@ -447,8 +447,11 @@ void FMPlugin::bumpVariables(const std::vector<Variable>& vars) {
   }
 }
 
+
+
 void FMPlugin::minimizeResolvent(std::set<Variable>& vars) {
 
+  // Resolve top variable as long as it is still in conflict
   do {
 
     // Get the current constraint and see if it breaks any current boudns
@@ -459,7 +462,7 @@ void FMPlugin::minimizeResolvent(std::set<Variable>& vars) {
 
     // No variable, awesome
     if (var.isNull()) {
-      return;
+      break;
     }
 
     // Bound the variable with the constraint
@@ -476,9 +479,52 @@ void FMPlugin::minimizeResolvent(std::set<Variable>& vars) {
       getLinearConstraint(conflictLiteral.getVariable()).getVariables(vars);
     } else {
       // No conflict, break
-      return;
+      break;
     }
 
+  } while (true);
+  
+  // Resolve all the equalities
+  do {
+    
+    if (!options::mcsat_fm_equality_resolution()) {
+      break;
+    }
+ 
+    // Get the current constraint and see if it breaks any current boudns
+    const LinearConstraint& current = d_fmRule.getCurrentResolvent();
+    
+    // Find the top fixed variable we can replace
+    Variable topVar;
+    unsigned topLevel = 0;
+    Literal topReason;
+    LinearConstraint::const_iterator it = current.begin();
+    LinearConstraint::const_iterator it_end = current.end();
+    for (; it != it_end; ++ it) {
+      Variable currentVar = it->first;
+      if (currentVar.isNull()) continue;
+      unsigned currentLevel = d_trail.decisionLevel(currentVar);
+      if (currentLevel <= topLevel) continue;
+      if (!d_bounds.isFixed(currentVar)) continue;
+      Literal lReason = d_bounds.getLowerBoundInfo(currentVar).reason;
+      Literal uReason = d_bounds.getUpperBoundInfo(currentVar).reason;
+      if (lReason != uReason) {
+	continue;
+      }      
+      // We have an equality for sure
+      topVar = currentVar;
+      topLevel = currentLevel;
+      topReason = lReason;
+    }
+    
+    if (!topVar.isNull()) {
+      Debug("mcsat::fm::fixed") << "FMPlugin::minimizeResolvent(): resolving " << topReason << std::endl;
+      d_fmRule.resolve(topVar, topReason);
+      getLinearConstraint(topReason.getVariable()).getVariables(vars);
+    } else {
+      break;
+    }
+    
   } while (true);
 }
 

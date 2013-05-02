@@ -58,6 +58,10 @@ option mcsat_fm_cascade --enable-mcsat-fm-cascade/--disable-mcsat-fm-cascade boo
  cascade FM resolution while possible
 /does not cascade FM resolution
 
+option mcsat_fm_equality_resolution --enable-mcsat-fm-resolve-equalities/--disable-mcsat-fm-resolve-equalities bool :default false :read-write
+ resolve equalities while possible
+/does not force resolution of equalities 
+
 option mcsat_fm_deductive_propagate --enable-mcsat-fm-deductive-propagation/--disable-mcsat-fm-deductive-propagation bool :default false :read-write
  enable deductive propagation 
 /disable deductive propagation

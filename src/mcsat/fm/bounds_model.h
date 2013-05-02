@@ -217,11 +217,22 @@ public:
   /** Construct it */
   CDBoundsModel(context::Context* context);
   
+  struct update_info {
+    /** Did the update actually update */
+    bool updated;
+    /** Did the update fix the variabel to a value */
+    bool fixed;
+
+    update_info(bool updated = false, bool fixed = false)
+    : updated(updated), fixed(fixed) {}
+
+  };
+
   /** Update the lower bound, returns true if variable is now fixed */
-  bool updateLowerBound(Variable var, const BoundInfo& info);
+  update_info updateLowerBound(Variable var, const BoundInfo& info);
 
   /** Update the upper bound, returns true if variable is now fixed */
-  bool updateUpperBound(Variable var, const BoundInfo& info);
+  update_info updateUpperBound(Variable var, const BoundInfo& info);
 
   /** If two constraints imply the same bound, which one to keep */
   void setDiscriminator(IConstraintDiscriminator* d) {

@@ -134,14 +134,17 @@ bool CDBoundsModel::improvesUpperBound(Variable var, const BoundInfo& uBound) co
   }
 }
 
-bool CDBoundsModel::updateLowerBound(Variable var, const BoundInfo& lBound) {
+CDBoundsModel::update_info CDBoundsModel::updateLowerBound(Variable var, const BoundInfo& lBound) {
 
   Assert(!lBound.reason.isNull());
+
+  update_info result;
 
   // Update if better than the current one
   if (improvesLowerBound(var, lBound)) {
     
     Debug("mcsat::fm") << "CDBoundsModel::updateLowerBound(" << var << ", " << lBound << ")" << std::endl;
+    result.updated = true;
 
     // Add the new info to the trail
     BoundInfoIndex index = d_boundTrail.size();
@@ -176,21 +179,24 @@ bool CDBoundsModel::updateLowerBound(Variable var, const BoundInfo& lBound) {
           Debug("mcsat::fm") << "CDBoundsModel::updateLowerBound(" << var << ", " << lBound << "): bound and diseq conflict" << std::endl;
         }
         // Value for var is now fixed
-        return true;
+        result.fixed = true;
       }
     }
   }
 
-  return false;
+  return result;
 }
 
-bool CDBoundsModel::updateUpperBound(Variable var, const BoundInfo& uBound) {
+CDBoundsModel::update_info CDBoundsModel::updateUpperBound(Variable var, const BoundInfo& uBound) {
 
   Assert(!uBound.reason.isNull());
+
+  update_info result;
 
   if (improvesUpperBound(var, uBound)) {
 
     Debug("mcsat::fm") << "CDBoundsModel::updateUpperBound(" << var << ", " << uBound << ")" << std::endl;
+    result.updated = true;
 
     // Add the new info to the trail
     BoundInfoIndex index = d_boundTrail.size();
@@ -225,12 +231,12 @@ bool CDBoundsModel::updateUpperBound(Variable var, const BoundInfo& uBound) {
           Debug("mcsat::fm") << "CDBoundsModel::updateUpperBound(" << var << ", " << uBound << "): bound and diseq conflict" << std::endl;
         }
         // Value for var is now fixed
-        return true;
+        result.fixed = true;
       }
     }
   }  
 
-  return false;
+  return result;
 }
 
 bool CDBoundsModel::hasLowerBound(Variable var) const {

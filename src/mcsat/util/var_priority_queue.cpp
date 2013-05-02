@@ -18,7 +18,7 @@ VariablePriorityQueue::VariablePriorityQueue()
 : d_variableScoresMax(1)
 , d_variableScoreIncreasePerBump(1)
 , d_variableScoreDecayFactor(0.95)
-, d_maxScoreBeforeScaling(1e100)
+, d_maxScoreBeforeScaling(1e20)
 {}
 
 void VariablePriorityQueue::decayScores() {
