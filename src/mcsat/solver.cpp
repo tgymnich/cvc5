@@ -793,6 +793,7 @@ void Solver::minimizeConflict(unsigned level) {
           } else{
             // Quit
             redundant = false;
+            break;
           }
         }
       }

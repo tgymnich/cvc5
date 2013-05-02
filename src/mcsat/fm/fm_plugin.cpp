@@ -555,7 +555,8 @@ void FMPlugin::decide(SolverTrail::DecisionToken& out, Variable var) {
         Debug("mcsat::fm::decide") << "FMPlugin::decide(): " << var << " fixed at " << d_trail.decisionLevel() << std::endl;
         out(var, NodeManager::currentNM()->mkConst(value), true, true);
         d_fixedVariablesDecided = d_fixedVariablesDecided + 1;
-        return;
+        ++ d_stats.decisions_f;
+	return;
       }
     }
   }

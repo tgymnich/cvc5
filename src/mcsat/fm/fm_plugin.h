@@ -17,6 +17,8 @@ namespace mcsat {
 struct FMPluginStats {
   /** Number of decisions */
   IntStat decisions;
+  /** Number of fixed decisions */
+  IntStat decisions_f;
   /** Conflicts */
   IntStat conflicts;
   /** Number of propagations (semantic, x -> 1 => x > 0) */
@@ -27,11 +29,13 @@ struct FMPluginStats {
 
   FMPluginStats ()
   : decisions("mcsat::fm::decisions", 0)
+  , decisions_f("mcsat::fm::decisions_f", 0)
   , conflicts("mcsat::fm::conflicts", 0)
   , propagationS("mcsat::fm::propagations_s", 0)
   , propagationD("mcsat::fm::propagations_d", 0)
   {
     StatisticsRegistry::registerStat(&decisions);
+    StatisticsRegistry::registerStat(&decisions_f);
     StatisticsRegistry::registerStat(&conflicts);
     StatisticsRegistry::registerStat(&propagationS);
     StatisticsRegistry::registerStat(&propagationD);
@@ -39,6 +43,7 @@ struct FMPluginStats {
 
   ~FMPluginStats () {
     StatisticsRegistry::unregisterStat(&decisions);
+    StatisticsRegistry::unregisterStat(&decisions_f);
     StatisticsRegistry::unregisterStat(&conflicts);
     StatisticsRegistry::unregisterStat(&propagationS);
     StatisticsRegistry::unregisterStat(&propagationD);
