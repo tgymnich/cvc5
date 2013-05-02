@@ -9,6 +9,10 @@ option mcsat --enable-mcsat/--disable-mcsat bool :default false :read-write
  turns on mcsat in the cvc4 main solver
 /turns off mcsat in the cvc4 main sovler
 
+option mcsat_conflict_minimization --enable-mcsat-conflict-minimization/--disable-mcsat-conflict-minimization bool :default true :read-write
+ turns on conflict minimization
+/turns off conflict minimization
+
 option mcsat_var_random_select --mcsat-var-random-select=N double :default 0.05
  the percent of variables that are randomly selected 
 

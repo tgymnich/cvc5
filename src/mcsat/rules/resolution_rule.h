@@ -29,10 +29,11 @@ public:
   /** Start the resolution */
   void start(CRef initialClause);
 
-  /**
-   * Resolve with given clause. Optionally, you can give the index of the literal to be resolved.
-   */
+  /** Resolve with given clause. Optionally, you can give the index of the literal to be resolved. */
   void resolve(CRef cRef, unsigned literalIndex);
+
+  /** Get the current set of literals */
+  void getLiterals(std::vector<Literal>& out);
 
   /** Finish the derivation */
   CRef finish();

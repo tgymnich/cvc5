@@ -523,6 +523,15 @@ void Solver::analyzeConflicts() {
       -- trailIndex;
     }
 
+    // Try minimization
+    if (options::mcsat_conflict_minimization()) {
+      minimizeConflict(conflictLevel);
+    }
+
+    // Clear the data
+    d_varsWithReason.clear();
+    d_varsSeen.clear();
+
     // Finish the resolution
     CRef resolvent = d_rule_Resolution.finish();
     Debug("mcsat::solver::analyze") << "Solver::analyzeConflicts(): resolvent: " << resolvent << std::endl;
@@ -541,10 +550,6 @@ void Solver::analyzeConflicts() {
       Assert(d_trail[trailIndex].type == SolverTrail::SEMANTIC_DECISION);
       requestBacktrack(conflictLevel - 1, resolvent);
     }
-
-    // Clear the data
-    d_varsWithReason.clear();
-    d_varsSeen.clear();
   }
 }
 
@@ -731,4 +736,86 @@ void Solver::outputStatusLine(bool header) const {
 
   d_featuresDispatch.outputStatusLine(Notice());
   Notice() << std::endl;
+}
+
+void Solver::minimizeConflict(unsigned level) {
+  // Reuse the seen vector
+  d_varsSeen.clear();
+
+  // Get the literals in the resolvent
+  std::vector<Literal> lits;
+  std::set<unsigned> levels;
+  d_rule_Resolution.getLiterals(lits);
+
+  // Mark the literals and levels we care about
+  unsigned keep = 0;
+  for (unsigned i = 0; i < lits.size(); ++ i) {
+    Literal lit = lits[i];
+    Variable var = lit.getVariable();
+    unsigned varLevel = d_trail.decisionLevel(var);
+    if (varLevel > 0 && varLevel < level && d_trail.hasClausalReason(~lit)) {
+      d_varsSeen.insert(var);
+      levels.insert(varLevel);
+      lits[keep ++] = lit;
+    }
+  }
+  lits.resize(keep);
+
+  // Check if any of the literals is redundant
+  for (unsigned i = 0; i < lits.size(); ++ i) {
+
+    Literal lit = ~lits[i];             // Literal to try and resolve out
+    std::vector<Variable> varsSeenUndo; // Vars to undo in the seen vector
+
+    // Resolution queue contains the implied (true) literals that need to be resolved
+    std::vector<Literal> resolutionQueue;
+    resolutionQueue.push_back(lit);
+
+    // Check if this literal is redundant
+    bool redundant = true;
+    for (unsigned current = 0; redundant && current < resolutionQueue.size(); ++ current) {
+      Literal currentLiteral = resolutionQueue[current];
+      Assert(d_trail.hasClausalReason(currentLiteral));
+      // Reason for the literal
+      Clause& currentReason = d_trail.reason(currentLiteral).getClause();
+      Assert(currentReason[0] == currentLiteral);
+      for (unsigned i = 1; i < currentReason.size(); ++ i) {
+        Literal lit = ~currentReason[i];
+        Variable var = lit.getVariable();
+        unsigned level = d_trail.decisionLevel(var);
+        if (!d_varsSeen.contains(var) && level > 0) {
+          // Potentially not redundant
+          if (d_trail.hasClausalReason(lit) && levels.count(level) > 0) {
+            // Lets keep trying
+            d_varsSeen.insert(var);
+            resolutionQueue.push_back(lit);
+            varsSeenUndo.push_back(var);
+          } else{
+            // Quit
+            redundant = false;
+          }
+        }
+      }
+    }
+
+    if (!redundant) {
+      // Not redundant, we keep it and clear the data
+      for (unsigned i = 0; i < varsSeenUndo.size(); ++ i) {
+        d_varsSeen.remove(varsSeenUndo[i]);
+      }
+    } else {
+      // Redundant, keep the seen data and perform the resolution
+      for (unsigned current = 0; current < resolutionQueue.size(); ++ current) {
+        Literal currentLiteral = resolutionQueue[current];
+        if (d_trail.decisionLevel(currentLiteral.getVariable()) > 0) {
+          d_rule_Resolution.resolve(d_trail.reason(currentLiteral), 0);
+        }
+      }
+    }
+
+    varsSeenUndo.clear();
+  }
+
+  // Clear the seen vector
+  d_varsSeen.clear();
 }

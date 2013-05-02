@@ -67,3 +67,6 @@ CRef BooleanResolutionRule::finish() {
   return result;
 }
 
+void BooleanResolutionRule::getLiterals(std::vector<Literal>& out) {
+  d_literals.get(out);
+}

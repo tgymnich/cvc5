@@ -94,6 +94,9 @@ private:
   /** Rewritten Assertions */
   std::vector<Node> d_assertions;
 
+  /** Minimize the conflicting literals below the level */
+  void minimizeConflict(unsigned level);
+
   /** Resolution rule for conflict analysis */
   rules::BooleanResolutionRule d_rule_Resolution;
 
