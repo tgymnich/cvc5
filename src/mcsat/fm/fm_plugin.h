@@ -9,6 +9,7 @@
 #include "mcsat/util/var_priority_queue.h"
 
 #include "mcsat/rules/fourier_motzkin_rule.h"
+#include "mcsat/rules/int_split_rule.h"
 
 namespace CVC4 {
 namespace mcsat {
@@ -194,6 +195,9 @@ class FMPlugin : public SolverPlugin {
   /** The Fourier-Motzkin rule we use for derivation */
   rules::FourierMotzkinRuleDiseq d_fmRuleDiseq;
 
+  /** Split rule for integers */
+  rules::IntSplitRule d_splitRule;
+  
   /**
    * Processes any conflicts.
    */

@@ -81,6 +81,7 @@ FMPlugin::FMPlugin(ClauseDatabase& database, const SolverTrail& trail, SolverPlu
 , d_bounds(trail.getSearchContext())
 , d_fmRule(database, trail)
 , d_fmRuleDiseq(database, trail)
+, d_splitRule(database, trail)
 , d_constraintDiscriminator(new ConstraintDiscriminator(d_trail, d_constraints, options::mcsat_fm_discriminate_size(), options::mcsat_fm_discriminate_level()))
 , d_reasonProvider(*this, trail.getSearchContext())
 {
@@ -209,7 +210,7 @@ void FMPlugin::propagate(SolverTrail::PropagationToken& out) {
     if (isArithmeticVariable(var)) {
 
       Debug("mcsat::fm") << "FMPlugin::propagate(): " << var << " assigned" << std::endl;
-
+      
       // Go through all the variable lists (constraints) where we're watching var
       AssignedWatchManager::remove_iterator w = d_assignedWatchManager.begin(var);
       while (d_trail.consistent() && !w.done()) {
