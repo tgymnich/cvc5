@@ -50,7 +50,7 @@ public:
       d_evaluation[current] = current;
       return;
     }
-    if (current.isVar()) {
+    if (VariableDatabase::getCurrentDB()->hasVariable(current)) {
       Variable var = VariableDatabase::getCurrentDB()->getVariable(current);
       if (trail.hasValue(var) && trail.decisionLevel(var) <= level) {
 	d_evaluation[current] = trail.value(var);

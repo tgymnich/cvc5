@@ -67,6 +67,7 @@ void Solver::NewVariableNotify::newVariable(Variable var) {
 bool Solver::Purifier::skolemize(TNode current, TNode parent) const {
   if (current.isVar()) return false;
   if (current == parent) return false;    
+  if (parent.getKind() == kind::EQUAL) return false;
   // We skolemize when the type of the current is different from the kind of the parent
   // * f(x + y) -> f(s) [s = x + y]
   // * f(g(y))  -> f(s) [s = g(y)]
@@ -134,6 +135,7 @@ void Solver::addAssertion(TNode assertion, bool process) {
   
   for (unsigned i = 0; i < assertionVector.size(); ++ i) {
     // Normalize and remember
+    Debug("mcsat::assertions") << "Solver::addAssertion(): " << assertionVector[i] << endl; 
     Node normalized = theory::Rewriter::rewrite(assertionVector[i]);
     d_assertions.push_back(normalized);
 
