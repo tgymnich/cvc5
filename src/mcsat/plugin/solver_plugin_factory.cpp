@@ -4,6 +4,7 @@
 #include "mcsat/bcp/bcp_engine.h"
 #include "mcsat/cnf/cnf_plugin.h"
 #include "mcsat/fm/fm_plugin.h"
+#include "mcsat/uf/uf_plugin.h"
 
 #include <sstream>
 

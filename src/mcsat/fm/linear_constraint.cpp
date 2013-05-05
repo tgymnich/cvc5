@@ -246,13 +246,6 @@ bool LinearConstraint::parse(TNode term, Rational mult, var_rational_pair_vector
     case kind::CONST_RATIONAL:
       coefficientMap.push_back(var_rational_pair(Variable::null, mult*term.getConst<Rational>()));
       break;
-    case kind::VARIABLE:
-    case kind::SKOLEM: {
-      Assert(db.hasVariable(term));
-      Variable var = db.getVariable(term);
-      coefficientMap.push_back(var_rational_pair(var, mult));
-      break;
-    }
     case kind::MULT: {
       if (term.getNumChildren() == 2 && term[0].isConst()) {
         return parse(term[1], mult*term[0].getConst<Rational>(), coefficientMap);
@@ -282,7 +275,10 @@ bool LinearConstraint::parse(TNode term, Rational mult, var_rational_pair_vector
       return parse(term[0], -mult, coefficientMap);
       break;
     default:
-      Unreachable();
+      Assert(db.hasVariable(term));
+      Variable var = db.getVariable(term);
+      coefficientMap.push_back(var_rational_pair(var, mult));
+      break;
   }
 
   return true;

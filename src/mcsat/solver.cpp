@@ -4,6 +4,7 @@
 #include "mcsat/rules/proof_rule.h"
 #include "mcsat/plugin/solver_plugin_factory.h"
 
+#include "theory/theory.h"
 #include "theory/rewriter.h"
 #include "util/node_visitor.h"
 
@@ -31,6 +32,29 @@ public:
   } 
 };
 
+void Solver::VariableRegister::visit(TNode current, TNode parent) {
+  if (current.isVar()) {
+    // We register the variables
+    Variable var = d_varDb.getVariable(current);
+    d_variables.push_back(var);
+  } else {
+    // we also register any cross-theory terms as variables
+    // f(x) -> variable, uf/int
+    // f(x + y) ->  NOT POSSIBLE (WE PURIFY)
+    // a < b -> variable arith/bool
+    // a = b -> variable builtin/bool
+    // x + y -> not, arith/arith
+    theory::TheoryId id1 = theory::kindToTheoryId(current.getKind());
+    theory::TheoryId id2 = theory::Theory::theoryOf(current.getType());
+    if (id1 != id2) {
+      Variable var = d_varDb.getVariable(current);
+      d_variables.push_back(var);
+    }
+  }
+  d_visited.insert(current);      
+}
+  
+  
 Solver::NewVariableNotify::NewVariableNotify(util::VariablePriorityQueue& queue)
 : VariableDatabase::INewVariableNotify(false)
 , d_queue(queue)
@@ -39,6 +63,19 @@ Solver::NewVariableNotify::NewVariableNotify(util::VariablePriorityQueue& queue)
 void Solver::NewVariableNotify::newVariable(Variable var) {
   d_queue.newVariable(var);
 }
+
+bool Solver::Purifier::skolemize(TNode current, TNode parent) const {
+  if (current.isVar()) return false;
+  if (current == parent) return false;    
+  // We skolemize when the type of the current is different from the kind of the parent
+  // * f(x + y) -> f(s) [s = x + y]
+  // * f(g(y))  -> f(s) [s = g(y)]
+  return theory::kindToTheoryId(parent.getKind()) != theory::Theory::theoryOf(current.getType());
+}
+
+Node Solver::Purifier::skolemize(TNode current) {
+  return NodeManager::currentNM()->mkSkolem("p_$$", current.getType(), "purification skolem");
+} 
 
 Solver::Solver(context::UserContext* userContext, context::Context* searchContext) 
 : d_variableDatabase(searchContext)
@@ -61,6 +98,7 @@ Solver::Solver(context::UserContext* userContext, context::Context* searchContex
 , d_learntsLimitInc(options::mcsat_learnts_limit_inc())
 , d_removeITE(userContext)
 , d_variableRegister(d_variableDatabase)
+, d_purifyRunner(userContext, d_purifier)
 {
   // Repeatable
   srand(0);
@@ -70,6 +108,7 @@ Solver::Solver(context::UserContext* userContext, context::Context* searchContex
   // Add some engines
   addPlugin("CVC4::mcsat::CNFPlugin");
   addPlugin("CVC4::mcsat::FMPlugin");
+  addPlugin("CVC4::mcsat::UFPlugin");
   addPlugin("CVC4::mcsat::BCPEngine");
 }
 
@@ -90,6 +129,9 @@ void Solver::addAssertion(TNode assertion, bool process) {
   assertionVector.push_back(assertion);
   d_removeITE.run(assertionVector, skolemMap);
 
+  // Purify any shared terms 
+  d_purifyRunner.run(assertionVector);
+  
   for (unsigned i = 0; i < assertionVector.size(); ++ i) {
     // Normalize and remember
     Node normalized = theory::Rewriter::rewrite(assertionVector[i]);

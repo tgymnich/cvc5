@@ -6,6 +6,7 @@
 #include "context/cdo.h"
 #include "context/cdlist.h"
 #include "util/statistics_registry.h"
+#include "util/selective_skolemization.h"
 
 #include "mcsat/solver_trail.h"
 #include "mcsat/clause/clause_db.h"
@@ -240,14 +241,7 @@ private:
       return d_visited.find(current) != d_visited.end();
     }
 
-    void visit(TNode current, TNode parent) {
-      if (current.isVar()) {
-	Variable var = d_varDb.getVariable(current);
-	d_variables.push_back(var);
-      }
-      d_visited.insert(current);      
-    }
-
+    void visit(TNode current, TNode parent);
     void start(TNode node) {}
     void done(TNode node) {}
     
@@ -256,6 +250,16 @@ private:
     }
   } d_variableRegister;
 
+  /** Skolemizer for shared terms */
+  class Purifier : public Skolemizer {
+  public:
+    bool skolemize(TNode current, TNode parent) const;
+    Node skolemize(TNode current);
+  } d_purifier;
+  
+  /** Runner for skolemization of shared terms */
+  SkolemizationRunner d_purifyRunner;
+  
 };
 
 }

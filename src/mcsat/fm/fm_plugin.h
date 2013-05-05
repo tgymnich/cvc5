@@ -6,7 +6,6 @@
 #include "mcsat/fm/bounds_model.h"
 
 #include "mcsat/util/assigned_watch_manager.h"
-#include "mcsat/util/var_priority_queue.h"
 
 #include "mcsat/rules/fourier_motzkin_rule.h"
 #include "mcsat/rules/int_split_rule.h"

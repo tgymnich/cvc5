@@ -74,6 +74,8 @@ libutil_la_SOURCES = \
 	boolean_simplification.cpp \
 	ite_removal.h \
 	ite_removal.cpp \
+	selective_skolemization.h \
+	selective_skolemization.cpp \
 	node_visitor.h \
 	index.h \
 	uninterpreted_constant.h \
