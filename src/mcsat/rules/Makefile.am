@@ -17,7 +17,9 @@ libmcsat_rules_la_SOURCES = \
 	fourier_motzkin_rule.h \
 	fourier_motzkin_rule.cpp \
 	int_split_rule.h \
-	int_split_rule.cpp
+	int_split_rule.cpp \
+	ackermann_rule.h \
+	ackermann_rule.cpp
 	
 EXTRA_DIST = 
 

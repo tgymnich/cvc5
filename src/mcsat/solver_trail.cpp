@@ -73,8 +73,7 @@ public:
     return d_evaluation[node];
   }
 };
-
-
+  
 Node SolverTrail::evaluate(Literal l, unsigned level) const {
   Node atom = l.getVariable().getNode();
   Node node = l.isNegated() ? atom.notNode() : atom;
