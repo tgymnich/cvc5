@@ -18,9 +18,12 @@ static Literal getLiteral(Node node) {
   return Literal(variable, negated);
 }
 
-CRef AckermannRule::apply(Variable f1, Variable f2, SolverTrail::PropagationToken& propToken) {
+CRef AckermannRule::apply(Variable f1, Variable f2, SolverTrail::PropagationToken& propToken, std::set<Variable>& vars) {
   std::vector<Literal> lits;
   
+  vars.insert(f1);
+  vars.insert(f2);
+
   TNode f1node = f1.getNode();
   TNode f2node = f2.getNode();
 
@@ -38,12 +41,14 @@ CRef AckermannRule::apply(Variable f1, Variable f2, SolverTrail::PropagationToke
       if (!f1node[i].isConst()) {
         Assert(VariableDatabase::getCurrentDB()->hasVariable(f1node[i]));
         Variable f1child = VariableDatabase::getCurrentDB()->getVariable(f1node[i]);
+        vars.insert(f1child);
         Assert(d_trail.hasValue(f1child));
         level = std::max(level, d_trail.decisionLevel(f1child));
       }
       if (!f2node[i].isConst()) {
         Assert(VariableDatabase::getCurrentDB()->hasVariable(f2node[i]));
         Variable f2child = VariableDatabase::getCurrentDB()->getVariable(f2node[i]);
+        vars.insert(f2child);
         Assert(d_trail.hasValue(f2child));
         level = std::max(level, d_trail.decisionLevel(f2child));
       }

@@ -1,4 +1,5 @@
 #include "mcsat/uf/uf_plugin.h"
+#include "mcsat/options.h"
 
 using namespace CVC4;
 using namespace mcsat;
@@ -244,8 +245,17 @@ void UFPlugin::propagate(SolverTrail::PropagationToken& out) {
 
   // Expand all the conflicts with ackerman
   for (unsigned i = 0; i < d_conflicts.size(); ++ i) {
-    d_ackermannRule.apply(d_conflicts[i].first, d_conflicts[i].second, out);
+    std::set<Variable> varsToBump;
+    d_ackermannRule.apply(d_conflicts[i].first, d_conflicts[i].second, out, varsToBump);
+
+    // Bump the variables
+    std::set<Variable>::const_iterator it = varsToBump.begin();
+    std::set<Variable>::const_iterator it_end = varsToBump.end();
+    for (; it != it_end; ++ it) {
+      d_request.bump(*it, options::mcsat_uf_bump());
+    }
   }
+
   d_conflicts.clear();  
 }
 

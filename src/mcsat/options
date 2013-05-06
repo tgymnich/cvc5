@@ -44,6 +44,9 @@ option mcsat_bcp_restart_init --mcsat-bcp-restart-init=N unsigned :default 50
 option mcsat_bcp_attach_limit --mcsat-bcp-attach-limit=N unsigned :default 0 
  maximal number of literals that a learnt clause can have so that we use it in BCP (0 = inf)
 
+option mcsat_uf_bump --mcsat-uf-bump=N unsigned :default 2 
+ UF bump factor
+
 option mcsat_fm_lemmas_keep_factor --mcsat-fm-lemmas-keep-factor=N double :default 0.1 
  sets the factor of FM lemmas  to keep when collecting garbage
 
