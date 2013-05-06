@@ -68,10 +68,25 @@ bool Solver::Purifier::skolemize(TNode current, TNode parent) const {
   if (current.isVar()) return false;
   if (current == parent) return false;    
   if (parent.getKind() == kind::EQUAL) return false;
-  // We skolemize when the type of the current is different from the kind of the parent
+
+  // Theory of the parent kind
+  theory::TheoryId parentKind = theory::kindToTheoryId(parent.getKind());
+
+  // NOT (x < 0) should not be skolemized
+  if (parentKind == theory::THEORY_BOOL) return false;
+
+  // THeories of the current kind and type
+  theory::TheoryId currentKind = theory::kindToTheoryId(current.getKind());
+  theory::TheoryId currentType = theory::Theory::theoryOf(current.getType());
+
   // * f(x + y) -> f(s) [s = x + y]
   // * f(g(y))  -> f(s) [s = g(y)]
-  return theory::kindToTheoryId(parent.getKind()) != theory::Theory::theoryOf(current.getType());
+  if (parentKind != currentType) return true;
+
+  // * 1 + f(x) -> 1 + s [s = f(x)]
+  if (parentKind != currentKind) return true;
+
+  return false;
 }
 
 Node Solver::Purifier::skolemize(TNode current) {
@@ -108,8 +123,8 @@ Solver::Solver(context::UserContext* userContext, context::Context* searchContex
 
   // Add some engines
   addPlugin("CVC4::mcsat::CNFPlugin");
-  addPlugin("CVC4::mcsat::FMPlugin");
   addPlugin("CVC4::mcsat::UFPlugin");
+  addPlugin("CVC4::mcsat::FMPlugin");
   addPlugin("CVC4::mcsat::BCPEngine");
 }
 

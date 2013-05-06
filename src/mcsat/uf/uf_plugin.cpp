@@ -96,7 +96,7 @@ void UFPlugin::newUninterpretedFunction(Variable f_app) {
     // Add the variable list to the watch manager and watch the first two constraints
     VariableListReference listRef = d_assignedWatchManager.newListToWatch(vars, f_app);
     VariableList list = d_assignedWatchManager.get(listRef);
-    Debug("mcsat::uf") << "FMPlugin::newUninterpretedFunction(" << f_app << "): new list " << list << std::endl;
+    Debug("mcsat::uf") << "UFPlugin::newUninterpretedFunction(" << f_app << "): new list " << list << std::endl;
 
     // Watch the first variable
     d_assignedWatchManager.watch(vars[0], listRef);

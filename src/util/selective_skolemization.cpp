@@ -42,7 +42,7 @@ Node SkolemizationRunner::run(TNode node, TNode parent, std::vector<Node>& outpu
   SkolemizationCache::iterator i = d_skolemizationCache.find(node);
   if(i != d_skolemizationCache.end()) {
     Node cachedRewrite = (*i).second;
-    
+
     // We did this before
     if (cachedRewrite.isNull()) {
       Debug("skolemization") << "SkolemizationRunner::run(" << node << "): cached " << node << endl;
@@ -59,19 +59,22 @@ Node SkolemizationRunner::run(TNode node, TNode parent, std::vector<Node>& outpu
   }
 
   // Do we replace 
-  if(!definition && d_skolemizer.skolemize(node, parent)) {
+  if(!definition && node != parent && d_skolemizer.skolemize(node, parent)) {
 
     // Get the skolemization info 
     Node skolem = d_skolemizer.skolemize(node);
+    // Further skolemize the node
+    Node skolemizedNode = run(node, node, output);
   
     // Attach the skolem
     d_skolemizationCache[node] = skolem;
+    d_skolemizationCache[skolemizedNode] = skolem;
     d_skolemizationCache[skolem] = skolem;
 
     Debug("skolemization") << "SkolemizationRunner::run(" << node << "): skolemizing: " << node << " -> " << skolem << endl;
-  
+
     // Remember the definition 
-    output.push_back(skolem.eqNode(node));
+    output.push_back(skolem.eqNode(skolemizedNode));
 
     // The representation is now the skolem
     return skolem;
