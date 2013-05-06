@@ -64,35 +64,6 @@ void Solver::NewVariableNotify::newVariable(Variable var) {
   d_queue.newVariable(var);
 }
 
-bool Solver::Purifier::skolemize(TNode current, TNode parent) const {
-  if (current.isVar()) return false;
-  if (current == parent) return false;    
-  if (parent.getKind() == kind::EQUAL) return false;
-
-  // Theory of the parent kind
-  theory::TheoryId parentKind = theory::kindToTheoryId(parent.getKind());
-
-  // NOT (x < 0) should not be skolemized
-  if (parentKind == theory::THEORY_BOOL) return false;
-
-  // THeories of the current kind and type
-  theory::TheoryId currentKind = theory::kindToTheoryId(current.getKind());
-  theory::TheoryId currentType = theory::Theory::theoryOf(current.getType());
-
-  // * f(x + y) -> f(s) [s = x + y]
-  // * f(g(y))  -> f(s) [s = g(y)]
-  if (parentKind != currentType) return true;
-
-  // * 1 + f(x) -> 1 + s [s = f(x)]
-  if (parentKind != currentKind) return true;
-
-  return false;
-}
-
-Node Solver::Purifier::skolemize(TNode current) {
-  return NodeManager::currentNM()->mkSkolem("p_$$", current.getType(), "purification skolem");
-} 
-
 Solver::Solver(context::UserContext* userContext, context::Context* searchContext) 
 : d_variableDatabase(searchContext)
 , d_clauseFarm(searchContext)
@@ -114,7 +85,7 @@ Solver::Solver(context::UserContext* userContext, context::Context* searchContex
 , d_learntsLimitInc(options::mcsat_learnts_limit_inc())
 , d_removeITE(userContext)
 , d_variableRegister(d_variableDatabase)
-, d_purifyRunner(userContext, d_purifier)
+, d_purifyRunner(userContext)
 {
   // Repeatable
   srand(0);
@@ -145,20 +116,30 @@ void Solver::addAssertion(TNode assertion, bool process) {
   assertionVector.push_back(assertion);
   d_removeITE.run(assertionVector, skolemMap);
 
+  // Normalize
+  for (unsigned i = 0; i < assertionVector.size(); ++ i) {
+    assertionVector[i] = theory::Rewriter::rewrite(assertionVector[i]);
+  }
+
   // Purify any shared terms 
   d_purifyRunner.run(assertionVector);
   
+  // Normalize
+  for (unsigned i = 0; i < assertionVector.size(); ++ i) {
+    assertionVector[i] = theory::Rewriter::rewrite(assertionVector[i]);
+  }
+
   for (unsigned i = 0; i < assertionVector.size(); ++ i) {
     // Normalize and remember
     Debug("mcsat::assertions") << "Solver::addAssertion(): " << assertionVector[i] << endl; 
-    Node normalized = theory::Rewriter::rewrite(assertionVector[i]);
-    d_assertions.push_back(normalized);
+    TNode assertion = assertionVector[i];
+    d_assertions.push_back(assertion);
 
     // Register all the variables wit the database
-    NodeVisitor<VariableRegister>::run(d_variableRegister, normalized);
+    NodeVisitor<VariableRegister>::run(d_variableRegister, assertion);
 
     // Notify the plugins about the new assertion
-    d_notifyDispatch.notifyAssertion(normalized);
+    d_notifyDispatch.notifyAssertion(assertion);
 
     // Run propagation immediately if requested
     if (process) {

@@ -93,6 +93,15 @@ void UFPlugin::newUninterpretedFunction(Variable f_app) {
     var_assign_compare cmp(d_trail);
     std::sort(vars.begin(), vars.end(), cmp);
 
+    // Eliminate duplicates
+    unsigned keep = 1;
+    for (unsigned i = 1; i < vars.size(); ++ i) {
+      if (vars[i] != vars[i-1]) {
+        vars[keep ++] = vars[i];
+      }
+    }
+    vars.resize(keep);
+
     // Add the variable list to the watch manager and watch the first two constraints
     VariableListReference listRef = d_assignedWatchManager.newListToWatch(vars, f_app);
     VariableList list = d_assignedWatchManager.get(listRef);
@@ -104,9 +113,11 @@ void UFPlugin::newUninterpretedFunction(Variable f_app) {
     // Mark as assigned
     if (d_trail.hasValue(vars[0])) {
       markChildrenAssigned(f_app);
+      Assert(!d_trail.hasValue(f_app));
     }
   } else {
     markChildrenAssigned(f_app);
+    Assert(!d_trail.hasValue(f_app));
   }
   
   // Stats
@@ -160,6 +171,7 @@ void UFPlugin::markAppAssigned(Variable fApp) {
   if (find != d_valueMap.end()) {
     if ((*find).second.value != d_trail.value(fApp)) {
       // Ackermann
+      Debug("mcsat::uf") << "UFPlugin::markAppAssigned(" << fApp << "): conflict with " << (*find).second.app << std::endl;
       d_conflicts.push_back(std::pair<Variable, Variable>(fApp, (*find).second.app));
     }
   } else {

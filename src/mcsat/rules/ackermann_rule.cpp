@@ -33,27 +33,31 @@ CRef AckermannRule::apply(Variable f1, Variable f2, SolverTrail::PropagationToke
     // Applications always have variable children
     Literal eqLit = getLiteral(f1node[i].eqNode(f2node[i]));
     // Propagate the equality is true
-    unsigned level = 0;
-    if (!f1node[i].isConst()) {
-      Assert(VariableDatabase::getCurrentDB()->hasVariable(f1node[i]));
-      Variable f1child = VariableDatabase::getCurrentDB()->getVariable(f1node[i]);
-      Assert(d_trail.hasValue(f1child));
-      level = std::max(level, d_trail.decisionLevel(f1child));
+    if (!d_trail.isTrue(eqLit)) {
+      unsigned level = 0;
+      if (!f1node[i].isConst()) {
+        Assert(VariableDatabase::getCurrentDB()->hasVariable(f1node[i]));
+        Variable f1child = VariableDatabase::getCurrentDB()->getVariable(f1node[i]);
+        Assert(d_trail.hasValue(f1child));
+        level = std::max(level, d_trail.decisionLevel(f1child));
+      }
+      if (!f2node[i].isConst()) {
+        Assert(VariableDatabase::getCurrentDB()->hasVariable(f2node[i]));
+        Variable f2child = VariableDatabase::getCurrentDB()->getVariable(f2node[i]);
+        Assert(d_trail.hasValue(f2child));
+        level = std::max(level, d_trail.decisionLevel(f2child));
+      }
+      propToken(eqLit, level);
     }
-    if (!f2node[i].isConst()) {
-      Assert(VariableDatabase::getCurrentDB()->hasVariable(f2node[i]));
-      Variable f2child = VariableDatabase::getCurrentDB()->getVariable(f2node[i]);
-      Assert(d_trail.hasValue(f2child));
-      level = std::max(level, d_trail.decisionLevel(f2child));
-    }
-    propToken(eqLit, level);
     lits.push_back(~eqLit);
   }
   
   // |- f(x) = f(y)
   Literal eqLit = getLiteral(f1node.eqNode(f2node));
-  unsigned level = std::max(d_trail.decisionLevel(f1), d_trail.decisionLevel(f2));
-  propToken(~eqLit, level);
+  if (!d_trail.isFalse(eqLit)) {
+    unsigned level = std::max(d_trail.decisionLevel(f1), d_trail.decisionLevel(f2));
+    propToken(~eqLit, level);
+  }
   lits.push_back(eqLit);
   
   return commit(lits);

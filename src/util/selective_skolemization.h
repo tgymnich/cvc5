@@ -25,35 +25,19 @@
 
 namespace CVC4 {
 
-class Skolemizer {
-
-public:
-  
-  /** Does this term requre skolemization */
-  virtual bool skolemize(TNode current, TNode parent) const = 0; 
-  
-  /** Does this term requre skolemization */
-  virtual Node skolemize(TNode current) = 0; 
-};
-  
 class SkolemizationRunner {
   
   typedef context::CDHashMap<Node, Node, NodeHashFunction> SkolemizationCache;
   
   /** Map from terms to the skolem variables that replace them */
   SkolemizationCache d_skolemizationCache;
-
-  /** The skolemizer */
-  Skolemizer& d_skolemizer;
   
   Node run(TNode current, TNode parent, std::vector<Node>& additionalAssertions);
   
 public:
 
-  SkolemizationRunner(context::UserContext* u, Skolemizer& skolemizer) 
-  : d_skolemizationCache(u)
-  , d_skolemizer(skolemizer)
-  {}
+  SkolemizationRunner(context::UserContext* u)
+  : d_skolemizationCache(u) {}
 
   /**
    * Removes the terms by introducing skolem variables. All

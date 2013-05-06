@@ -130,6 +130,9 @@ class FMPlugin : public SolverPlugin {
   /** Number of fixed variable decisions */
   context::CDO<unsigned> d_fixedVariablesDecided;
 
+  /** Last decided variable */
+  Variable d_lastDecidedAndUnprocessed;
+
   /** Map from variables to constraints */
   std::vector<fm::LinearConstraint> d_constraints;
 

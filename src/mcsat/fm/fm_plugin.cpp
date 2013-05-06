@@ -190,12 +190,18 @@ void FMPlugin::newConstraint(Variable constraint) {
   if (!d_trail.hasValue(vars[0])) {
     if (vars.size() == 1 || d_trail.hasValue(vars[1])) {
       // Single variable is unassigned
-      d_unitInfo[constraint.index()].setUnit(vars[0]);
+      if (vars[0] != d_lastDecidedAndUnprocessed) {
+        d_unitInfo[constraint.index()].setUnit(vars[0]);
+      }
       Debug("mcsat::fm") << "FMPlugin::newConstraint(" << constraint << "): unit " << std::endl;
     }
   } else {
-    // All variables are unassigned    
-    d_unitInfo[constraint.index()].setFullyAssigned();
+    // All variables are unassigned
+    if (vars[0] != d_lastDecidedAndUnprocessed) {
+      d_unitInfo[constraint.index()].setFullyAssigned();
+    } else {
+      d_unitInfo[constraint.index()].setUnit(vars[0]);
+    }
     Debug("mcsat::fm") << "FMPlugin::newConstraint(" << constraint << "): all assigned " << std::endl;
   }
 }
@@ -211,6 +217,11 @@ void FMPlugin::propagate(SolverTrail::PropagationToken& out) {
 
       Debug("mcsat::fm") << "FMPlugin::propagate(): " << var << " assigned" << std::endl;
       
+      if (var == d_lastDecidedAndUnprocessed) {
+        // We've processed our last decision
+        d_lastDecidedAndUnprocessed = Variable::null;
+      }
+
       // Go through all the variable lists (constraints) where we're watching var
       AssignedWatchManager::remove_iterator w = d_assignedWatchManager.begin(var);
       while (d_trail.consistent() && !w.done()) {
@@ -358,13 +369,14 @@ void FMPlugin::processUnitConstraint(Variable constraint, SolverTrail::Propagati
 
   // Get the constraint
   const LinearConstraint& c = getLinearConstraint(constraint);
-  Debug("mcsat::fm") << "FMPlugin::processUnitConstraint(): " << c << " with value " << d_trail.value(constraint) << std::endl;
 
   // Variable to bound
   Variable var = d_unitInfo[constraint.index()].getUnitVar();
   Assert(!var.isNull());
   Assert(!d_trail.hasValue(var));
-    
+
+  Debug("mcsat::fm") << "FMPlugin::processUnitConstraint(): " << c << " with value " << d_trail.value(constraint) << " unit for " << var << std::endl;
+
   // If the constraint has a value then try to assert it to the model 
   if (d_trail.hasValue(constraint)) {
 
@@ -601,6 +613,7 @@ void FMPlugin::decide(SolverTrail::DecisionToken& out, Variable var) {
         Rational value = d_bounds.pick(var, false);
         Debug("mcsat::fm::decide") << "FMPlugin::decide(): " << var << " fixed at " << d_trail.decisionLevel() << std::endl;
         out(var, NodeManager::currentNM()->mkConst(value), true, true);
+        d_lastDecidedAndUnprocessed = var;
         d_fixedVariablesDecided = d_fixedVariablesDecided + 1;
         ++ d_stats.decisions_f;
 	return;
@@ -611,6 +624,7 @@ void FMPlugin::decide(SolverTrail::DecisionToken& out, Variable var) {
   if (isArithmeticVariable(var)) {
     Rational value = d_bounds.pick(var, true);
     out(var, NodeManager::currentNM()->mkConst(value), true);
+    d_lastDecidedAndUnprocessed = var;
     ++ d_stats.decisions;
     return;
   }
@@ -622,6 +636,16 @@ void FMPlugin::notifyBackjump(const std::vector<Variable>& vars) {
 
   for (unsigned i = 0; i < vars.size(); ++ i) {
     if (isArithmeticVariable(vars[i])) {
+
+      Debug("mcsat::fm") << "FMPlugin::notifyBackjump(): " << vars[i] << std::endl;
+
+      // If we didn't process this assignment yet, we should skip it
+      if (d_lastDecidedAndUnprocessed == vars[i]) {
+        Debug("mcsat::fm") << "FMPlugin::notifyBackjump(): " << vars[i] << ": skipping, it's the last decision" << std::endl;
+        d_lastDecidedAndUnprocessed = Variable::null;
+        continue;
+      }
+
       // Go through the watch and mark the constraints
       // UNASSIGNED_UNKNOWN -> UNASSIGNED_UNKNOWN
       // UNASSIGNED_UNIT    -> UNASSIGNED_UNKNOWN
@@ -632,9 +656,13 @@ void FMPlugin::notifyBackjump(const std::vector<Variable>& vars) {
         Variable constraintVar = d_assignedWatchManager.getConstraint(*w);
         unit_info& ui = d_unitInfo[constraintVar.index()];
 	if (ui.isFullyAssigned()) {
+          Debug("mcsat::fm") << "FMPlugin::notifyBackjump(): " << vars[i] << ": " << constraintVar << " -> unit" << std::endl;
 	  ui.setUnit(vars[i]);
 	} else if (ui.isUnit()) {
+          Debug("mcsat::fm") << "FMPlugin::notifyBackjump(): " << vars[i] << ": " << constraintVar << " -> none" << std::endl;
 	  ui.unsetUnit();
+	} else {
+          Debug("mcsat::fm") << "FMPlugin::notifyBackjump(): " << vars[i] << ": " << constraintVar << " none -> none" << std::endl;
 	}
         w.next_and_keep();
       }

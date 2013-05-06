@@ -249,17 +249,10 @@ private:
       return d_variables;
     }
   } d_variableRegister;
-
-  /** Skolemizer for shared terms */
-  class Purifier : public Skolemizer {
-  public:
-    bool skolemize(TNode current, TNode parent) const;
-    Node skolemize(TNode current);
-  } d_purifier;
   
   /** Runner for skolemization of shared terms */
   SkolemizationRunner d_purifyRunner;
-  
+
 };
 
 }
