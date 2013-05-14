@@ -304,7 +304,9 @@ void BCPEngine::gcMark(std::set<Variable>& varsToKeep, std::set<CRef>& clausesTo
 void BCPEngine::newVariable(Variable var) {
   Debug("mcsat::bcp") << "BCPEngine::newVariable(" << var << ")" << std::endl;
   // New variable
-  d_variableValues.resize(var.index() + 1, false);
+  if (var.index() >= d_variableValues.size()) {
+    d_variableValues.resize(var.index() + 1, false);
+  }
   d_variableValues[var.index()] = false;
 }
 
