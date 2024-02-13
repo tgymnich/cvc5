@@ -5,7 +5,9 @@
     },
     "customizations": {
         "vscode": {
-            "extensions": []
+            "extensions": [
+                "ms-vscode.cpptools-extension-pack"
+            ]
         }
     },
     "onCreateCommand": "/docker-entrypoint.sh"
