@@ -1,4 +1,5 @@
 {
+    "name": "CVC5",
     "build": {
         "dockerfile": "Dockerfile"
     },
@@ -6,5 +7,6 @@
         "vscode": {
             "extensions": []
         }
-    }
+    },
+    "onCreateCommand": "/docker-entrypoint.sh"
 }

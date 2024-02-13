@@ -2,6 +2,7 @@ FROM ubuntu:16.04
 
 RUN apt-get update && apt-get install -y wget bash git gcc g++ default-jre make automake autoconf libtool libboost-dev libboost-thread-dev libgmp-dev
 
-ADD entrypoint.sh entrypoint.sh
+COPY docker-entrypoint.sh /
+RUN chmod +x /docker-entrypoint.sh
 
-ENTRYPOINT ["entrypoint.sh"]
+# ENTRYPOINT [ "/docker-entrypoint.sh" ]
