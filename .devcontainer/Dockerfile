@@ -10,4 +10,4 @@ RUN /app/antlr/contrib/get-antlr-3.4 && cp -r /app/antlr/antlr-3.4 /app && rm -r
 COPY .devcontainer/docker-entrypoint.sh /
 RUN chmod +x /docker-entrypoint.sh
 
-ENV DEBIAN_FRONTEND
+ENV DEBIAN_FRONTEND=
