@@ -1,8 +1,14 @@
 {
     "name": "CVC5",
     "build": {
-        "dockerfile": "Dockerfile"
+        "dockerfile": "Dockerfile",
+        "context": ".."
     },
+    "mounts": [
+            "source=cvc5-extensions,target=/home/vscode/.vscode-server/extensions,type=volume",
+            "source=cvc5-extensions-insiders,target=/home/vscode/.vscode-server-insiders/extensions,type=volume",
+            "source=cvc5-build,target=${containerWorkspaceFolder}/builds,type=volume"
+    ],
     "customizations": {
         "vscode": {
             "extensions": [
